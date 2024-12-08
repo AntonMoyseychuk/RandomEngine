@@ -1,29 +1,9 @@
-#include "pch.h"
-
 #include "engine/engine.h"
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <cstdio>
 
 
-bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
+void EngineHello() noexcept
 {
-    return true;
-}
-
-
-void Engine::Terminate() noexcept
-{
-
-}
-
-
-void Engine::Update() noexcept
-{
-}
-
-
-bool Engine::IsInitialized() const noexcept
-{
-    return true;
+    fprintf_s(stdout, "Hello from engine\n");
 }
