@@ -1,5 +1,8 @@
 #pragma once
 
+#include "window_system/window.h"
+
+#include <memory>
 #include <cstdint>
 
 
@@ -15,6 +18,8 @@ public:
 
     bool IsInitialized() const noexcept;
 
+    Window& GetWindow() noexcept;
+
 private:
-    
+    std::unique_ptr<Window> m_pWindow = nullptr;
 };
