@@ -1,0 +1,6 @@
+[submodule "engine/thirdparty/glfw"]
+	path = engine/thirdparty/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "engine/thirdparty/spdlog"]
+	path = engine/thirdparty/spdlog
+	url = https://github.com/gabime/spdlog.git
