@@ -2,7 +2,13 @@
 
 #include "engine/engine.h"
 
+#include "engine/render/render_system/render_system.h"
+
 #include "utils/debug/assertion.h"
+
+
+#define ENG_CHECK_WINDOW_INITIALIZATION(pWindow) ENG_ASSERT(pWindow && pWindow->IsInitialized(), "Window is nullptr or not initialized");
+#define ENG_CHECK_REND_SYS_INITIALIZATION()      ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
 
 
 bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
@@ -15,13 +21,16 @@ bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
     }
 
     if (!engInitWindowSystem()) {
-        ENG_ASSERT_WINDOW_FAIL("Window system initialization failed");
         return false;
     }
 
     m_pWindow = std::make_unique<Window>(title, width, height);
 
-    if (!m_pWindow || !m_pWindow->IsInitialized()) {
+    if (!(m_pWindow && m_pWindow->IsInitialized())) {
+        return false;
+    }
+
+    if (!engInitRenderSystem()) {
         return false;
     }
 
@@ -35,27 +44,58 @@ void Engine::Terminate() noexcept
 {
     m_pWindow = nullptr;
 
-    engTerminateWindowSystem();
-    
+    engTerminateRenderSystem();
+    engTerminateWindowSystem();    
     engTerminateLogSystem();
 }
 
 
-void Engine::Update() noexcept
+bool Engine::BeginFrame() noexcept
 {
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
+
     m_pWindow->ProcessEvents();
 
     if (m_pWindow->IsClosed()) {
-        return;
+        return false;
     }
+
+    return true;
+}
+
+
+void Engine::EndFrame() noexcept
+{
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
 
     m_pWindow->SwapBuffers();
 }
 
 
+void Engine::RenderFrame() noexcept
+{
+    ENG_CHECK_REND_SYS_INITIALIZATION();
+
+    RenderSystem& renderSys = RenderSystem::GetInstance();
+
+    // Depth Prepass
+    renderSys.RunDepthPrepass();
+
+    // GBuffer Pass
+    renderSys.RunGBufferPass();
+
+    // Forward + Lighting Pass
+    renderSys.RunColorPass();
+
+    // Post Process
+    renderSys.RunPostprocessingPass();
+}
+
+
 bool Engine::IsInitialized() const noexcept
 {
-    return m_pWindow && m_pWindow->IsInitialized();
+    return m_pWindow && m_pWindow->IsInitialized() 
+        && engIsRenderSystemInitialized();
 }
 
 

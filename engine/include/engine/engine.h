@@ -14,7 +14,10 @@ public:
     bool Init(const char* title, uint32_t width, uint32_t height) noexcept;
     void Terminate() noexcept;
 
-    void Update() noexcept;
+    bool BeginFrame() noexcept;
+    void EndFrame() noexcept;
+    
+    void RenderFrame() noexcept;
 
     bool IsInitialized() const noexcept;
 

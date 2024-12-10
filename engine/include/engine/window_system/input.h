@@ -1,10 +1,11 @@
 #pragma once
 
 #include <array>
+// #include <deque>
 #include <cstdint>
 
 
-enum class KeyboardKey
+enum class KeyboardKey : uint8_t
 {
     KEY_SPACE,
     KEY_APOSTROPHE, /* ' */
@@ -129,7 +130,7 @@ enum class KeyboardKey
 };
 
 
-enum class MouseButton
+enum class MouseButton : uint8_t
 {
     BUTTON_LEFT,
     BUTTON_RIGHT,
@@ -162,6 +163,20 @@ struct CursorPositon
 {
     float x = 0.0f, y = 0.0f;
 };
+
+
+// struct KeyEvent
+// {
+//     KeyboardKey key;
+//     KeyState state;
+// };
+
+
+// struct MouseButtonEvent
+// {
+//     MouseButton button;
+//     MouseButtonState state;
+// };
 
 
 class Window;
@@ -198,8 +213,14 @@ private:
     void OnMouseMoveEvent(double xpos, double ypos) noexcept;
 
 private:
+    // static inline constexpr size_t MAX_STORED_EVENTS_COUNT = 64ULL;
+
+private:
     std::array<KeyState, static_cast<size_t>(KeyboardKey::KEY_COUNT)> m_keyStates;
     
+    // std::deque<KeyEvent> m_keyEvents;
+    // std::deque<MouseButtonEvent> m_mouseButtonEvents;
+
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
 

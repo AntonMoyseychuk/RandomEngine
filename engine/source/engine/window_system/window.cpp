@@ -27,7 +27,12 @@ bool engInitWindowSystem() noexcept
 
     g_isWindowSystemInitialized = glfwInit() == GLFW_TRUE;
 
-    return g_isWindowSystemInitialized;
+    if (!g_isWindowSystemInitialized) {
+        ENG_ASSERT_WINDOW_FAIL("Window system initialization failed");
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -69,8 +74,6 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
     m_pWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
     ENG_ASSERT_WINDOW(m_pWindow, "Window creation failed");
 
-    // glfwSetInputMode(m_pWindow, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-
     glfwSetWindowUserPointer(m_pWindow, this);
 
     glfwMakeContextCurrent(m_pWindow);
@@ -80,6 +83,12 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
     ENG_ASSERT_WINDOW(m_input.IsInitialized(), "Input system initialization failed");
 
     // glfwSetFramebufferSizeCallback(m_pWindow, nullptr);
+}
+
+
+Window::~Window()
+{
+    glfwDestroyWindow(m_pWindow);
 }
 
 

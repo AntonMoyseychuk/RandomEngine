@@ -19,6 +19,7 @@ class Window
     friend class Input;
 public:
     Window(const char* title, uint32_t width, uint32_t height);
+    ~Window();
 
     void ProcessEvents() noexcept;
     void SwapBuffers() noexcept;

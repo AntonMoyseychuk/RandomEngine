@@ -286,12 +286,24 @@ bool Input::BindWindow(Window* pWindow) noexcept
 void Input::OnKeyEvent(KeyboardKey key, KeyState state) noexcept
 {
     m_keyStates[static_cast<size_t>(key)] = state;
+    
+    // if (m_keyEvents.size() >= MAX_STORED_EVENTS_COUNT - 1) {
+    //     m_keyEvents.pop_front();
+    // }
+
+    // m_keyEvents.emplace_back(KeyEvent{key, state});
 }
 
 
 void Input::OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept
 {
     m_mouseButtonStates[static_cast<size_t>(button)] = state;
+
+    // if (m_mouseButtonEvents.size() >= MAX_STORED_EVENTS_COUNT - 1) {
+    //     m_mouseButtonEvents.pop_front();
+    // }
+
+    // m_mouseButtonEvents.emplace_back(MouseButtonEvent{button, state});
 }
 
 

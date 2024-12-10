@@ -23,10 +23,14 @@ void Application::Terminate() noexcept
 void Application::Run() noexcept
 {
     Window& window = m_pEngine->GetWindow();
-    Input& input = window.GetInput();
 
     while(!window.IsClosed()) {
-        m_pEngine->Update();
+        if (!m_pEngine->BeginFrame()) {
+            continue;
+        }
+        
+        m_pEngine->RenderFrame();
+        m_pEngine->EndFrame();
     }
 }
 
