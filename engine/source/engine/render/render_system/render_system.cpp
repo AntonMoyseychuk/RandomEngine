@@ -85,24 +85,29 @@ bool RenderSystem::Init() noexcept
     glDebugMessageCallback(OpenGLMessageCallback, nullptr);
 #endif
 
+    if (!engInitShaderManager()) {
+        return false;
+    }
+
     return true;
 }
     
     
 void RenderSystem::Terminate() noexcept
 {
+    engTerminateShaderManager();
 }
 
 
 bool RenderSystem::IsInitialized() const noexcept
 {
-    return true;
+    return engIsShaderManagerInitialized();
 }
 
 
 bool engInitRenderSystem() noexcept
 {
-    if (g_pRenderSystem) {
+    if (engIsRenderSystemInitialized()) {
         ENG_LOG_GRAPHICS_API_WARN("Render system is already initialized!");
         return true;
     }

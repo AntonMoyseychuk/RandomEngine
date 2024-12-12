@@ -11,6 +11,12 @@
 #define ENG_CHECK_REND_SYS_INITIALIZATION()      ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
 
 
+Engine::~Engine()
+{
+    Terminate();
+}
+
+
 bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
 {
     engInitLogSystem();
