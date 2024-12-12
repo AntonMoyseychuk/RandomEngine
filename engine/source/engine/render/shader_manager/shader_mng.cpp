@@ -30,7 +30,7 @@ public:
     ShaderStage() = default;
     ~ShaderStage() { Destroy(); }
 
-    bool Create(const ShaderStageCreateInfo& createInfo) noexcept;
+    bool Init(const ShaderStageCreateInfo& createInfo) noexcept;
     void Destroy() noexcept { glDeleteShader(m_id); m_id = 0; }
 
     bool IsValid() const noexcept { return m_id != 0; }
@@ -64,7 +64,7 @@ private:
 };
 
 
-bool ShaderStage::Create(const ShaderStageCreateInfo& createInfo) noexcept
+bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
 {
     if (!createInfo.pSourceCode || createInfo.codeSize == 0) {
         ENG_ASSERT_GRAPHICS_API_FAIL("pSourceCode is nullptr or zero sized");
@@ -138,7 +138,7 @@ bool ShaderProgram::Create(const ShaderProgramCreateInfo &createInfo) noexcept
 
     std::array<ShaderStage, static_cast<size_t>(ShaderStageType::COUNT)> shaderStages = {};
     for (size_t i = 0; i < createInfo.stagesCount; ++i) {
-        if (!shaderStages[i].Create(createInfo.pStages[i])) {
+        if (!shaderStages[i].Init(createInfo.pStages[i])) {
             return false;
         }
     }
