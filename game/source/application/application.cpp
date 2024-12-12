@@ -25,10 +25,9 @@ void Application::Run() noexcept
     Window& window = m_pEngine->GetWindow();
 
     while(!window.IsClosed()) {
-        if (!m_pEngine->BeginFrame()) {
-            continue;
-        }
-        
+        m_pEngine->Update(); // In other thread may be ?...
+
+        m_pEngine->BeginFrame();
         m_pEngine->RenderFrame();
         m_pEngine->EndFrame();
     }

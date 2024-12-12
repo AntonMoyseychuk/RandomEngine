@@ -5,12 +5,6 @@
 #include <cstdint>
 
 
-bool engInitWindowSystem() noexcept;
-void engTerminateWindowSystem() noexcept;
-
-bool engIsWindowSystemInitialized() noexcept;
-
-
 struct GLFWwindow;
 
 
@@ -45,3 +39,9 @@ private:
 
     GLFWwindow* m_pWindow = nullptr;
 };
+
+
+bool engInitWindowSystem() noexcept;
+void engTerminateWindowSystem() noexcept;
+
+bool engIsWindowSystemInitialized() noexcept;

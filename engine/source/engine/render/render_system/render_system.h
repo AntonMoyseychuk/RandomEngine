@@ -17,6 +17,9 @@ public:
 public:
     ~RenderSystem();
 
+    void BeginFrame() noexcept;
+    void EndFrame() noexcept;
+
     void RunDepthPrepass() noexcept;
     void RunGBufferPass() noexcept;
     void RunColorPass() noexcept;

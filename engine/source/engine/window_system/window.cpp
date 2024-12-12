@@ -12,43 +12,6 @@
 static bool g_isWindowSystemInitialized = false;
 
 
-bool engInitWindowSystem() noexcept
-{
-    if (g_isWindowSystemInitialized) {
-        ENG_LOG_WINDOW_WARN("Window system is already initialized!");
-        return true;
-    }
-
-#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
-    glfwSetErrorCallback([](int errorCode, const char* description){
-        ENG_ASSERT_WINDOW_FAIL("{} (code: {})", description, errorCode);
-    });
-#endif
-
-    g_isWindowSystemInitialized = glfwInit() == GLFW_TRUE;
-
-    if (!g_isWindowSystemInitialized) {
-        ENG_ASSERT_WINDOW_FAIL("Window system initialization failed");
-        return false;
-    }
-
-    return true;
-}
-
-
-void engTerminateWindowSystem() noexcept
-{
-    glfwTerminate();
-    g_isWindowSystemInitialized = false;
-}
-
-
-bool engIsWindowSystemInitialized() noexcept
-{
-    return g_isWindowSystemInitialized;
-}
-
-
 Window::Window(const char* title, uint32_t width, uint32_t height)
 {
     if (!g_isWindowSystemInitialized) {
@@ -153,4 +116,41 @@ bool Window::IsClosed() const noexcept
 {
     ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
     return glfwWindowShouldClose(m_pWindow);
+}
+
+
+bool engInitWindowSystem() noexcept
+{
+    if (g_isWindowSystemInitialized) {
+        ENG_LOG_WINDOW_WARN("Window system is already initialized!");
+        return true;
+    }
+
+#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
+    glfwSetErrorCallback([](int errorCode, const char* description){
+        ENG_ASSERT_WINDOW_FAIL("{} (code: {})", description, errorCode);
+    });
+#endif
+
+    g_isWindowSystemInitialized = glfwInit() == GLFW_TRUE;
+
+    if (!g_isWindowSystemInitialized) {
+        ENG_ASSERT_WINDOW_FAIL("Window system initialization failed");
+        return false;
+    }
+
+    return true;
+}
+
+
+void engTerminateWindowSystem() noexcept
+{
+    glfwTerminate();
+    g_isWindowSystemInitialized = false;
+}
+
+
+bool engIsWindowSystemInitialized() noexcept
+{
+    return g_isWindowSystemInitialized;
 }

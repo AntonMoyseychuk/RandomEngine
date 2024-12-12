@@ -50,23 +50,28 @@ void Engine::Terminate() noexcept
 }
 
 
-bool Engine::BeginFrame() noexcept
+void Engine::Update() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
-
+    
     m_pWindow->ProcessEvents();
+}
 
-    if (m_pWindow->IsClosed()) {
-        return false;
-    }
 
-    return true;
+void Engine::BeginFrame() noexcept
+{
+    ENG_CHECK_REND_SYS_INITIALIZATION();
+
+    RenderSystem::GetInstance().BeginFrame();
 }
 
 
 void Engine::EndFrame() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
+    ENG_CHECK_REND_SYS_INITIALIZATION();
+
+    RenderSystem::GetInstance().EndFrame();
 
     m_pWindow->SwapBuffers();
 }
