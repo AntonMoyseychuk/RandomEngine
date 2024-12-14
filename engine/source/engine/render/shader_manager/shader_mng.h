@@ -2,6 +2,7 @@
 
 #include "utils/file/file.h"
 
+#include <limits>
 #include <cstdint>
 
 
@@ -25,8 +26,8 @@ struct ShaderStageCreateInfo
 
 struct ShaderProgramCreateInfo
 {
-    const ShaderStageCreateInfo* pStages;
-    size_t stagesCount;
+    const ShaderStageCreateInfo** pStageCreateInfos;
+    size_t stageCreateInfosCount;
 };
 
 
@@ -35,13 +36,16 @@ class ShaderProgram
     friend class ShaderManager;
 
 public:
+    ShaderProgram() = default;
     ~ShaderProgram() { Destroy(); }
 
+    void Bind() const noexcept;
+    void Unbind() const noexcept;
+
     bool IsValid() const noexcept { return m_id != 0; }
+    uint64_t Hash() const noexcept;
 
 private:
-    ShaderProgram() = default;
-
     bool Init(const ShaderProgramCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
 
@@ -49,6 +53,31 @@ private:
 
 private:
     uint32_t m_id = 0;
+};
+
+
+class ShaderID
+{
+    friend class ShaderManager;
+
+public:
+    ShaderID() = default;
+    ShaderID(uint64_t id) : m_id(id) {}
+
+    operator uint64_t() const noexcept { return m_id; }
+
+    bool IsValid() const noexcept { return m_id != INVALID_ID; }
+
+private:
+    ShaderID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
+
+    uint64_t Hash() const noexcept { return m_id; }
+
+private:
+    static inline constexpr size_t INVALID_ID = std::numeric_limits<uint64_t>::max();
+
+private:
+    uint64_t m_id = INVALID_ID;
 };
 
 
@@ -64,6 +93,11 @@ public:
 public:
     ~ShaderManager();
 
+    ShaderID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;
+    void UnregisterShaderProgram(const ShaderID& id) noexcept;
+    
+    ShaderProgram* GetShaderProgramByID(const ShaderID& id) noexcept;
+
 private:
     ShaderManager() = default;
 
@@ -73,8 +107,19 @@ private:
     bool IsInitialized() const noexcept;
 
 private:
+    struct ShaderIDHasher
+    {
+        uint64_t operator()(const ShaderID& id) const noexcept { return id.Hash(); }
+    };
+
+    std::unordered_map<ShaderID, ShaderProgram, ShaderIDHasher> m_shaderProgramsStorage;
+
     bool m_isInitialized = false; // TEMP
 };
+
+
+uint64_t amHash(const ShaderStageCreateInfo& stageCreateInfo) noexcept;
+uint64_t amHash(const ShaderProgramCreateInfo& programCreateInfo) noexcept;
 
 
 bool engInitShaderManager() noexcept;

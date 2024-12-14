@@ -3,6 +3,8 @@
 
 #include "engine/window_system/window.h"
 
+#include "utils/file/file.h"
+
 #include "utils/debug/assertion.h"
 
 #include <glad/glad.h>
@@ -38,7 +40,7 @@ RenderSystem& RenderSystem::GetInstance() noexcept
 
 void RenderSystem::BeginFrame() noexcept
 {
-    
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 
@@ -62,7 +64,55 @@ void RenderSystem::RunGBufferPass() noexcept
 
 void RenderSystem::RunColorPass() noexcept
 {
+    static bool isInitialized = false;
+    static ShaderProgram* pProgram = nullptr;
+    static uint32_t vao = 0;
 
+    if (!isInitialized) {
+        ShaderStageCreateInfo vsStageCreateInfo = {};
+
+        vsStageCreateInfo.type = ShaderStageType::VERTEX;
+
+        const std::vector<char> vsSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\base\\base.vs");
+        vsStageCreateInfo.pSourceCode = vsSourceCode.data();
+        vsStageCreateInfo.codeSize = vsSourceCode.size();
+
+        vsStageCreateInfo.pDefines = nullptr;
+        vsStageCreateInfo.definesCount = 0;
+
+
+        ShaderStageCreateInfo psStageCreateInfo = {};
+
+        psStageCreateInfo.type = ShaderStageType::PIXEL;
+
+        const std::vector<char> psSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\base\\base.fs");
+        psStageCreateInfo.pSourceCode = psSourceCode.data();
+        psStageCreateInfo.codeSize = psSourceCode.size();
+
+        psStageCreateInfo.pDefines = nullptr;
+        psStageCreateInfo.definesCount = 0;
+
+
+        const ShaderStageCreateInfo* stages[] = { &vsStageCreateInfo, &psStageCreateInfo };
+
+        ShaderProgramCreateInfo programCreateInfo = {};
+        programCreateInfo.pStageCreateInfos = stages;
+        programCreateInfo.stageCreateInfosCount = _countof(stages);
+
+        ShaderID shaderID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
+        ENG_ASSERT_GRAPHICS_API(shaderID.IsValid(), "Invalid Shader ID");
+
+        pProgram = ShaderManager::GetInstance().GetShaderProgramByID(shaderID);
+
+        glCreateVertexArrays(1, &vao);
+
+        isInitialized = true;
+    }
+
+    pProgram->Bind();
+    glBindVertexArray(vao);
+
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
 }
 
 

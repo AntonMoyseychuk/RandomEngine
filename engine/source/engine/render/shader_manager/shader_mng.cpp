@@ -1,9 +1,14 @@
 #include "pch.h"
 #include "shader_mng.h"
 
+#include "utils/data_structures/hash.h"
+
 #include "utils/debug/assertion.h"
 
 #include <glad/glad.h>
+
+
+static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096;
 
 
 static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
@@ -86,6 +91,10 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 {
     ENG_ASSERT_GRAPHICS_API(createInfo.pSourceCode, "Source code is nullptr");
 
+    if (createInfo.definesCount == 0) {
+        return createInfo.pSourceCode;
+    }
+
     std::stringstream ss;
 
     static std::regex versionRegex("#version\\s*(\\d+)");
@@ -142,9 +151,29 @@ bool ShaderStage::GetCompilationStatus() const noexcept
 }
 
 
+void ShaderProgram::Bind() const noexcept
+{
+    // TODO: To think about global OpenGL state to check if it's already what we need and reduce driver calls
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Trying to bind invalid shader program");
+    glUseProgram(m_id);
+}
+
+
+void ShaderProgram::Unbind() const noexcept
+{
+    glUseProgram(0);
+}
+
+
+uint64_t ShaderProgram::Hash() const noexcept
+{
+    return amHash(m_id);
+}
+
+
 bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 {
-    if (!createInfo.pStages || createInfo.stagesCount == 0) {
+    if (!createInfo.pStageCreateInfos || createInfo.stageCreateInfosCount == 0) {
         ENG_ASSERT_GRAPHICS_API_FAIL("pStages is nullptr or zero sized");
         return false;
     }
@@ -155,15 +184,19 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
     }
 
     std::array<ShaderStage, static_cast<size_t>(ShaderStageType::COUNT)> shaderStages = {};
-    for (size_t i = 0; i < createInfo.stagesCount; ++i) {
-        if (!shaderStages[i].Init(createInfo.pStages[i])) {
+    for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {
+        const ShaderStageCreateInfo* pStageCreateInfo = createInfo.pStageCreateInfos[i];
+        
+        ENG_ASSERT_GRAPHICS_API(pStageCreateInfo, "pStageCreateInfo is nullptr");
+        
+        if (!shaderStages[i].Init(*pStageCreateInfo)) {
             return false;
         }
     }
 
     m_id = glCreateProgram();
     
-    for (size_t i = 0; i < createInfo.stagesCount; ++i) {
+    for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {
         glAttachShader(m_id, shaderStages[i].m_id);
     }
 
@@ -225,12 +258,45 @@ ShaderManager::~ShaderManager()
 }
 
 
+ShaderID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
+{
+    ShaderID id(amHash(createInfo));
+
+    if (m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend()) {
+        return id;
+    }
+
+    if (!m_shaderProgramsStorage[id].Init(createInfo)) {
+        return ShaderID{};
+    }
+
+    return id;
+}
+
+
+void ShaderManager::UnregisterShaderProgram(const ShaderID &id) noexcept
+{
+    if (m_shaderProgramsStorage.find(id) == m_shaderProgramsStorage.cend()) {
+        return;
+    }
+
+    m_shaderProgramsStorage.erase(id);
+}
+
+
+ShaderProgram* ShaderManager::GetShaderProgramByID(const ShaderID &id) noexcept
+{
+    return m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend() ? &m_shaderProgramsStorage[id] : nullptr;
+}
+
+
 bool ShaderManager::Init() noexcept
 {
     if (IsInitialized()) {
         return true;
     }
 
+    m_shaderProgramsStorage.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
     m_isInitialized = true;
     
     return true;
@@ -239,6 +305,7 @@ bool ShaderManager::Init() noexcept
 
 void ShaderManager::Terminate() noexcept
 {
+    m_shaderProgramsStorage.clear();
     m_isInitialized = false;
 }
 
@@ -246,6 +313,36 @@ void ShaderManager::Terminate() noexcept
 bool ShaderManager::IsInitialized() const noexcept
 {
     return m_isInitialized;
+}
+
+
+uint64_t amHash(const ShaderStageCreateInfo &stageCreateInfo) noexcept
+{
+    ds::HashBuilder builder;
+
+    builder.AddValue(stageCreateInfo.type);
+    builder.AddMemory(stageCreateInfo.pSourceCode, stageCreateInfo.codeSize);
+
+    for (size_t i = 0; i < stageCreateInfo.definesCount; ++i) {
+        const char* pDefine = stageCreateInfo.pDefines[i];
+
+        builder.AddMemory(pDefine, strlen(pDefine));
+    }
+
+    return builder.Value();
+}
+
+
+uint64_t amHash(const ShaderProgramCreateInfo &programCreateInfo) noexcept
+{
+    ds::HashBuilder builder;
+
+    for (size_t i = 0; i < programCreateInfo.stageCreateInfosCount; ++i) {
+        const ShaderStageCreateInfo& stageCreateInfo = *programCreateInfo.pStageCreateInfos[i];
+        builder.AddValue(stageCreateInfo);
+    }
+
+    return builder.Value();
 }
 
 
