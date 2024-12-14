@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/file/file.h"
+
 #include <cstdint>
 
 
@@ -7,7 +9,6 @@ enum class ShaderStageType : uint32_t
 {
     VERTEX,
     PIXEL,
-
     COUNT
 };
 
@@ -15,7 +16,9 @@ enum class ShaderStageType : uint32_t
 struct ShaderStageCreateInfo
 {
     const char* pSourceCode;
+    const char** pDefines;
     uint32_t codeSize;
+    uint32_t definesCount;
     ShaderStageType type;
 };
 
@@ -24,6 +27,28 @@ struct ShaderProgramCreateInfo
 {
     const ShaderStageCreateInfo* pStages;
     size_t stagesCount;
+};
+
+
+class ShaderProgram
+{
+    friend class ShaderManager;
+
+public:
+    ~ShaderProgram() { Destroy(); }
+
+    bool IsValid() const noexcept { return m_id != 0; }
+
+private:
+    ShaderProgram() = default;
+
+    bool Init(const ShaderProgramCreateInfo& createInfo) noexcept;
+    void Destroy() noexcept;
+
+    bool GetLinkingStatus() const noexcept;
+
+private:
+    uint32_t m_id = 0;
 };
 
 

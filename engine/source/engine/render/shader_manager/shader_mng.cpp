@@ -36,28 +36,9 @@ public:
     bool IsValid() const noexcept { return m_id != 0; }
 
 private:
+    std::string PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) const noexcept;
+
     bool GetCompilationStatus() const noexcept;
-
-private:
-    uint32_t m_id = 0;
-};
-
-
-class ShaderProgram
-{
-    friend class ShaderManager;
-
-public:
-    ShaderProgram() = default;
-    ~ShaderProgram() { Destroy(); }
-
-    bool Create(const ShaderProgramCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept { glDeleteProgram(m_id); m_id = 0; }
-
-    bool IsValid() const noexcept { return m_id != 0; }
-
-private:
-    bool GetLinkingStatus() const noexcept;
 
 private:
     uint32_t m_id = 0;
@@ -66,13 +47,15 @@ private:
 
 bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
 {
-    if (!createInfo.pSourceCode || createInfo.codeSize == 0) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("pSourceCode is nullptr or zero sized");
+    const GLenum shaderStageGLType = ToOpenGLNativeShaderStageType(createInfo.type);
+    
+    if (shaderStageGLType == GL_NONE) {
         return false;
     }
 
-    const GLenum shaderStageGLType = ToOpenGLNativeShaderStageType(createInfo.type);
-    if (shaderStageGLType == GL_NONE) {
+    const std::string preprocessedSourceCode = PreprocessSourceCode(createInfo);
+    if (preprocessedSourceCode.empty()) {
+        ENG_LOG_GRAPHICS_API_WARN("Empty shader source code");
         return false;
     }
 
@@ -83,10 +66,10 @@ bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
 
     m_id = glCreateShader(shaderStageGLType);
 
-    const int32_t codeSize = createInfo.codeSize;
-    ENG_ASSERT_GRAPHICS_API(codeSize > 0, "codeSize value overflow");
+    const char* pPreprocSourceCode = preprocessedSourceCode.c_str();
+    const int32_t preprocSourceCodeSize = preprocessedSourceCode.size();
 
-    glShaderSource(m_id, 1, &createInfo.pSourceCode, &codeSize);
+    glShaderSource(m_id, 1, &pPreprocSourceCode, &preprocSourceCodeSize);
 
     glCompileShader(m_id);
 
@@ -96,6 +79,41 @@ bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
     }
 
     return compilationSuccess;
+}
+
+
+std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) const noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(createInfo.pSourceCode, "Source code is nullptr");
+
+    std::stringstream ss;
+
+    static std::regex versionRegex("#version\\s*(\\d+)");
+
+    const std::string_view sourceCodeStrView = createInfo.pSourceCode;
+
+    std::match_results<std::string_view::const_iterator> match;
+    const bool matchFound = std::regex_search(sourceCodeStrView.begin(), sourceCodeStrView.end(), match, versionRegex);
+
+    ENG_ASSERT_GRAPHICS_API(matchFound, "Shader error: #version is missed");
+
+    const int32_t version = std::stoi(match[1]);
+
+    const size_t versionPos = sourceCodeStrView.find("#version");
+    const std::string_view afterVersion = sourceCodeStrView.substr(versionPos + match.length());
+
+    ss << "#version " << version << '\n';
+
+    for (size_t i = 0; i < createInfo.definesCount; ++i) {
+        const char* pDefineStr = createInfo.pDefines[i];
+        ENG_ASSERT_GRAPHICS_API(pDefineStr, "pDefineStr string is nullptr");
+            
+        ss << "#define " << pDefineStr << '\n';
+    }
+
+    ss << afterVersion;
+
+    return ss.str();
 }
 
 
@@ -124,7 +142,7 @@ bool ShaderStage::GetCompilationStatus() const noexcept
 }
 
 
-bool ShaderProgram::Create(const ShaderProgramCreateInfo &createInfo) noexcept
+bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 {
     if (!createInfo.pStages || createInfo.stagesCount == 0) {
         ENG_ASSERT_GRAPHICS_API_FAIL("pStages is nullptr or zero sized");
@@ -157,6 +175,13 @@ bool ShaderProgram::Create(const ShaderProgramCreateInfo &createInfo) noexcept
     }
 
     return linkingSuccess;
+}
+
+
+void ShaderProgram::Destroy() noexcept
+{
+    glDeleteProgram(m_id);
+    m_id = 0;
 }
 
 
