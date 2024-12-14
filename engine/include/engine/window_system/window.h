@@ -26,6 +26,9 @@ public:
     uint32_t GetWidth() const noexcept;
     uint32_t GetHeight() const noexcept;
 
+    const char* GetTitle() const noexcept;
+    void SetTitle(const char* title) noexcept;
+
     bool IsClosed() const noexcept;
 
     bool IsWindowInitialized() const noexcept { return m_pWindow != nullptr; }

@@ -112,6 +112,20 @@ uint32_t Window::GetHeight() const noexcept
 }
 
 
+const char* Window::GetTitle() const noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
+    return glfwGetWindowTitle(m_pWindow);
+}
+
+
+void Window::SetTitle(const char *title) noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
+    glfwSetWindowTitle(m_pWindow, title);
+}
+
+
 bool Window::IsClosed() const noexcept
 {
     ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);

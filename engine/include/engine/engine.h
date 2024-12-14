@@ -1,6 +1,7 @@
 #pragma once
 
 #include "window_system/window.h"
+#include "timer/timer.h"
 
 #include <memory>
 #include <cstdint>
@@ -9,11 +10,16 @@
 class Engine
 {
 public:
-    Engine() = default;
-    ~Engine();
+    static Engine& GetInstance() noexcept;
 
-    bool Init(const char* title, uint32_t width, uint32_t height) noexcept;
-    void Terminate() noexcept;
+    static bool Init(const char* title, uint32_t width, uint32_t height) noexcept;
+    static void Terminate() noexcept;
+
+public:
+    Engine(const Engine& other) = delete;
+    Engine& operator=(const Engine& other) = delete;
+    
+    ~Engine();
 
     void Update() noexcept;
 
@@ -25,7 +31,15 @@ public:
     bool IsInitialized() const noexcept;
 
     Window& GetWindow() noexcept;
+    Timer& GetTimer() noexcept;
 
 private:
+    Engine(const char* title, uint32_t width, uint32_t height);
+
+private:
+    Timer m_timer;
     std::unique_ptr<Window> m_pWindow = nullptr;
 };
+
+
+bool engIsEngineInitialized() noexcept;

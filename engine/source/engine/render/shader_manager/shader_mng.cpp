@@ -5,7 +5,7 @@
 
 #include "utils/debug/assertion.h"
 
-#include <glad/glad.h>
+#include "engine/render/platform/OpenGL/opengl_driver.h"
 
 
 static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096;
@@ -36,7 +36,7 @@ public:
     ~ShaderStage() { Destroy(); }
 
     bool Init(const ShaderStageCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept { glDeleteShader(m_id); m_id = 0; }
+    void Destroy() noexcept;
 
     bool IsValid() const noexcept { return m_id != 0; }
 
@@ -75,7 +75,6 @@ bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
     const int32_t preprocSourceCodeSize = preprocessedSourceCode.size();
 
     glShaderSource(m_id, 1, &pPreprocSourceCode, &preprocSourceCodeSize);
-
     glCompileShader(m_id);
 
     const bool compilationSuccess = GetCompilationStatus();
@@ -84,6 +83,13 @@ bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
     }
 
     return compilationSuccess;
+}
+
+
+void ShaderStage::Destroy() noexcept
+{
+    glDeleteShader(m_id);
+    m_id = 0;
 }
 
 

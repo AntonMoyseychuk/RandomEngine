@@ -1,14 +1,14 @@
 #include "pch.h"
 #include "render_system.h"
 
+#include "engine/engine.h"
+
 #include "engine/window_system/window.h"
 
+#include "engine/render/platform/OpenGL/opengl_driver.h"
+
 #include "utils/file/file.h"
-
 #include "utils/debug/assertion.h"
-
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
@@ -112,6 +112,9 @@ void RenderSystem::RunColorPass() noexcept
     pProgram->Bind();
     glBindVertexArray(vao);
 
+    Window& window = Engine::GetInstance().GetWindow();
+    glViewport(0, 0, window.GetWidth(), window.GetHeight());
+
     glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
 }
 
@@ -130,6 +133,11 @@ RenderSystem::~RenderSystem()
 
 bool RenderSystem::Init() noexcept
 {
+    if (!engInitOpenGLDriver()) {
+        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize OpenGL driver");
+        return false;
+    }
+
 #if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGLMessageCallback, nullptr);
@@ -151,7 +159,7 @@ void RenderSystem::Terminate() noexcept
 
 bool RenderSystem::IsInitialized() const noexcept
 {
-    return engIsShaderManagerInitialized();
+    return engIsOpenGLDriverInitialized() && engIsShaderManagerInitialized();
 }
 
 
@@ -164,11 +172,6 @@ bool engInitRenderSystem() noexcept
 
     if (!engIsWindowSystemInitialized()) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Window system must be initialized before render system");
-        return false;
-    }
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize GLAD");
         return false;
     }
 

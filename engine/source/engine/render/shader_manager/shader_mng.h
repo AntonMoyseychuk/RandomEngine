@@ -91,6 +91,9 @@ public:
     static ShaderManager& GetInstance() noexcept;
     
 public:
+    ShaderManager(const ShaderManager& other) = delete;
+    ShaderManager& operator=(const ShaderManager& other) = delete;
+
     ~ShaderManager();
 
     ShaderID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;

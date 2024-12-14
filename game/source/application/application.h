@@ -16,7 +16,4 @@ public:
     void Run() noexcept;
 
     bool IsInitialized() const noexcept;
-
-private:
-    std::unique_ptr<Engine> m_pEngine = nullptr;
 };

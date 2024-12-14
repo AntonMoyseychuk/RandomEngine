@@ -11,42 +11,36 @@
 #define ENG_CHECK_REND_SYS_INITIALIZATION()      ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
 
 
-Engine::~Engine()
+static std::unique_ptr<Engine> g_pEngine = nullptr;
+
+
+Engine& Engine::GetInstance() noexcept
 {
-    Terminate();
+    ENG_ASSERT_GRAPHICS_API(engIsEngineInitialized(), "Engine is not initialized");
+    return *g_pEngine;
 }
 
 
 bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
 {
-    engInitLogSystem();
-
-    if (IsInitialized()) {
+    if (engIsEngineInitialized()) {
         ENG_LOG_WARN("Engine is already initialized!");
         return true;
     }
 
-    if (!engInitWindowSystem()) {
-        return false;
-    }
+    g_pEngine = std::unique_ptr<Engine>(new Engine(title, width, height));
 
-    m_pWindow = std::make_unique<Window>(title, width, height);
-
-    if (!(m_pWindow && m_pWindow->IsInitialized())) {
-        return false;
-    }
-
-    if (!engInitRenderSystem()) {
-        return false;
-    }
-
-    m_pWindow->ShowWindow();
-
-    return true;
+    return g_pEngine && g_pEngine->IsInitialized();
 }
 
 
 void Engine::Terminate() noexcept
+{
+    g_pEngine = nullptr;
+}
+
+
+Engine::~Engine()
 {
     m_pWindow = nullptr;
 
@@ -60,6 +54,7 @@ void Engine::Update() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
     
+    m_timer.Tick();
     m_pWindow->ProcessEvents();
 }
 
@@ -105,7 +100,8 @@ void Engine::RenderFrame() noexcept
 
 bool Engine::IsInitialized() const noexcept
 {
-    return m_pWindow && m_pWindow->IsInitialized() 
+    return engIsLogSystemInitialized()
+        && m_pWindow && m_pWindow->IsInitialized() 
         && engIsRenderSystemInitialized();
 }
 
@@ -114,4 +110,38 @@ Window &Engine::GetWindow() noexcept
 {
     ENG_ASSERT(m_pWindow && m_pWindow->IsInitialized(), "Invalid nullptr or is not initialized");
     return *m_pWindow;
+}
+
+
+Timer &Engine::GetTimer() noexcept
+{
+    return m_timer;
+}
+
+
+Engine::Engine(const char *title, uint32_t width, uint32_t height)
+{
+    engInitLogSystem();
+
+    if (!engInitWindowSystem()) {
+        return;
+    }
+
+    m_pWindow = std::make_unique<Window>(title, width, height);
+
+    if (!(m_pWindow && m_pWindow->IsInitialized())) {
+        return;
+    }
+
+    if (!engInitRenderSystem()) {
+        return;
+    }
+
+    m_pWindow->ShowWindow();
+}
+
+
+bool engIsEngineInitialized() noexcept
+{
+    return g_pEngine && g_pEngine->IsInitialized();
 }

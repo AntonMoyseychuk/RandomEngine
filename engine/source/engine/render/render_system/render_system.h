@@ -16,6 +16,9 @@ public:
     static RenderSystem& GetInstance() noexcept;
 
 public:
+    RenderSystem(const RenderSystem& other) = delete;
+    RenderSystem& operator=(const RenderSystem& other) = delete;
+
     ~RenderSystem();
 
     void BeginFrame() noexcept;
