@@ -36,6 +36,9 @@ public:
 private:
     Engine(const char* title, uint32_t width, uint32_t height);
 
+    Engine(Engine&& other) noexcept = default;
+    Engine& operator=(Engine&& other) noexcept = default;
+
 private:
     Timer m_timer;
     std::unique_ptr<Window> m_pWindow = nullptr;

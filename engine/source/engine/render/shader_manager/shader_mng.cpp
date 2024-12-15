@@ -32,8 +32,14 @@ class ShaderStage
     friend class ShaderProgram;
 
 public:
+    ShaderStage(const ShaderStage& other) = delete;
+    ShaderStage& operator=(const ShaderStage& other) = delete;
+
     ShaderStage() = default;
     ~ShaderStage() { Destroy(); }
+
+    ShaderStage(ShaderStage&& other) noexcept;
+    ShaderStage& operator=(ShaderStage&& other) noexcept;
 
     bool Init(const ShaderStageCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
@@ -50,7 +56,22 @@ private:
 };
 
 
-bool ShaderStage::Init(const ShaderStageCreateInfo& createInfo) noexcept
+ShaderStage::ShaderStage(ShaderStage &&other) noexcept
+{
+    std::swap(m_id, other.m_id);
+}
+
+
+ShaderStage &ShaderStage::operator=(ShaderStage &&other) noexcept
+{
+    Destroy();
+    std::swap(m_id, other.m_id);
+    
+    return *this;
+}
+
+
+bool ShaderStage::Init(const ShaderStageCreateInfo &createInfo) noexcept
 {
     const GLenum shaderStageGLType = ToOpenGLNativeShaderStageType(createInfo.type);
     
@@ -154,6 +175,21 @@ bool ShaderStage::GetCompilationStatus() const noexcept
     }
 
     return true;
+}
+
+
+ShaderProgram::ShaderProgram(ShaderProgram&& other) noexcept
+{
+    std::swap(m_id, other.m_id);
+}
+
+
+ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
+{
+    Destroy();
+    std::swap(m_id, other.m_id);
+
+    return *this;
 }
 
 

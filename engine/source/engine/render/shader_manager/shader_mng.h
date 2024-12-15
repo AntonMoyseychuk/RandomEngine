@@ -36,8 +36,14 @@ class ShaderProgram
     friend class ShaderManager;
 
 public:
+    ShaderProgram(const ShaderProgram& other) = delete;
+    ShaderProgram& operator=(const ShaderProgram& other) = delete;
+
     ShaderProgram() = default;
     ~ShaderProgram() { Destroy(); }
+
+    ShaderProgram(ShaderProgram&& other) noexcept;
+    ShaderProgram& operator=(ShaderProgram&& other) noexcept;
 
     void Bind() const noexcept;
     void Unbind() const noexcept;
@@ -103,6 +109,9 @@ public:
 
 private:
     ShaderManager() = default;
+
+    ShaderManager(ShaderManager&& other) noexcept = default;
+    ShaderManager& operator=(ShaderManager&& other) noexcept = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;

@@ -31,6 +31,9 @@ public:
 
 private:
     RenderSystem() = default;
+
+    RenderSystem(RenderSystem&& other) noexcept = default;
+    RenderSystem& operator=(RenderSystem&& other) noexcept = default;
     
     bool Init() noexcept; 
     void Terminate() noexcept;

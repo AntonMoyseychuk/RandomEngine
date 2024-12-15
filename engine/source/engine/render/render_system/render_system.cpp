@@ -14,18 +14,43 @@
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
 
 
-static void GLAPIENTRY OpenGLMessageCallback(ENG_MAYBE_UNUSED GLenum source, ENG_MAYBE_UNUSED GLenum type, ENG_MAYBE_UNUSED GLuint id,
-    ENG_MAYBE_UNUSED GLenum severity, ENG_MAYBE_UNUSED GLsizei length, const GLchar* message, ENG_MAYBE_UNUSED const void* userParam)
+static void GLAPIENTRY OpenGLMessageCallback(GLenum source, GLenum type, ENG_MAYBE_UNUSED GLuint id,
+    GLenum severity, ENG_MAYBE_UNUSED GLsizei length, const GLchar* pMessage, ENG_MAYBE_UNUSED const void* userParam)
 {
+    const char* pSourceStr = [source]() -> const char* {
+		switch (source) {
+            case GL_DEBUG_SOURCE_API: return "API";
+            case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+            case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+            case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+            case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+            case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+            default: return "UNDEFINED SOURCE";
+		}
+	}();
+
+	const char* pTypeStr = [type]() -> const char* {
+		switch (type) {
+            case GL_DEBUG_TYPE_ERROR: return "ERROR";
+            case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+            case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+            case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+            case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+            case GL_DEBUG_TYPE_MARKER: return "MARKER";
+            case GL_DEBUG_TYPE_OTHER: return "OTHER";
+            default: return "UNDEFINED TYPE";
+		}
+	}();
+
     switch (severity) {
     case GL_DEBUG_SEVERITY_HIGH:
-        ENG_ASSERT_GRAPHICS_API_FAIL(message);
+        ENG_ASSERT_GRAPHICS_API_FAIL("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
-        ENG_LOG_GRAPHICS_API_WARN(message);
+        ENG_LOG_GRAPHICS_API_WARN("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
         break;
     case GL_DEBUG_SEVERITY_LOW:
-        ENG_LOG_GRAPHICS_API_INFO(message);
+        ENG_LOG_GRAPHICS_API_INFO("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
         break;
     }
 }
