@@ -65,7 +65,8 @@ RenderSystem& RenderSystem::GetInstance() noexcept
 
 void RenderSystem::BeginFrame() noexcept
 {
-    glClear(GL_COLOR_BUFFER_BIT);
+    static const float pClearColor[] = { 1.f, 1.f, 0.f, 1.f };
+    glClearNamedFramebufferfv(0, GL_COLOR, 0, pClearColor);
 }
 
 

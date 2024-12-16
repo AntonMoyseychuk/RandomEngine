@@ -308,7 +308,10 @@ ShaderID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cre
         return id;
     }
 
-    if (!m_shaderProgramsStorage[id].Init(createInfo)) {
+    ShaderProgram& progRef = m_shaderProgramsStorage[id];
+    
+    if (!progRef.Init(createInfo)) {
+        m_shaderProgramsStorage.erase(id);
         return ShaderID{};
     }
 
