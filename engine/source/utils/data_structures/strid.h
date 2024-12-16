@@ -6,6 +6,7 @@
 
 #include <cstdint>
 
+#include "core.h"
 #include "hash.h"
 
 
@@ -100,6 +101,10 @@ namespace ds
 
     private:
         uint64_t m_id = StrIDDataStorageType::INVALID_ID_HASH;
+
+    #if defined(ENG_DEBUG)
+        const ElementType* m_pStr = nullptr;
+    #endif
     };
 
 

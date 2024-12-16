@@ -29,6 +29,7 @@ namespace ds
             }
             
             if (newStrBufLocation.offset + newStrBufLocation.length > m_storage.size()) {
+                ENG_ASSERT_FAIL("StrID storage overflow, think about increasing the size of the storage buffer");
                 m_storage.resize(m_storage.size() * 2ull);
             }
 
@@ -54,6 +55,9 @@ namespace ds
     inline StrIDImpl<ElemT>::StrIDImpl(const ElementType *str)
         : m_id(s_storage.Store(str))
     {
+    #if defined(ENG_DEBUG)
+        m_pStr = s_storage.Load(m_id);
+    #endif
     }
     
     
@@ -61,6 +65,9 @@ namespace ds
     inline StrIDImpl<ElemT>::StrIDImpl(const StringType &str)
         : m_id(s_storage.Store(str))
     {
+    #if defined(ENG_DEBUG)
+        m_pStr = s_storage.Load(m_id);
+    #endif
     }
     
     
@@ -68,6 +75,9 @@ namespace ds
     inline StrIDImpl<ElemT>::StrIDImpl(const StringViewType &str)
         : m_id(s_storage.Store(str))
     {
+    #if defined(ENG_DEBUG)
+        m_pStr = s_storage.Load(m_id);
+    #endif
     }
 
 
@@ -75,6 +85,10 @@ namespace ds
     inline StrIDImpl<ElemT>& StrIDImpl<ElemT>::operator=(const typename StrIDImpl<ElemT>::ElementType *str) noexcept
     {
         m_id = s_storage.Store(str);
+    #if defined(ENG_DEBUG)
+        m_pStr = s_storage.Load(m_id);
+    #endif
+
         return *this;
     }
     
@@ -82,6 +96,10 @@ namespace ds
     template <typename ElemT>
     inline const ElemT* StrIDImpl<ElemT>::CStr() const noexcept
     {
+    #if defined(ENG_DEBUG)
+        return m_pStr;
+    #else
         return s_storage.Load(m_id);
+    #endif
     }
 }
