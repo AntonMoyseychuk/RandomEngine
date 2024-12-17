@@ -8,7 +8,7 @@
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
 
-static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096;
+static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable
 
 
 static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
@@ -304,14 +304,18 @@ ShaderID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cre
 {
     ShaderID id(amHash(createInfo));
 
-    if (m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend()) {
+    auto& storageRef = m_shaderProgramsStorage; 
+
+    if (storageRef.find(id) != storageRef.cend()) {
         return id;
     }
 
-    ShaderProgram& progRef = m_shaderProgramsStorage[id];
+    ENG_ASSERT_GRAPHICS_API(float(storageRef.size() + 1ull) / storageRef.bucket_count() < storageRef.max_load_factor(), "Shader program storage rehashing: ShaderProgram pointers will be invalidated");
+
+    ShaderProgram& progRef = storageRef[id];
     
     if (!progRef.Init(createInfo)) {
-        m_shaderProgramsStorage.erase(id);
+        storageRef.erase(id);
         return ShaderID{};
     }
 

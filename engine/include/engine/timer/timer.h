@@ -8,15 +8,13 @@ class Timer
 public:
     Timer();
 
-    void Reset() noexcept;
-
-    float GetElapsedTimeInSec() const noexcept;
-    float GetElapsedTimeInMillisec() const noexcept;
-
     void Tick() noexcept;
+
+    double GetElapsedTimeInSec() const noexcept;
+    double GetElapsedTimeInMillisec() const noexcept;
     
-    float GetDeltaTimeInSec() const noexcept;
-    float GetDeltaTimeInMillisec() const noexcept;
+    double GetDeltaTimeInSec() const noexcept;
+    double GetDeltaTimeInMillisec() const noexcept;
 
 private:
     std::chrono::steady_clock::time_point m_startTime;
