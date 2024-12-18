@@ -62,20 +62,20 @@ private:
 };
 
 
-class ShaderID
+class ProgramID
 {
     friend class ShaderManager;
 
 public:
-    ShaderID() = default;
-    ShaderID(uint64_t id) : m_id(id) {}
+    ProgramID() = default;
+    ProgramID(uint64_t id) : m_id(id) {}
 
     operator uint64_t() const noexcept { return m_id; }
 
     bool IsValid() const noexcept { return m_id != INVALID_ID; }
 
 private:
-    ShaderID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
+    ProgramID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
 
     uint64_t Hash() const noexcept { return m_id; }
 
@@ -102,10 +102,10 @@ public:
 
     ~ShaderManager();
 
-    ShaderID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;
-    void UnregisterShaderProgram(const ShaderID& id) noexcept;
+    ProgramID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;
+    void UnregisterShaderProgram(const ProgramID& id) noexcept;
     
-    ShaderProgram* GetShaderProgramByID(const ShaderID& id) noexcept;
+    ShaderProgram* GetShaderProgramByID(const ProgramID& id) noexcept;
 
 private:
     ShaderManager() = default;
@@ -119,14 +119,14 @@ private:
     bool IsInitialized() const noexcept;
 
 private:
-    struct ShaderIDHasher
+    struct ProgramIDHasher
     {
-        uint64_t operator()(const ShaderID& id) const noexcept { return id.Hash(); }
+        uint64_t operator()(const ProgramID& id) const noexcept { return id.Hash(); }
     };
 
-    std::unordered_map<ShaderID, ShaderProgram, ShaderIDHasher> m_shaderProgramsStorage;
+    std::unordered_map<ProgramID, ShaderProgram, ProgramIDHasher> m_shaderProgramsStorage;
 
-    bool m_isInitialized = false; // TEMP
+    bool m_isInitialized = false;
 };
 
 

@@ -9,6 +9,8 @@
 #include "core.h"
 #include "hash.h"
 
+#include "utils/debug/assertion.h"
+
 
 namespace ds
 {

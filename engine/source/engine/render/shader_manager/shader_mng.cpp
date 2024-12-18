@@ -300,9 +300,9 @@ ShaderManager::~ShaderManager()
 }
 
 
-ShaderID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
+ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
 {
-    ShaderID id(amHash(createInfo));
+    ProgramID id(amHash(createInfo));
 
     auto& storageRef = m_shaderProgramsStorage; 
 
@@ -316,14 +316,14 @@ ShaderID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cre
     
     if (!progRef.Init(createInfo)) {
         storageRef.erase(id);
-        return ShaderID{};
+        return ProgramID{};
     }
 
     return id;
 }
 
 
-void ShaderManager::UnregisterShaderProgram(const ShaderID &id) noexcept
+void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
 {
     if (m_shaderProgramsStorage.find(id) == m_shaderProgramsStorage.cend()) {
         return;
@@ -333,7 +333,7 @@ void ShaderManager::UnregisterShaderProgram(const ShaderID &id) noexcept
 }
 
 
-ShaderProgram* ShaderManager::GetShaderProgramByID(const ShaderID &id) noexcept
+ShaderProgram* ShaderManager::GetShaderProgramByID(const ProgramID &id) noexcept
 {
     return m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend() ? &m_shaderProgramsStorage[id] : nullptr;
 }
@@ -347,7 +347,7 @@ bool ShaderManager::Init() noexcept
 
     m_shaderProgramsStorage.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
     m_isInitialized = true;
-    
+
     return true;
 }
 

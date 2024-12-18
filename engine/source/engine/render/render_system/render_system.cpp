@@ -125,10 +125,10 @@ void RenderSystem::RunColorPass() noexcept
         programCreateInfo.pStageCreateInfos = stages;
         programCreateInfo.stageCreateInfosCount = _countof(stages);
 
-        ShaderID shaderID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(shaderID.IsValid(), "Invalid Shader ID");
+        ProgramID programID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
+        ENG_ASSERT_GRAPHICS_API(programID.IsValid(), "Invalid Shader ID");
 
-        pProgram = ShaderManager::GetInstance().GetShaderProgramByID(shaderID);
+        pProgram = ShaderManager::GetInstance().GetShaderProgramByID(programID);
 
         glCreateVertexArrays(1, &vao);
 
