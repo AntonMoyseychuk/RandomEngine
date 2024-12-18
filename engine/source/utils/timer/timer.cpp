@@ -22,7 +22,7 @@ Timer::Timer()
 
 double Timer::GetElapsedTimeInSec() const noexcept
 {
-    return GetDuration<chr::seconds>(m_startTime, chr::steady_clock::now());
+    return GetElapsedTimeInMillisec() / 1000.0;
 }
 
 
@@ -41,7 +41,7 @@ void Timer::Tick() noexcept
 
 double Timer::GetDeltaTimeInSec() const noexcept
 {
-    return GetDuration<chr::seconds>(m_prevTime, m_curTime);
+    return GetDeltaTimeInMillisec() / 1000.0;
 }
 
 

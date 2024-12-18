@@ -126,20 +126,31 @@ void RenderSystem::RunColorPass() noexcept
         programCreateInfo.stageCreateInfosCount = _countof(stages);
 
         ProgramID programID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(programID.IsValid(), "Invalid Shader ID");
+        ENG_ASSERT_GRAPHICS_API(programID.IsValid(), "Failed to register shader program");
 
         pProgram = ShaderManager::GetInstance().GetShaderProgramByID(programID);
+        pProgram->Bind();
 
         glCreateVertexArrays(1, &vao);
+        glBindVertexArray(vao);
 
         isInitialized = true;
     }
 
-    pProgram->Bind();
-    glBindVertexArray(vao);
+    Engine& engine = Engine::GetInstance();
+    Timer& timer = engine.GetTimer();
+    Window& window = engine.GetWindow();
 
-    Window& window = Engine::GetInstance().GetWindow();
+    const float elapsedTime = timer.GetElapsedTimeInSec();
+    pProgram->GetUniformStorage().SetUniformFloat("u_elapsedTime", elapsedTime);
+    
     glViewport(0, 0, window.GetWidth(), window.GetHeight());
+
+    const float deltaTime = timer.GetDeltaTimeInMillisec();
+
+    char title[256];
+    sprintf_s(title, "%f ms | %f FPS", deltaTime, 1000.f / deltaTime);
+    window.SetTitle(title);
 
     glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
 }

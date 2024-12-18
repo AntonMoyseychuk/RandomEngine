@@ -1,9 +1,12 @@
 #pragma once
 
 #include "utils/file/file.h"
+#include "utils/data_structures/strid.h"
 
 #include <limits>
 #include <cstdint>
+
+#include "core.h"
 
 
 enum class ShaderStageType : uint32_t
@@ -31,6 +34,151 @@ struct ShaderProgramCreateInfo
 };
 
 
+class ProgramUniform
+{
+    friend class ShaderManager;
+    friend class ShaderProgram;
+    friend class ProgramUniformStorage;
+
+public:
+    enum Type : uint32_t
+    {
+        TYPE_BOOL,
+        TYPE_INT,
+        TYPE_UINT,
+        TYPE_FLOAT,
+        TYPE_DOUBLE,
+            
+        TYPE_IVEC2,
+        TYPE_IVEC3,
+        TYPE_IVEC4,
+            
+        TYPE_UVEC2,
+        TYPE_UVEC3,
+        TYPE_UVEC4,
+            
+        TYPE_FVEC2,
+        TYPE_FVEC3,
+        TYPE_FVEC4,
+            
+        TYPE_DVEC2,
+        TYPE_DVEC3,
+        TYPE_DVEC4,
+            
+        TYPE_MAT2X2,
+        TYPE_MAT2X3,
+        TYPE_MAT2X4,
+            
+        TYPE_MAT3X2,
+        TYPE_MAT3X3,
+        TYPE_MAT3X4,
+            
+        TYPE_MAT4X2,
+        TYPE_MAT4X3,
+        TYPE_MAT4X4,
+            
+        TYPE_DMAT2X2,
+        TYPE_DMAT2X3,
+        TYPE_DMAT2X4,
+            
+        TYPE_DMAT3X2,
+        TYPE_DMAT3X3,
+        TYPE_DMAT3X4,
+            
+        TYPE_DMAT4X2,
+        TYPE_DMAT4X3,
+        TYPE_DMAT4X4,
+            
+        TYPE_SAMPLER_1D,
+        TYPE_SAMPLER_2D,
+        TYPE_SAMPLER_3D,
+        TYPE_SAMPLER_CUBE,
+
+        TYPE_IMAGE_1D,
+        TYPE_IMAGE_2D,
+        TYPE_IMAGE_3D,
+        TYPE_IMAGE_CUBE,
+
+        TYPE_IMAGE_2D_RECT,
+        
+        TYPE_IMAGE_BUFFER,
+
+        TYPE_IMAGE_1D_ARRAY,
+        TYPE_IMAGE_2D_ARRAY,
+
+        TYPE_IMAGE_2D_MULTISAMPLE,
+        TYPE_IMAGE_2D_MULTISAMPLE_ARRAY,
+
+        TYPE_COUNT,
+        TYPE_INVALID = TYPE_COUNT,
+    };
+
+public:
+    ds::StrID GetName() const noexcept { return m_name; }
+    int32_t GetLocation() const noexcept { return m_location; }
+
+#if defined(ENG_DEBUG)
+    uint32_t GetCount() const noexcept { return m_count; }
+    Type GetType() const noexcept { return m_type; }
+#endif
+
+private:
+    ds::StrID m_name;
+    int32_t m_location = -1;
+
+#if defined(ENG_DEBUG)
+    uint32_t m_count = UINT32_MAX;
+    Type m_type = TYPE_INVALID;
+#endif
+};
+
+
+class ProgramUniformStorage
+{
+    friend class ShaderManager;
+    friend class ShaderProgram;
+
+public:
+    using StorageType = std::vector<ProgramUniform>;
+    using StorageConstIterType = StorageType::const_iterator;
+
+public:
+    bool HasUniform(ds::StrID uniformName) const noexcept;
+    const ProgramUniform* GetUniform(ds::StrID uniformName) const noexcept;
+
+    void SetUniformBool(ds::StrID uniformName, bool value) noexcept;
+
+    void SetUniformInt(ds::StrID uniformName, int32_t value) noexcept;
+    void SetUniformInt2(ds::StrID uniformName, int32_t x, int32_t y) noexcept;
+    void SetUniformInt3(ds::StrID uniformName, int32_t x, int32_t y, int32_t z) noexcept;
+    void SetUniformInt4(ds::StrID uniformName, int32_t x, int32_t y, int32_t z, int32_t w) noexcept;
+
+    void SetUniformUInt(ds::StrID uniformName, uint32_t value) noexcept;
+    void SetUniformUInt2(ds::StrID uniformName, uint32_t x, uint32_t y) noexcept;
+    void SetUniformUInt3(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z) noexcept;
+    void SetUniformUInt4(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z, uint32_t w) noexcept;
+
+    void SetUniformFloat(ds::StrID uniformName, float value) noexcept;
+    void SetUniformFloat2(ds::StrID uniformName, float x, float y) noexcept;
+    void SetUniformFloat3(ds::StrID uniformName, float x, float y, float z) noexcept;
+    void SetUniformFloat4(ds::StrID uniformName, float x, float y, float z, float w) noexcept;
+
+    void SetUniformDouble(ds::StrID uniformName, double value) noexcept;
+    void SetUniformDouble2(ds::StrID uniformName, double x, double y) noexcept;
+    void SetUniformDouble3(ds::StrID uniformName, double x, double y, double z) noexcept;
+    void SetUniformDouble4(ds::StrID uniformName, double x, double y, double z, double w) noexcept;
+
+    bool IsEmpty() const noexcept { return m_uniforms.empty(); }
+
+    StorageConstIterType cbegin() const noexcept { return m_uniforms.cbegin(); }
+    StorageConstIterType cend() const noexcept { return m_uniforms.cend(); }
+
+private:
+    StorageType m_uniforms;
+    uint32_t m_programRenderID = 0;
+};
+
+
 class ShaderProgram
 {
     friend class ShaderManager;
@@ -48,7 +196,11 @@ public:
     void Bind() const noexcept;
     void Unbind() const noexcept;
 
-    bool IsValid() const noexcept { return m_id != 0; }
+    ProgramUniformStorage& GetUniformStorage() noexcept;
+
+    bool IsValidRenderID() const noexcept { return m_renderID != 0; }
+    bool IsValidUniformStorage() const noexcept { return m_pUniformStorage != nullptr; }
+    bool IsValid() const noexcept { return IsValidRenderID() && IsValidUniformStorage(); }
     uint64_t Hash() const noexcept;
 
 private:
@@ -58,7 +210,8 @@ private:
     bool GetLinkingStatus() const noexcept;
 
 private:
-    uint32_t m_id = 0;
+    uint32_t m_renderID = 0;
+    ProgramUniformStorage* m_pUniformStorage = nullptr;
 };
 
 
@@ -107,6 +260,8 @@ public:
     
     ShaderProgram* GetShaderProgramByID(const ProgramID& id) noexcept;
 
+    const ProgramUniformStorage* GetShaderProgramUniformStorageByID(const ProgramID& id) const noexcept;
+
 private:
     ShaderManager() = default;
 
@@ -115,6 +270,8 @@ private:
 
     bool Init() noexcept;
     void Terminate() noexcept;
+
+    void FillProgramUniformStorage(const ShaderProgram& program, ProgramUniformStorage& storage) noexcept;
 
     bool IsInitialized() const noexcept;
 
@@ -125,6 +282,7 @@ private:
     };
 
     std::unordered_map<ProgramID, ShaderProgram, ProgramIDHasher> m_shaderProgramsStorage;
+    std::unordered_map<ProgramID, ProgramUniformStorage, ProgramIDHasher> m_uniformsStorage;
 
     bool m_isInitialized = false;
 };
