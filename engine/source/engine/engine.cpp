@@ -30,7 +30,17 @@ bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
 
     g_pEngine = std::unique_ptr<Engine>(new Engine(title, width, height));
 
-    return g_pEngine && g_pEngine->IsInitialized();
+    if (!g_pEngine) {
+        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for engine");
+        return false;
+    }
+
+    if (!g_pEngine->IsInitialized()) {
+        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize engine");
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -100,9 +110,7 @@ void Engine::RenderFrame() noexcept
 
 bool Engine::IsInitialized() const noexcept
 {
-    return engIsLogSystemInitialized()
-        && m_pWindow && m_pWindow->IsInitialized() 
-        && engIsRenderSystemInitialized();
+    return m_isInitialized;
 }
 
 
@@ -136,6 +144,8 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
     if (!engInitRenderSystem()) {
         return;
     }
+
+    m_isInitialized = true;
 
     m_pWindow->ShowWindow();
 }

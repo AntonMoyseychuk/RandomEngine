@@ -102,11 +102,11 @@ namespace ds
         static inline StrIDDataStorageType s_storage;
 
     private:
-        uint64_t m_id = StrIDDataStorageType::INVALID_ID_HASH;
-
     #if defined(ENG_DEBUG)
         const ElementType* m_pStr = nullptr;
     #endif
+
+        uint64_t m_id = StrIDDataStorageType::INVALID_ID_HASH;
     };
 
 

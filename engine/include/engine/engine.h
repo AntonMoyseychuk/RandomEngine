@@ -42,6 +42,8 @@ private:
 private:
     Timer m_timer;
     std::unique_ptr<Window> m_pWindow = nullptr;
+
+    bool m_isInitialized = false;
 };
 
 

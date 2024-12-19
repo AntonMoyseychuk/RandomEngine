@@ -8,8 +8,6 @@
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
 
-
-
 #if defined(ENG_DEBUG)
     static bool CheckUniform(const ProgramUniform* pUniform, ds::StrID name, ProgramUniform::Type type, uint32_t count) noexcept
     {
@@ -234,262 +232,320 @@ const ProgramUniform* ProgramUniformStorage::GetUniform(ds::StrID uniformName) c
 
 void ProgramUniformStorage::SetUniformBool(ds::StrID uniformName, bool value) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 1);
 
-    glProgramUniform1i(m_programRenderID, pUniform->m_location, value);
+    glProgramUniform1i(m_pOwner->GetRenderID(), pUniform->m_location, value);
 }
 
 
 void ProgramUniformStorage::SetUniformBool2(ds::StrID uniformName, bool x, bool y) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 2);
 
-    glProgramUniform2i(m_programRenderID, pUniform->m_location, x, y);
+    glProgramUniform2i(m_pOwner->GetRenderID(), pUniform->m_location, x, y);
 }
 
 
 void ProgramUniformStorage::SetUniformBool3(ds::StrID uniformName, bool x, bool y, bool z) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 3);
 
-    glProgramUniform3i(m_programRenderID, pUniform->m_location, x, y, z);
+    glProgramUniform3i(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z);
 }
 
 
 void ProgramUniformStorage::SetUniformBool4(ds::StrID uniformName, bool x, bool y, bool z, bool w) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 4);
 
-    glProgramUniform4i(m_programRenderID, pUniform->m_location, x, y, z, w);
+    glProgramUniform4i(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformInt(ds::StrID uniformName, int32_t value) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_INT, 1);
 
-    glProgramUniform1i(m_programRenderID, pUniform->m_location, value);
+    glProgramUniform1i(m_pOwner->GetRenderID(), pUniform->m_location, value);
 }
 
 
 void ProgramUniformStorage::SetUniformInt2(ds::StrID uniformName, int32_t x, int32_t y) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC2, 1);
 
-    glProgramUniform2i(m_programRenderID, pUniform->m_location, x, y);
+    glProgramUniform2i(m_pOwner->GetRenderID(), pUniform->m_location, x, y);
 }
 
 
 void ProgramUniformStorage::SetUniformInt3(ds::StrID uniformName, int32_t x, int32_t y, int32_t z) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC3, 1);
 
-    glProgramUniform3i(m_programRenderID, pUniform->m_location, x, y, z);
+    glProgramUniform3i(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z);
 }
 
 
 void ProgramUniformStorage::SetUniformInt4(ds::StrID uniformName, int32_t x, int32_t y, int32_t z, int32_t w) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC4, 1);
 
-    glProgramUniform4i(m_programRenderID, pUniform->m_location, x, y, z, w);
+    glProgramUniform4i(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformUInt(ds::StrID uniformName, uint32_t value) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UINT, 1);
 
-    glProgramUniform1ui(m_programRenderID, pUniform->m_location, value);
+    glProgramUniform1ui(m_pOwner->GetRenderID(), pUniform->m_location, value);
 }
 
 
 void ProgramUniformStorage::SetUniformUInt2(ds::StrID uniformName, uint32_t x, uint32_t y) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC2, 1);
 
-    glProgramUniform2ui(m_programRenderID, pUniform->m_location, x, y);
+    glProgramUniform2ui(m_pOwner->GetRenderID(), pUniform->m_location, x, y);
 }
 
 
 void ProgramUniformStorage::SetUniformUInt3(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC3, 1);
 
-    glProgramUniform3ui(m_programRenderID, pUniform->m_location, x, y, z);
+    glProgramUniform3ui(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z);
 }
 
 
 void ProgramUniformStorage::SetUniformUInt4(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z, uint32_t w) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC4, 1);
 
-    glProgramUniform4ui(m_programRenderID, pUniform->m_location, x, y, z, w);
+    glProgramUniform4ui(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat(ds::StrID uniformName, float value) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FLOAT, 1);
 
-    glProgramUniform1f(m_programRenderID, pUniform->m_location, value);
+    glProgramUniform1f(m_pOwner->GetRenderID(), pUniform->m_location, value);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat2(ds::StrID uniformName, float x, float y) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC2, 1);
 
-    glProgramUniform2f(m_programRenderID, pUniform->m_location, x, y);
+    glProgramUniform2f(m_pOwner->GetRenderID(), pUniform->m_location, x, y);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat3(ds::StrID uniformName, float x, float y, float z) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC3, 1);
 
-    glProgramUniform3f(m_programRenderID, pUniform->m_location, x, y, z);
+    glProgramUniform3f(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat4(ds::StrID uniformName, float x, float y, float z, float w) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC4, 1);
 
-    glProgramUniform4f(m_programRenderID, pUniform->m_location, x, y, z, w);
+    glProgramUniform4f(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformDouble(ds::StrID uniformName, double value) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DOUBLE, 1);
 
-    glProgramUniform1d(m_programRenderID, pUniform->m_location, value);
+    glProgramUniform1d(m_pOwner->GetRenderID(), pUniform->m_location, value);
 }
 
 
 void ProgramUniformStorage::SetUniformDouble2(ds::StrID uniformName, double x, double y) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC2, 1);
 
-    glProgramUniform2d(m_programRenderID, pUniform->m_location, x, y);
+    glProgramUniform2d(m_pOwner->GetRenderID(), pUniform->m_location, x, y);
 }
 
 
 void ProgramUniformStorage::SetUniformDouble3(ds::StrID uniformName, double x, double y, double z) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC3, 1);
 
-    glProgramUniform3d(m_programRenderID, pUniform->m_location, x, y, z);
+    glProgramUniform3d(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z);
 }
 
 
 void ProgramUniformStorage::SetUniformDouble4(ds::StrID uniformName, double x, double y, double z, double w) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC4, 1);
 
-    glProgramUniform4d(m_programRenderID, pUniform->m_location, x, y, z, w);
+    glProgramUniform4d(m_pOwner->GetRenderID(), pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat2x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X2, matrCount);
 
-    glProgramUniformMatrix2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix2fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat3x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X3, matrCount);
 
-    glProgramUniformMatrix3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix3fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat4x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X4, matrCount);
 
-    glProgramUniformMatrix4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix4fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat2x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X3, matrCount);
 
-    glProgramUniformMatrix2x3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix2x3fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat3x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X2, matrCount);
 
-    glProgramUniformMatrix3x2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix3x2fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat2x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X4, matrCount);
 
-    glProgramUniformMatrix2x4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix2x4fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat4x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X2, matrCount);
 
-    glProgramUniformMatrix4x2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix4x2fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat3x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X4, matrCount);
 
-    glProgramUniformMatrix3x4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix3x4fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
 void ProgramUniformStorage::SetUniformFloat4x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(m_pOwner, "m_pOwner is nullptr");
+    
     const ProgramUniform* pUniform = GetUniform(uniformName);
     CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X3, matrCount);
 
-    glProgramUniformMatrix4x3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+    glProgramUniformMatrix4x3fv(m_pOwner->GetRenderID(), pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
@@ -538,14 +594,18 @@ uint64_t ShaderProgram::Hash() const noexcept
 bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 {
     if (!createInfo.pStageCreateInfos || createInfo.stageCreateInfosCount == 0) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("pStages is nullptr or zero sized");
+        ENG_ASSERT_GRAPHICS_API_FAIL("Shader program create info '{}' has invalid stages parametres", createInfo.dbgName.CStr());
         return false;
     }
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Calling ShaderProgram::Create(const ShaderProgramCreateInfo&) by shader program with valid id: {}", m_renderID);
+        ENG_LOG_GRAPHICS_API_WARN("Recreating '{}' shader program", m_dbgName.CStr());
         Destroy();
     }
+
+#if defined(ENG_DEBUG)
+    m_dbgName = createInfo.dbgName;
+#endif
 
     std::array<ShaderStage, static_cast<size_t>(ShaderStageType::COUNT)> shaderStages = {};
     for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {
@@ -577,6 +637,10 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 
 void ShaderProgram::Destroy() noexcept
 {
+#if defined(ENG_DEBUG)
+    m_dbgName = "";
+#endif
+
     glDeleteProgram(m_renderID);
     m_renderID = 0;
 }
@@ -585,7 +649,7 @@ void ShaderProgram::Destroy() noexcept
 bool ShaderProgram::GetLinkingStatus() const noexcept
 {
     if (!IsValidRenderID()) {
-        ENG_LOG_GRAPHICS_API_ERROR("Invalid shader program id");
+        ENG_LOG_GRAPHICS_API_ERROR("Invalid shader program '{}' id", m_dbgName.CStr());
         return false;
     }
 
@@ -599,7 +663,7 @@ bool ShaderProgram::GetLinkingStatus() const noexcept
         GLchar infoLog[512] = { 0 };
         glGetProgramInfoLog(m_renderID, sizeof(infoLog), nullptr, infoLog);
 
-        ENG_LOG_GRAPHICS_API_ERROR("Shader program (id: {}) linking error: {}", m_renderID, infoLog);
+        ENG_LOG_GRAPHICS_API_ERROR("Shader program '{}' (id: {}) linking error: {}", m_dbgName.CStr(), m_renderID, infoLog);
 #endif
 
         return false;
@@ -695,7 +759,7 @@ void ShaderManager::Terminate() noexcept
 
 void ShaderManager::FillProgramUniformStorage(const ShaderProgram &program, ProgramUniformStorage &storage) noexcept
 {
-    storage.m_programRenderID = program.m_renderID;
+    storage.m_pOwner = &program;
 
     GLint activeUniformsCount = 0;
     glGetProgramiv(program.m_renderID, GL_ACTIVE_UNIFORMS, &activeUniformsCount);
@@ -818,6 +882,10 @@ uint64_t amHash(const ShaderProgramCreateInfo &programCreateInfo) noexcept
         builder.AddValue(stageCreateInfo);
     }
 
+#if defined(ENG_DEBUG)
+    builder.AddValue(programCreateInfo.dbgName);
+#endif
+
     return builder.Value();
 }
 
@@ -832,7 +900,7 @@ bool engInitShaderManager() noexcept
     g_pShaderMng = std::unique_ptr<ShaderManager>(new ShaderManager);
 
     if (!g_pShaderMng) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to create shader manager");
+        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for shader manager");
         return false;
     }
 

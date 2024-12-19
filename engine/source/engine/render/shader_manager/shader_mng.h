@@ -29,6 +29,10 @@ struct ShaderStageCreateInfo
 
 struct ShaderProgramCreateInfo
 {
+#if defined(ENG_DEBUG)
+    ds::StrID dbgName = "";
+#endif
+
     const ShaderStageCreateInfo** pStageCreateInfos;
     size_t stageCreateInfosCount;
 };
@@ -188,7 +192,7 @@ public:
 
 private:
     UniformsContainerType m_uniforms;
-    uint32_t m_programRenderID = 0;
+    const ShaderProgram* m_pOwner = nullptr;
 };
 
 
@@ -214,7 +218,10 @@ public:
     bool IsValidRenderID() const noexcept { return m_renderID != 0; }
     bool IsValidUniformStorage() const noexcept { return m_pUniformStorage != nullptr; }
     bool IsValid() const noexcept { return IsValidRenderID() && IsValidUniformStorage(); }
+    
     uint64_t Hash() const noexcept;
+
+    uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
     bool Init(const ShaderProgramCreateInfo& createInfo) noexcept;
@@ -223,8 +230,12 @@ private:
     bool GetLinkingStatus() const noexcept;
 
 private:
-    uint32_t m_renderID = 0;
+#if defined(ENG_DEBUG)
+    ds::StrID m_dbgName = "";
+#endif
+
     ProgramUniformStorage* m_pUniformStorage = nullptr;
+    uint32_t m_renderID = 0;
 };
 
 

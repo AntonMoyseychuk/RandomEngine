@@ -3,9 +3,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "utils/debug/assertion.h"
+
 
 #ifdef OPENGL_DRIVER_H
-    #error do NOT include "opengl_driver.h" here
+    #error do NOT include "opengl_driver.h" here!
 #endif
 
 
@@ -21,21 +23,27 @@ static OpenGLBindableState g_OpenGLBindableState;
 static bool g_isInitialized = false;
 
 
-bool engInitOpenGLDriver() noexcept
+bool engIsOpenGLDriverInitialized() noexcept
 {
-    if (g_isInitialized) {
-        return true;
-    }
-
-    g_isInitialized = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
     return g_isInitialized;
 }
 
 
-bool engIsOpenGLDriverInitialized() noexcept
+bool engInitOpenGLDriver() noexcept
 {
-    return g_isInitialized;
+    if (engIsOpenGLDriverInitialized()) {
+        ENG_LOG_GRAPHICS_API_WARN("OpenGL driver is already initialized!");
+        return true;
+    }
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize OpenGL driver");
+        return false;
+    }
+
+    g_isInitialized = true;
+
+    return true;
 }
 
 

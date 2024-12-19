@@ -43,6 +43,8 @@ private:
 private:
     // GBuffer textures, framebuffer
     // ...
+
+    bool m_isInitialized = false;
 };
 
 

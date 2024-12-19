@@ -122,6 +122,10 @@ void RenderSystem::RunColorPass() noexcept
         const ShaderStageCreateInfo* stages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
         ShaderProgramCreateInfo programCreateInfo = {};
+    #if defined(ENG_DEBUG)
+        programCreateInfo.dbgName = "base_shader";
+    #endif
+
         programCreateInfo.pStageCreateInfos = stages;
         programCreateInfo.stageCreateInfosCount = _countof(stages);
 
@@ -149,7 +153,7 @@ void RenderSystem::RunColorPass() noexcept
     const float deltaTime = timer.GetDeltaTimeInMillisec();
 
     char title[256];
-    sprintf_s(title, "%f ms | %f FPS", deltaTime, 1000.f / deltaTime);
+    sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
     window.SetTitle(title);
 
     glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
@@ -170,8 +174,11 @@ RenderSystem::~RenderSystem()
 
 bool RenderSystem::Init() noexcept
 {
+    if (IsInitialized()) {
+        return true;
+    }
+
     if (!engInitOpenGLDriver()) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize OpenGL driver");
         return false;
     }
 
@@ -184,19 +191,28 @@ bool RenderSystem::Init() noexcept
         return false;
     }
 
+    if (!engInitTextureManager()) {
+        return false;
+    }
+
+    m_isInitialized = true;
+
     return true;
 }
     
     
 void RenderSystem::Terminate() noexcept
 {
+    m_isInitialized = false;
+
+    engTerminateTextureManager();
     engTerminateShaderManager();
 }
 
 
 bool RenderSystem::IsInitialized() const noexcept
 {
-    return engIsOpenGLDriverInitialized() && engIsShaderManagerInitialized();
+    return m_isInitialized;
 }
 
 
