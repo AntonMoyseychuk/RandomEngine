@@ -139,14 +139,17 @@ class ProgramUniformStorage
     friend class ShaderProgram;
 
 public:
-    using StorageType = std::vector<ProgramUniform>;
-    using StorageConstIterType = StorageType::const_iterator;
+    using UniformsContainerType = std::vector<ProgramUniform>;
+    using StorageConstIterType = UniformsContainerType::const_iterator;
 
 public:
     bool HasUniform(ds::StrID uniformName) const noexcept;
     const ProgramUniform* GetUniform(ds::StrID uniformName) const noexcept;
 
     void SetUniformBool(ds::StrID uniformName, bool value) noexcept;
+    void SetUniformBool2(ds::StrID uniformName, bool x, bool y) noexcept;
+    void SetUniformBool3(ds::StrID uniformName, bool x, bool y, bool z) noexcept;
+    void SetUniformBool4(ds::StrID uniformName, bool x, bool y, bool z, bool w) noexcept;
 
     void SetUniformInt(ds::StrID uniformName, int32_t value) noexcept;
     void SetUniformInt2(ds::StrID uniformName, int32_t x, int32_t y) noexcept;
@@ -168,13 +171,23 @@ public:
     void SetUniformDouble3(ds::StrID uniformName, double x, double y, double z) noexcept;
     void SetUniformDouble4(ds::StrID uniformName, double x, double y, double z, double w) noexcept;
 
+    void SetUniformFloat2x2(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat3x3(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat4x4(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat2x3(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat3x2(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat2x4(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat4x2(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat3x4(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+    void SetUniformFloat4x3(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
+
     bool IsEmpty() const noexcept { return m_uniforms.empty(); }
 
     StorageConstIterType cbegin() const noexcept { return m_uniforms.cbegin(); }
     StorageConstIterType cend() const noexcept { return m_uniforms.cend(); }
 
 private:
-    StorageType m_uniforms;
+    UniformsContainerType m_uniforms;
     uint32_t m_programRenderID = 0;
 };
 

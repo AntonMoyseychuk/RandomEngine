@@ -8,14 +8,32 @@
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
 
+
+
 #if defined(ENG_DEBUG)
-    #define CHECK_UNIFORM(pUniform, searchName)                                                         \
-        if (!pUniform) {                                                                                \
-            ENG_LOG_GRAPHICS_API_ERROR("Shader program doesn't have '{}' uniform", searchName.CStr());  \
-            return;                                                                                     \
+    static bool CheckUniform(const ProgramUniform* pUniform, ds::StrID name, ProgramUniform::Type type, uint32_t count) noexcept
+    {
+        if (!pUniform) {
+            ENG_LOG_GRAPHICS_API_ERROR("Shader program doesn't have '{}' uniform", name.CStr());
+            return false;
         }
+
+        if (pUniform->GetType() != type) {                                                          
+            ENG_LOG_GRAPHICS_API_ERROR("Uniform '{}' type mismatch", name.CStr());              
+            return false;                                                                                   
+        }
+
+        if (pUniform->GetCount() < count) {
+            ENG_LOG_GRAPHICS_API_ERROR("Uniform '{}' count mismatch", name.CStr());
+            return false;
+        }
+
+        return true;
+    }
+
+    #define CHECK_UNIFORM(pUniform, name, type, count) if (!CheckUniform(pUniform, name, type, count)) { return; }
 #else
-    #define CHECK_UNIFORM(pUniform)
+    #define CHECK_UNIFORM(pUniform, name, type, count)
 #endif
 
 
@@ -217,16 +235,43 @@ const ProgramUniform* ProgramUniformStorage::GetUniform(ds::StrID uniformName) c
 void ProgramUniformStorage::SetUniformBool(ds::StrID uniformName, bool value) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 1);
 
     glProgramUniform1i(m_programRenderID, pUniform->m_location, value);
+}
+
+
+void ProgramUniformStorage::SetUniformBool2(ds::StrID uniformName, bool x, bool y) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 2);
+
+    glProgramUniform2i(m_programRenderID, pUniform->m_location, x, y);
+}
+
+
+void ProgramUniformStorage::SetUniformBool3(ds::StrID uniformName, bool x, bool y, bool z) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 3);
+
+    glProgramUniform3i(m_programRenderID, pUniform->m_location, x, y, z);
+}
+
+
+void ProgramUniformStorage::SetUniformBool4(ds::StrID uniformName, bool x, bool y, bool z, bool w) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_BOOL, 4);
+
+    glProgramUniform4i(m_programRenderID, pUniform->m_location, x, y, z, w);
 }
 
 
 void ProgramUniformStorage::SetUniformInt(ds::StrID uniformName, int32_t value) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_INT, 1);
 
     glProgramUniform1i(m_programRenderID, pUniform->m_location, value);
 }
@@ -235,7 +280,7 @@ void ProgramUniformStorage::SetUniformInt(ds::StrID uniformName, int32_t value) 
 void ProgramUniformStorage::SetUniformInt2(ds::StrID uniformName, int32_t x, int32_t y) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC2, 1);
 
     glProgramUniform2i(m_programRenderID, pUniform->m_location, x, y);
 }
@@ -244,7 +289,7 @@ void ProgramUniformStorage::SetUniformInt2(ds::StrID uniformName, int32_t x, int
 void ProgramUniformStorage::SetUniformInt3(ds::StrID uniformName, int32_t x, int32_t y, int32_t z) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC3, 1);
 
     glProgramUniform3i(m_programRenderID, pUniform->m_location, x, y, z);
 }
@@ -253,7 +298,7 @@ void ProgramUniformStorage::SetUniformInt3(ds::StrID uniformName, int32_t x, int
 void ProgramUniformStorage::SetUniformInt4(ds::StrID uniformName, int32_t x, int32_t y, int32_t z, int32_t w) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_IVEC4, 1);
 
     glProgramUniform4i(m_programRenderID, pUniform->m_location, x, y, z, w);
 }
@@ -262,7 +307,7 @@ void ProgramUniformStorage::SetUniformInt4(ds::StrID uniformName, int32_t x, int
 void ProgramUniformStorage::SetUniformUInt(ds::StrID uniformName, uint32_t value) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UINT, 1);
 
     glProgramUniform1ui(m_programRenderID, pUniform->m_location, value);
 }
@@ -271,7 +316,7 @@ void ProgramUniformStorage::SetUniformUInt(ds::StrID uniformName, uint32_t value
 void ProgramUniformStorage::SetUniformUInt2(ds::StrID uniformName, uint32_t x, uint32_t y) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC2, 1);
 
     glProgramUniform2ui(m_programRenderID, pUniform->m_location, x, y);
 }
@@ -280,7 +325,7 @@ void ProgramUniformStorage::SetUniformUInt2(ds::StrID uniformName, uint32_t x, u
 void ProgramUniformStorage::SetUniformUInt3(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC3, 1);
 
     glProgramUniform3ui(m_programRenderID, pUniform->m_location, x, y, z);
 }
@@ -289,7 +334,7 @@ void ProgramUniformStorage::SetUniformUInt3(ds::StrID uniformName, uint32_t x, u
 void ProgramUniformStorage::SetUniformUInt4(ds::StrID uniformName, uint32_t x, uint32_t y, uint32_t z, uint32_t w) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_UVEC4, 1);
 
     glProgramUniform4ui(m_programRenderID, pUniform->m_location, x, y, z, w);
 }
@@ -298,7 +343,7 @@ void ProgramUniformStorage::SetUniformUInt4(ds::StrID uniformName, uint32_t x, u
 void ProgramUniformStorage::SetUniformFloat(ds::StrID uniformName, float value) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FLOAT, 1);
 
     glProgramUniform1f(m_programRenderID, pUniform->m_location, value);
 }
@@ -307,7 +352,7 @@ void ProgramUniformStorage::SetUniformFloat(ds::StrID uniformName, float value) 
 void ProgramUniformStorage::SetUniformFloat2(ds::StrID uniformName, float x, float y) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC2, 1);
 
     glProgramUniform2f(m_programRenderID, pUniform->m_location, x, y);
 }
@@ -316,7 +361,7 @@ void ProgramUniformStorage::SetUniformFloat2(ds::StrID uniformName, float x, flo
 void ProgramUniformStorage::SetUniformFloat3(ds::StrID uniformName, float x, float y, float z) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC3, 1);
 
     glProgramUniform3f(m_programRenderID, pUniform->m_location, x, y, z);
 }
@@ -325,7 +370,7 @@ void ProgramUniformStorage::SetUniformFloat3(ds::StrID uniformName, float x, flo
 void ProgramUniformStorage::SetUniformFloat4(ds::StrID uniformName, float x, float y, float z, float w) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_FVEC4, 1);
 
     glProgramUniform4f(m_programRenderID, pUniform->m_location, x, y, z, w);
 }
@@ -334,7 +379,7 @@ void ProgramUniformStorage::SetUniformFloat4(ds::StrID uniformName, float x, flo
 void ProgramUniformStorage::SetUniformDouble(ds::StrID uniformName, double value) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DOUBLE, 1);
 
     glProgramUniform1d(m_programRenderID, pUniform->m_location, value);
 }
@@ -343,7 +388,7 @@ void ProgramUniformStorage::SetUniformDouble(ds::StrID uniformName, double value
 void ProgramUniformStorage::SetUniformDouble2(ds::StrID uniformName, double x, double y) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC2, 1);
 
     glProgramUniform2d(m_programRenderID, pUniform->m_location, x, y);
 }
@@ -352,7 +397,7 @@ void ProgramUniformStorage::SetUniformDouble2(ds::StrID uniformName, double x, d
 void ProgramUniformStorage::SetUniformDouble3(ds::StrID uniformName, double x, double y, double z) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC3, 1);
 
     glProgramUniform3d(m_programRenderID, pUniform->m_location, x, y, z);
 }
@@ -361,9 +406,90 @@ void ProgramUniformStorage::SetUniformDouble3(ds::StrID uniformName, double x, d
 void ProgramUniformStorage::SetUniformDouble4(ds::StrID uniformName, double x, double y, double z, double w) noexcept
 {
     const ProgramUniform* pUniform = GetUniform(uniformName);
-    CHECK_UNIFORM(pUniform, uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_DVEC4, 1);
 
     glProgramUniform4d(m_programRenderID, pUniform->m_location, x, y, z, w);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat2x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X2, matrCount);
+
+    glProgramUniformMatrix2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat3x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X3, matrCount);
+
+    glProgramUniformMatrix3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat4x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X4, matrCount);
+
+    glProgramUniformMatrix4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat2x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X3, matrCount);
+
+    glProgramUniformMatrix2x3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat3x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X2, matrCount);
+
+    glProgramUniformMatrix3x2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat2x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT2X4, matrCount);
+
+    glProgramUniformMatrix2x4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat4x2(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X2, matrCount);
+
+    glProgramUniformMatrix4x2fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat3x4(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT3X4, matrCount);
+
+    glProgramUniformMatrix3x4fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
+}
+
+
+void ProgramUniformStorage::SetUniformFloat4x3(ds::StrID uniformName, const float *pMatrData, uint32_t matrCount, bool transpose) noexcept
+{
+    const ProgramUniform* pUniform = GetUniform(uniformName);
+    CHECK_UNIFORM(pUniform, uniformName, ProgramUniform::TYPE_MAT4X3, matrCount);
+
+    glProgramUniformMatrix4x3fv(m_programRenderID, pUniform->m_location, matrCount, transpose, pMatrData);
 }
 
 
@@ -498,20 +624,19 @@ ShaderManager::~ShaderManager()
 
 ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
 {
-    ProgramID id(amHash(createInfo));
+    ProgramID id(amHash(createInfo));  
 
-    auto& programStorage = m_shaderProgramsStorage;  
-
-    if (programStorage.find(id) != programStorage.cend()) {
+    if (m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend()) {
         return id;
     }
 
-    ENG_ASSERT_GRAPHICS_API(float(programStorage.size() + 1ull) / programStorage.bucket_count() < programStorage.max_load_factor(), "Shader program storage rehashing: ShaderProgram pointers will be invalidated");
+    ENG_ASSERT_GRAPHICS_API(m_shaderProgramsStorage.size() == m_uniformsStorage.size(), "m_shaderProgramsStorage.size() != m_uniformsStorage.size()");
+    ENG_ASSERT_GRAPHICS_API(float(m_shaderProgramsStorage.size() + 1ull) / m_shaderProgramsStorage.bucket_count() < m_shaderProgramsStorage.max_load_factor(), "Shader program storage rehashing: ShaderProgram pointers will be invalidated");
 
-    ShaderProgram& program = programStorage[id];
+    ShaderProgram& program = m_shaderProgramsStorage[id];
 
     if (!program.Init(createInfo)) {
-        programStorage.erase(id);
+        m_shaderProgramsStorage.erase(id);
         return ProgramID{};
     }
 

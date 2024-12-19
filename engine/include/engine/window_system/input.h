@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-// #include <deque>
 #include <cstdint>
 
 
@@ -165,20 +164,6 @@ struct CursorPositon
 };
 
 
-// struct KeyEvent
-// {
-//     KeyboardKey key;
-//     KeyState state;
-// };
-
-
-// struct MouseButtonEvent
-// {
-//     MouseButton button;
-//     MouseButtonState state;
-// };
-
-
 class Window;
 
 
@@ -213,13 +198,7 @@ private:
     void OnMouseMoveEvent(double xpos, double ypos) noexcept;
 
 private:
-    // static inline constexpr size_t MAX_STORED_EVENTS_COUNT = 64ULL;
-
-private:
     std::array<KeyState, static_cast<size_t>(KeyboardKey::KEY_COUNT)> m_keyStates;
-    
-    // std::deque<KeyEvent> m_keyEvents;
-    // std::deque<MouseButtonEvent> m_mouseButtonEvents;
 
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
