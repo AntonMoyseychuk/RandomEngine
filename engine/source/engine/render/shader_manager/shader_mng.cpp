@@ -42,19 +42,6 @@ static constexpr size_t ENG_MAX_UNIFORM_NAME_LENGTH = 128;             // TODO: 
 static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
 
 
-static GLenum ToOpenGLNativeShaderStageType(ShaderStageType type) noexcept
-{
-    switch (type) {
-    case ShaderStageType::VERTEX: return GL_VERTEX_SHADER;
-    case ShaderStageType::PIXEL:  return GL_FRAGMENT_SHADER;
-    
-    default:
-        ENG_ASSERT_GRAPHICS_API_FAIL("Invalid ShaderStageType value: {}", static_cast<uint32_t>(type));
-        return GL_NONE;
-    }
-}
-
-
 class ShaderStage
 {
     friend class ShaderProgram;
@@ -75,8 +62,9 @@ public:
     bool IsValid() const noexcept { return m_id != 0; }
 
 private:
-    std::string PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) const noexcept;
+    static std::string PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) noexcept;
 
+private:
     bool GetCompilationStatus() const noexcept;
 
 private:
@@ -101,7 +89,15 @@ ShaderStage &ShaderStage::operator=(ShaderStage &&other) noexcept
 
 bool ShaderStage::Init(const ShaderStageCreateInfo &createInfo) noexcept
 {
-    const GLenum shaderStageGLType = ToOpenGLNativeShaderStageType(createInfo.type);
+    const GLenum shaderStageGLType = [](ShaderStageType type) -> GLenum {
+        switch (type) {
+            case ShaderStageType::VERTEX: return GL_VERTEX_SHADER;
+            case ShaderStageType::PIXEL:  return GL_FRAGMENT_SHADER;
+            default:
+                ENG_ASSERT_GRAPHICS_API_FAIL("Invalid ShaderStageType value: {}", static_cast<uint32_t>(type));
+                return GL_NONE;
+        }
+    }(createInfo.type);
     
     if (shaderStageGLType == GL_NONE) {
         return false;
@@ -142,13 +138,9 @@ void ShaderStage::Destroy() noexcept
 }
 
 
-std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) const noexcept
+std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(createInfo.pSourceCode, "Source code is nullptr");
-
-    if (createInfo.definesCount == 0) {
-        return createInfo.pSourceCode;
-    }
 
     std::stringstream ss;
 
@@ -156,15 +148,15 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 
     const std::string_view sourceCodeStrView = createInfo.pSourceCode;
 
-    std::match_results<std::string_view::const_iterator> match;
-    const bool matchFound = std::regex_search(sourceCodeStrView.begin(), sourceCodeStrView.end(), match, versionRegex);
+    std::match_results<std::string_view::const_iterator> versionMatch;
+    const bool versionFound = std::regex_search(sourceCodeStrView.begin(), sourceCodeStrView.end(), versionMatch, versionRegex);
 
-    ENG_ASSERT_GRAPHICS_API(matchFound, "Shader error: #version is missed");
-
-    const int32_t version = std::stoi(match[1]);
+    ENG_ASSERT_GRAPHICS_API(versionFound, "Shader error: #version is missed");
+    
+    const int32_t version = std::stoi(versionMatch[1]);
 
     const size_t versionPos = sourceCodeStrView.find("#version");
-    const std::string_view afterVersion = sourceCodeStrView.substr(versionPos + match.length());
+    const std::string_view sourceCodeAfterVersion = sourceCodeStrView.substr(versionPos + versionMatch.length());
 
     ss << "#version " << version << '\n';
 
@@ -175,7 +167,13 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
         ss << "#define " << pDefineStr << '\n';
     }
 
-    ss << afterVersion;
+    // *------------------------------------------*
+    // PROCESS INCLUDES HERE
+    // *------------------------------------------*
+    const std::string_view sourceCodeAfterIncludes = sourceCodeAfterVersion;
+
+
+    ss << sourceCodeAfterIncludes;
 
     return ss.str();
 }

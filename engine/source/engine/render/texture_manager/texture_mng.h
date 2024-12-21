@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 
 class Texture
 {
@@ -7,7 +9,22 @@ class Texture
 public:
 
 private:
+    uint32_t m_renderID;
+};
 
+
+class TextureSampler
+{
+public:
+    enum Type
+    {
+        LINEAR,
+        NEAREST,
+        TYPE_COUNT
+    };
+
+private:
+    uint32_t m_renderID;
 };
 
 
