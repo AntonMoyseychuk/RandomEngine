@@ -95,28 +95,34 @@ void RenderSystem::RunColorPass() noexcept
     static uint32_t vao = 0;
 
     if (!isInitialized) {
+        static constexpr const char* pIncludeDir = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
+
         ShaderStageCreateInfo vsStageCreateInfo = {};
 
         vsStageCreateInfo.type = ShaderStageType::VERTEX;
 
-        const std::vector<char> vsSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\base\\base.vs");
+        const std::vector<char> vsSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\source\\base\\base.vs");
         vsStageCreateInfo.pSourceCode = vsSourceCode.data();
         vsStageCreateInfo.codeSize = vsSourceCode.size();
 
         vsStageCreateInfo.pDefines = nullptr;
         vsStageCreateInfo.definesCount = 0;
 
+        vsStageCreateInfo.pIncludeParentPath = pIncludeDir;
+
 
         ShaderStageCreateInfo psStageCreateInfo = {};
 
         psStageCreateInfo.type = ShaderStageType::PIXEL;
 
-        const std::vector<char> psSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\base\\base.fs");
+        const std::vector<char> psSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\source\\base\\base.fs");
         psStageCreateInfo.pSourceCode = psSourceCode.data();
         psStageCreateInfo.codeSize = psSourceCode.size();
 
         psStageCreateInfo.pDefines = nullptr;
         psStageCreateInfo.definesCount = 0;
+
+        psStageCreateInfo.pIncludeParentPath = pIncludeDir;
 
 
         const ShaderStageCreateInfo* stages[] = { &vsStageCreateInfo, &psStageCreateInfo };

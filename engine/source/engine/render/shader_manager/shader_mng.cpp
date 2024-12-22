@@ -2,6 +2,7 @@
 #include "shader_mng.h"
 
 #include "utils/data_structures/hash.h"
+#include "utils/file/file.h"
 
 #include "utils/debug/assertion.h"
 
@@ -37,9 +38,69 @@
 
 static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable
 static constexpr size_t ENG_MAX_UNIFORM_NAME_LENGTH = 128;             // TODO: make it configurable
+static constexpr size_t ENG_MAX_SHADER_INCLUDE_DEPTH = 128;            // TODO: make it configurable
 
 
 static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
+
+
+static void Preprocessor_GetShaderVersionPosition(const std::string_view& sourceCode, ptrdiff_t& begin, ptrdiff_t& end) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(!sourceCode.empty(), "Source code is empty string view");
+
+    static std::regex versionRegex("#version\\s*(\\d+)");
+
+    std::match_results<std::string_view::const_iterator> versionMatch;
+    const bool versionFound = std::regex_search(sourceCode.begin(), sourceCode.end(), versionMatch, versionRegex);
+
+    ENG_ASSERT_GRAPHICS_API(versionFound, "Shader preprocessing error: #version is missed");
+    
+    begin = versionMatch.prefix().length();
+    end = begin + versionMatch.length() + 1;
+}
+
+
+static void Preprocessor_FillIncludes(std::stringstream& ss, const std::string_view& sourceCode, const fs::path& includeDirPath, size_t includeDepth = 0) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(includeDepth < ENG_MAX_SHADER_INCLUDE_DEPTH, "Shader include recursion depth overflow");
+
+    static std::regex includeRegex("#include\\s*[\"<](.*?)[\">]");
+
+    std::cregex_iterator includeIter = std::cregex_iterator(
+        sourceCode.data(), sourceCode.data() + sourceCode.size(), includeRegex);
+
+    std::string_view curentSourceCode = sourceCode;
+
+    ptrdiff_t currentIncludePos;
+    ptrdiff_t prevIncludePos = 0;
+
+    std::vector<char> includeFileContent;
+
+    for (; includeIter != std::cregex_iterator(); ++includeIter) {
+        const std::cmatch& mr = *includeIter;
+            
+        currentIncludePos = mr.position(0);
+
+        if (currentIncludePos != prevIncludePos) {
+            ss.write(sourceCode.data() + prevIncludePos, currentIncludePos - prevIncludePos) << '\n';
+        }
+
+        prevIncludePos = currentIncludePos + mr.length(0);
+        
+        curentSourceCode = sourceCode.substr(mr.position() + mr.length());
+
+        std::string_view includeFile(mr[1].first, mr[1].length());
+        const fs::path includeFilepath = includeDirPath / includeFile;
+
+        ReadTextFile(includeFilepath, includeFileContent);
+
+        if (!includeFileContent.empty()) {
+            Preprocessor_FillIncludes(ss, includeFileContent.data(), includeDirPath, includeDepth + 1);
+        }
+    }
+
+    ss << curentSourceCode << '\n';
+}
 
 
 class ShaderStage
@@ -144,21 +205,15 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 
     std::stringstream ss;
 
-    static std::regex versionRegex("#version\\s*(\\d+)");
-
-    const std::string_view sourceCodeStrView = createInfo.pSourceCode;
-
-    std::match_results<std::string_view::const_iterator> versionMatch;
-    const bool versionFound = std::regex_search(sourceCodeStrView.begin(), sourceCodeStrView.end(), versionMatch, versionRegex);
-
-    ENG_ASSERT_GRAPHICS_API(versionFound, "Shader error: #version is missed");
+    std::string_view sourceCode = createInfo.pSourceCode;
     
-    const int32_t version = std::stoi(versionMatch[1]);
+    ptrdiff_t versionPatternBeginPos, versionPatternEndPos;
+    Preprocessor_GetShaderVersionPosition(sourceCode, versionPatternBeginPos, versionPatternEndPos);
+    const std::streamsize versionPatternSize = versionPatternEndPos - versionPatternBeginPos;
 
-    const size_t versionPos = sourceCodeStrView.find("#version");
-    const std::string_view sourceCodeAfterVersion = sourceCodeStrView.substr(versionPos + versionMatch.length());
+    ss.write(sourceCode.data() + versionPatternBeginPos, versionPatternSize);
 
-    ss << "#version " << version << '\n';
+    sourceCode = sourceCode.data() + versionPatternBeginPos + versionPatternSize;
 
     for (size_t i = 0; i < createInfo.definesCount; ++i) {
         const char* pDefineStr = createInfo.pDefines[i];
@@ -167,13 +222,7 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
         ss << "#define " << pDefineStr << '\n';
     }
 
-    // *------------------------------------------*
-    // PROCESS INCLUDES HERE
-    // *------------------------------------------*
-    const std::string_view sourceCodeAfterIncludes = sourceCodeAfterVersion;
-
-
-    ss << sourceCodeAfterIncludes;
+    Preprocessor_FillIncludes(ss, sourceCode, createInfo.pIncludeParentPath);
 
     return ss.str();
 }

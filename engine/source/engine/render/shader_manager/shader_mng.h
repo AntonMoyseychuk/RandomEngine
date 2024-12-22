@@ -21,6 +21,7 @@ struct ShaderStageCreateInfo
 {
     const char* pSourceCode;
     const char** pDefines;
+    const char* pIncludeParentPath;
     uint32_t codeSize;
     uint32_t definesCount;
     ShaderStageType type;
