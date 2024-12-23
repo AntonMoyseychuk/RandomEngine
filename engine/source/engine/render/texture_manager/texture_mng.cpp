@@ -31,6 +31,7 @@ bool TextureManager::Init() noexcept
         return true;
     }
 
+    m_textureStorage.reserve(ENG_PREALLOCATEDTEXTURES_COUNT);
     m_isInitialized = true;
 
     return true;

@@ -258,7 +258,7 @@ private:
     uint64_t Hash() const noexcept { return m_id; }
 
 private:
-    static inline constexpr size_t INVALID_ID = std::numeric_limits<uint64_t>::max();
+    static inline constexpr uint64_t INVALID_ID = std::numeric_limits<uint64_t>::max();
 
 private:
     uint64_t m_id = INVALID_ID;

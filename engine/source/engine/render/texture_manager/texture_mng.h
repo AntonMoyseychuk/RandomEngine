@@ -1,6 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include "utils/data_structures/strid.h"
+
+#include <unordered_map>
 
 
 class Texture
@@ -9,23 +11,12 @@ class Texture
 public:
 
 private:
-    uint32_t m_renderID;
+    ds::StrID m_name = "";
+    uint32_t m_renderID = 0;
 };
 
 
-class TextureSampler
-{
-public:
-    enum Type
-    {
-        LINEAR,
-        NEAREST,
-        TYPE_COUNT
-    };
-
-private:
-    uint32_t m_renderID;
-};
+using TextureID = ds::StrID;
 
 
 class TextureManager
@@ -55,6 +46,8 @@ private:
     bool IsInitialized() const noexcept;
 
 private:
+    std::unordered_map<TextureID, Texture> m_textureStorage;
+
     bool m_isInitialized = false;
 };
 

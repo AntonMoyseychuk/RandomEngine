@@ -46,6 +46,10 @@
 #endif
 
 
+#define ENG_PRAGMA_OPTIMIZE_OFF _Pragma("optimize(\"\", off)")
+#define ENG_PRAGMA_OPTIMIZE_ON  _Pragma("optimize(\"\", on)")
+
+
 #if __cplusplus == 201703L
   // From C++17
   #define ENG_MAYBE_UNUSED [[maybe_unused]]
