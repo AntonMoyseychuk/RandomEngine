@@ -120,7 +120,7 @@ public:
     bool Init(const ShaderStageCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
 
-    bool IsValid() const noexcept { return m_id != 0; }
+    bool IsValid() const noexcept { return m_stageID != 0; }
 
 private:
     static std::string PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) noexcept;
@@ -129,20 +129,20 @@ private:
     bool GetCompilationStatus() const noexcept;
 
 private:
-    uint32_t m_id = 0;
+    uint32_t m_stageID = 0;
 };
 
 
 ShaderStage::ShaderStage(ShaderStage &&other) noexcept
 {
-    std::swap(m_id, other.m_id);
+    std::swap(m_stageID, other.m_stageID);
 }
 
 
 ShaderStage &ShaderStage::operator=(ShaderStage &&other) noexcept
 {
     Destroy();
-    std::swap(m_id, other.m_id);
+    std::swap(m_stageID, other.m_stageID);
     
     return *this;
 }
@@ -171,17 +171,17 @@ bool ShaderStage::Init(const ShaderStageCreateInfo &createInfo) noexcept
     }
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Calling ShaderStage::Create(const ShaderStageCreateInfo&) by shader stage with valid id: {}", m_id);
+        ENG_LOG_GRAPHICS_API_WARN("Recreation of shader stage: {}", m_stageID);
         Destroy();
     }
 
-    m_id = glCreateShader(shaderStageGLType);
+    m_stageID = glCreateShader(shaderStageGLType);
 
     const char* pPreprocSourceCode = preprocessedSourceCode.c_str();
     const int32_t preprocSourceCodeSize = preprocessedSourceCode.size();
 
-    glShaderSource(m_id, 1, &pPreprocSourceCode, &preprocSourceCodeSize);
-    glCompileShader(m_id);
+    glShaderSource(m_stageID, 1, &pPreprocSourceCode, &preprocSourceCodeSize);
+    glCompileShader(m_stageID);
 
     const bool compilationSuccess = GetCompilationStatus();
     if (!compilationSuccess) {
@@ -194,8 +194,8 @@ bool ShaderStage::Init(const ShaderStageCreateInfo &createInfo) noexcept
 
 void ShaderStage::Destroy() noexcept
 {
-    glDeleteShader(m_id);
-    m_id = 0;
+    glDeleteShader(m_stageID);
+    m_stageID = 0;
 }
 
 
@@ -231,25 +231,41 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 bool ShaderStage::GetCompilationStatus() const noexcept
 {
     if (!IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Checking compile status by shader stage with invalid id: {}", m_id);
+        ENG_LOG_GRAPHICS_API_WARN("Checking compile status by shader stage with invalid id: {}", m_stageID);
         return false;
     }
 
     GLint successStatus;
-    glGetShaderiv(m_id, GL_COMPILE_STATUS, &successStatus);
+    glGetShaderiv(m_stageID, GL_COMPILE_STATUS, &successStatus);
 
     if (!successStatus) {
 #if defined(ENG_LOGGING_ENABLED) 
         GLchar infoLog[512] = { 0 };
-        glGetShaderInfoLog(m_id, sizeof(infoLog), nullptr, infoLog);
+        glGetShaderInfoLog(m_stageID, sizeof(infoLog), nullptr, infoLog);
 
-        ENG_LOG_GRAPHICS_API_ERROR("Shader stage (id: {}) compilation error: {}", m_id, infoLog);
+        ENG_LOG_GRAPHICS_API_ERROR("Shader stage (id: {}) compilation error: {}", m_stageID, infoLog);
 #endif
 
         return false;
     }
 
     return true;
+}
+
+
+uint64_t ProgramUniform::Hash() const noexcept
+{
+    ds::HashBuilder builder;
+
+    builder.AddValue(m_name);
+    builder.AddValue(m_location);
+
+#if defined(ENG_DEBUG)
+    builder.AddValue(m_count);
+    builder.AddValue(m_type);
+#endif
+
+    return builder.Value();
 }
 
 
@@ -596,8 +612,34 @@ void ProgramUniformStorage::SetUniformFloat4x3(ds::StrID uniformName, const floa
 }
 
 
+void ProgramUniformStorage::Clear() noexcept
+{
+    m_uniforms.clear();
+    m_pOwner = nullptr;
+}
+
+
+uint64_t ProgramUniformStorage::Hash() const noexcept
+{
+    ds::HashBuilder builder;
+    
+    for (const ProgramUniform& uniform : m_uniforms) {
+        builder.AddValue(uniform);
+    }
+
+    builder.AddValue(*m_pOwner);
+    
+    return builder.Value();
+}
+
+
 ShaderProgram::ShaderProgram(ShaderProgram&& other) noexcept
 {
+#if defined(ENG_DEBUG)
+    std::swap(m_dbgName, other.m_dbgName);
+#endif
+    std::swap(m_pUniformStorage, other.m_pUniformStorage);
+    m_pUniformStorage->m_pOwner = this;
     std::swap(m_renderID, other.m_renderID);
 }
 
@@ -605,6 +647,12 @@ ShaderProgram::ShaderProgram(ShaderProgram&& other) noexcept
 ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
 {
     Destroy();
+
+#if defined(ENG_DEBUG)
+    std::swap(m_dbgName, other.m_dbgName);
+#endif
+    std::swap(m_pUniformStorage, other.m_pUniformStorage);
+    m_pUniformStorage->m_pOwner = this;
     std::swap(m_renderID, other.m_renderID);
 
     return *this;
@@ -625,7 +673,7 @@ void ShaderProgram::Unbind() const noexcept
 }
 
 
-ProgramUniformStorage &ShaderProgram::GetUniformStorage() noexcept
+ProgramUniformStorage& ShaderProgram::GetUniformStorage() noexcept
 {
     ENG_ASSERT_GRAPHICS_API(IsValid(), "Trying to get uniform storage from invalid shader program");
     return *m_pUniformStorage;
@@ -634,7 +682,15 @@ ProgramUniformStorage &ShaderProgram::GetUniformStorage() noexcept
 
 uint64_t ShaderProgram::Hash() const noexcept
 {
-    return amHash(m_renderID);
+    ds::HashBuilder builder;
+
+#if defined(ENG_DEBUG)
+    builder.AddValue(m_dbgName);
+#endif
+    builder.AddValue(*m_pUniformStorage);
+    builder.AddValue(m_renderID);
+    
+    return builder.Value();
 }
 
 
@@ -668,7 +724,7 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
     m_renderID = glCreateProgram();
     
     for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {
-        glAttachShader(m_renderID, shaderStages[i].m_id);
+        glAttachShader(m_renderID, shaderStages[i].m_stageID);
     }
 
     glLinkProgram(m_renderID);
@@ -684,12 +740,16 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 
 void ShaderProgram::Destroy() noexcept
 {
-#if defined(ENG_DEBUG)
-    m_dbgName = "";
-#endif
+    if (IsValid()) {
+    #if defined(ENG_DEBUG)
+        m_dbgName = "";
+    #endif
 
-    glDeleteProgram(m_renderID);
-    m_renderID = 0;
+        m_pUniformStorage = nullptr;
+
+        glDeleteProgram(m_renderID);
+        m_renderID = 0;
+    }
 }
 
 
@@ -735,51 +795,67 @@ ShaderManager::~ShaderManager()
 
 ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
 {
-    ProgramID id(amHash(createInfo));  
+    const uint64_t createInfoHash = amHash(createInfo);  
 
-    if (m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.cend()) {
-        return id;
+    const auto idIter = m_shaderProgramCreateInfoHashToIDMap.find(createInfoHash); 
+    if (idIter != m_shaderProgramCreateInfoHashToIDMap.cend()) {
+        ENG_LOG_GRAPHICS_API_WARN("Attempt to reregister '{}' shader program", createInfo.dbgName.CStr());
+        return idIter->second;
     }
 
     ENG_ASSERT_GRAPHICS_API(m_shaderProgramsStorage.size() == m_uniformsStorage.size(), "m_shaderProgramsStorage.size() != m_uniformsStorage.size()");
-    ENG_ASSERT_GRAPHICS_API(float(m_shaderProgramsStorage.size() + 1ull) / m_shaderProgramsStorage.bucket_count() < m_shaderProgramsStorage.max_load_factor(), "Shader program storage rehashing: ShaderProgram pointers will be invalidated");
+    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.m_id < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
 
-    ShaderProgram& program = m_shaderProgramsStorage[id];
+    ShaderProgram program;
 
     if (!program.Init(createInfo)) {
-        m_shaderProgramsStorage.erase(id);
         return ProgramID{};
     }
 
-    ProgramUniformStorage& uniformStorage = m_uniformsStorage[id];
+    ProgramID programID = AllocateProgramID();
+    const uint64_t index = static_cast<uint64_t>(programID);
+    
+    m_shaderProgramCreateInfoHashToIDMap[createInfoHash] = programID;
+    m_shaderProgramIDToCreateInfoHashVector[index] = createInfoHash;
+
+    ProgramUniformStorage& uniformStorage = m_uniformsStorage[index];
     FillProgramUniformStorage(program, uniformStorage);
 
     program.m_pUniformStorage = &uniformStorage;
+    m_shaderProgramsStorage[index] = std::move(program);
 
-    return id;
+    return programID;
 }
 
 
 void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
 {
-    if (m_shaderProgramsStorage.find(id) == m_shaderProgramsStorage.cend()) {
+    if (!IsProgramIDValid(id)) {
         return;
     }
 
-    m_shaderProgramsStorage.erase(id);
+    const uint64_t index = static_cast<uint64_t>(id);
+
+    uint64_t& createInfoHash = m_shaderProgramIDToCreateInfoHashVector[index];
+    m_shaderProgramCreateInfoHashToIDMap.erase(createInfoHash);
+    createInfoHash = 0;
+
+    m_shaderProgramsStorage[index].Destroy();
+    m_uniformsStorage[index].Clear();
+
+    DeallocateProgramID(id);
 }
 
 
-ShaderProgram* ShaderManager::GetShaderProgramByID(const ProgramID &id) noexcept
+ShaderProgram* ShaderManager::GetShaderProgramByID(const ProgramID& id) noexcept
 {
-    return m_shaderProgramsStorage.find(id) != m_shaderProgramsStorage.end() ? &m_shaderProgramsStorage[id] : nullptr;
+    return IsProgramIDValid(id) ? &m_shaderProgramsStorage[static_cast<uint64_t>(id)] : nullptr;
 }
 
 
 const ProgramUniformStorage* ShaderManager::GetShaderProgramUniformStorageByID(const ProgramID &id) const noexcept
 {
-    const auto& storageIt = m_uniformsStorage.find(id);
-    return storageIt != m_uniformsStorage.cend() ? &storageIt->second : nullptr;
+    return IsProgramIDValid(id) ? &m_uniformsStorage[static_cast<uint64_t>(id)] : nullptr;
 }
 
 
@@ -789,8 +865,11 @@ bool ShaderManager::Init() noexcept
         return true;
     }
 
-    m_shaderProgramsStorage.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
-    m_uniformsStorage.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramsStorage.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    m_uniformsStorage.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramIDToCreateInfoHashVector.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramCreateInfoHashToIDMap.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    
     m_isInitialized = true;
 
     return true;
@@ -903,6 +982,36 @@ bool ShaderManager::IsInitialized() const noexcept
 }
 
 
+ProgramID ShaderManager::AllocateProgramID() noexcept
+{
+    if (m_programIDFreeList.empty()) {
+        ProgramID programID = m_nextAllocatedID;
+        ++m_nextAllocatedID.m_id;
+
+        return programID;
+    }
+
+    ProgramID programID = m_programIDFreeList.front();
+    m_programIDFreeList.pop();
+        
+    return programID;
+}
+
+
+void ShaderManager::DeallocateProgramID(const ProgramID &id) noexcept
+{
+    if (id < m_nextAllocatedID) {
+        m_programIDFreeList.push(id);
+    }
+}
+
+
+bool ShaderManager::IsProgramIDValid(const ProgramID &id) const noexcept
+{
+    return id < m_nextAllocatedID && m_shaderProgramsStorage[static_cast<uint64_t>(id)].IsValid();
+}
+
+
 uint64_t amHash(const ShaderStageCreateInfo &stageCreateInfo) noexcept
 {
     ds::HashBuilder builder;
@@ -934,6 +1043,24 @@ uint64_t amHash(const ShaderProgramCreateInfo &programCreateInfo) noexcept
 #endif
 
     return builder.Value();
+}
+
+
+uint64_t amHash(const ShaderProgram &program) noexcept
+{
+    return program.Hash();
+}
+
+
+uint64_t amHash(const ProgramUniformStorage& programUniformStorage) noexcept
+{
+    return programUniformStorage.Hash();
+}
+
+
+uint64_t amHash(const ProgramUniform &programUniform) noexcept
+{
+    return programUniform.Hash();
 }
 
 

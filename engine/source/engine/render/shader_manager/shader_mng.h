@@ -3,6 +3,8 @@
 #include "utils/file/file.h"
 #include "utils/data_structures/strid.h"
 
+#include <queue>
+
 #include <limits>
 #include <cstdint>
 
@@ -30,12 +32,12 @@ struct ShaderStageCreateInfo
 
 struct ShaderProgramCreateInfo
 {
+    const ShaderStageCreateInfo** pStageCreateInfos;
+    size_t stageCreateInfosCount;
+
 #if defined(ENG_DEBUG)
     ds::StrID dbgName = "";
 #endif
-
-    const ShaderStageCreateInfo** pStageCreateInfos;
-    size_t stageCreateInfosCount;
 };
 
 
@@ -127,6 +129,8 @@ public:
     Type GetType() const noexcept { return m_type; }
 #endif
 
+    uint64_t Hash() const noexcept;
+
 private:
     ds::StrID m_name;
     int32_t m_location = -1;
@@ -187,6 +191,9 @@ public:
     void SetUniformFloat4x3(ds::StrID uniformName, const float* pMatrData, uint32_t matrCount, bool transpose) noexcept;
 
     bool IsEmpty() const noexcept { return m_uniforms.empty(); }
+    void Clear() noexcept;
+
+    uint64_t Hash() const noexcept;
 
     StorageConstIterType cbegin() const noexcept { return m_uniforms.cbegin(); }
     StorageConstIterType cend() const noexcept { return m_uniforms.cend(); }
@@ -246,16 +253,25 @@ class ProgramID
 
 public:
     ProgramID() = default;
-    ProgramID(uint64_t id) : m_id(id) {}
 
-    operator uint64_t() const noexcept { return m_id; }
+    explicit operator uint64_t() const noexcept { return m_id; }
+
+    bool operator==(const ProgramID& other) const noexcept { return m_id == other.m_id; }
+    bool operator!=(const ProgramID& other) const noexcept { return m_id != other.m_id; }
+    bool operator<(const ProgramID& other) const noexcept { return m_id < other.m_id; }
+    bool operator>(const ProgramID& other) const noexcept { return m_id > other.m_id; }
+    bool operator<=(const ProgramID& other) const noexcept { return m_id <= other.m_id; }
+    bool operator>=(const ProgramID& other) const noexcept { return m_id >= other.m_id; }
 
     bool IsValid() const noexcept { return m_id != INVALID_ID; }
 
 private:
-    ProgramID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
+    ProgramID(uint64_t id) : m_id(id) {}
 
+    void Invalidate() noexcept { m_id = INVALID_ID; }
     uint64_t Hash() const noexcept { return m_id; }
+    
+    ProgramID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
 
 private:
     static inline constexpr uint64_t INVALID_ID = std::numeric_limits<uint64_t>::max();
@@ -298,16 +314,28 @@ private:
 
     void FillProgramUniformStorage(const ShaderProgram& program, ProgramUniformStorage& storage) noexcept;
 
+    ProgramID AllocateProgramID() noexcept;
+    void DeallocateProgramID(const ProgramID& id) noexcept;
+
+    bool IsProgramIDValid(const ProgramID& id) const noexcept;
+
     bool IsInitialized() const noexcept;
 
 private:
-    struct ProgramIDHasher
+    struct ShaderCreateInfoHashHasher
     {
-        uint64_t operator()(const ProgramID& id) const noexcept { return id.Hash(); }
+        uint64_t operator()(uint64_t hash) const noexcept { return hash; }
     };
+    
+    std::vector<ShaderProgram> m_shaderProgramsStorage;
+    std::vector<ProgramUniformStorage> m_uniformsStorage;
 
-    std::unordered_map<ProgramID, ShaderProgram, ProgramIDHasher> m_shaderProgramsStorage;
-    std::unordered_map<ProgramID, ProgramUniformStorage, ProgramIDHasher> m_uniformsStorage;
+    std::vector<uint64_t> m_shaderProgramIDToCreateInfoHashVector;
+    std::unordered_map<uint64_t, ProgramID, ShaderCreateInfoHashHasher> m_shaderProgramCreateInfoHashToIDMap;
+
+    std::queue<ProgramID> m_programIDFreeList;
+
+    ProgramID m_nextAllocatedID = 0;
 
     bool m_isInitialized = false;
 };
@@ -315,6 +343,9 @@ private:
 
 uint64_t amHash(const ShaderStageCreateInfo& stageCreateInfo) noexcept;
 uint64_t amHash(const ShaderProgramCreateInfo& programCreateInfo) noexcept;
+uint64_t amHash(const ShaderProgram& program) noexcept;
+uint64_t amHash(const ProgramUniformStorage& programUniformStorage) noexcept;
+uint64_t amHash(const ProgramUniform& programUniform) noexcept;
 
 
 bool engInitShaderManager() noexcept;

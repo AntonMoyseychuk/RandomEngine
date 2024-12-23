@@ -14,8 +14,9 @@
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
 
 
-static void GLAPIENTRY OpenGLMessageCallback(GLenum source, GLenum type, ENG_MAYBE_UNUSED GLuint id,
-    GLenum severity, ENG_MAYBE_UNUSED GLsizei length, const GLchar* pMessage, ENG_MAYBE_UNUSED const void* userParam)
+#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
+static void GLAPIENTRY OpenGLMessageCallback(GLenum source, GLenum type, GLuint id,
+    GLenum severity, GLsizei length, const GLchar* pMessage, const void* userParam)
 {
     const char* pSourceStr = [source]() -> const char* {
 		switch (source) {
@@ -54,6 +55,7 @@ static void GLAPIENTRY OpenGLMessageCallback(GLenum source, GLenum type, ENG_MAY
         break;
     }
 }
+#endif
 
 
 RenderSystem& RenderSystem::GetInstance() noexcept
