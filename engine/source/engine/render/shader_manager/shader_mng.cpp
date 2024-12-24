@@ -36,9 +36,9 @@
 #endif
 
 
-static constexpr size_t ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable
-static constexpr size_t ENG_MAX_UNIFORM_NAME_LENGTH = 128;             // TODO: make it configurable
-static constexpr size_t ENG_MAX_SHADER_INCLUDE_DEPTH = 128;            // TODO: make it configurable
+static constexpr size_t ENG_MAX_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable
+static constexpr size_t ENG_MAX_UNIFORM_NAME_LENGTH = 128;    // TODO: make it configurable
+static constexpr size_t ENG_MAX_SHADER_INCLUDE_DEPTH = 128;   // TODO: make it configurable
 
 
 static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
@@ -687,7 +687,11 @@ uint64_t ShaderProgram::Hash() const noexcept
 #if defined(ENG_DEBUG)
     builder.AddValue(m_dbgName);
 #endif
-    builder.AddValue(*m_pUniformStorage);
+
+    if (m_pUniformStorage) {
+        builder.AddValue(*m_pUniformStorage);
+    }
+
     builder.AddValue(m_renderID);
     
     return builder.Value();
@@ -696,10 +700,7 @@ uint64_t ShaderProgram::Hash() const noexcept
 
 bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 {
-    if (!createInfo.pStageCreateInfos || createInfo.stageCreateInfosCount == 0) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Shader program create info '{}' has invalid stages parametres", createInfo.dbgName.CStr());
-        return false;
-    }
+    ENG_ASSERT_GRAPHICS_API(createInfo.pStageCreateInfos && createInfo.stageCreateInfosCount > 0, "Shader program create info '{}' has invalid stages parametres", createInfo.dbgName.CStr());
 
     if (IsValid()) {
         ENG_LOG_GRAPHICS_API_WARN("Recreating '{}' shader program", m_dbgName.CStr());
@@ -804,7 +805,7 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
     }
 
     ENG_ASSERT_GRAPHICS_API(m_shaderProgramsStorage.size() == m_uniformsStorage.size(), "m_shaderProgramsStorage.size() != m_uniformsStorage.size()");
-    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.m_id < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
+    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
 
     ShaderProgram program;
 
@@ -813,7 +814,7 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
     }
 
     ProgramID programID = AllocateProgramID();
-    const uint64_t index = static_cast<uint64_t>(programID);
+    const uint64_t index = programID;
     
     m_shaderProgramCreateInfoHashToIDMap[createInfoHash] = programID;
     m_shaderProgramIDToCreateInfoHashVector[index] = createInfoHash;
@@ -830,11 +831,11 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
 
 void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
 {
-    if (!IsProgramIDValid(id)) {
+    if (!IsValidProgramID(id)) {
         return;
     }
 
-    const uint64_t index = static_cast<uint64_t>(id);
+    const uint64_t index = id;
 
     uint64_t& createInfoHash = m_shaderProgramIDToCreateInfoHashVector[index];
     m_shaderProgramCreateInfoHashToIDMap.erase(createInfoHash);
@@ -849,13 +850,19 @@ void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
 
 ShaderProgram* ShaderManager::GetShaderProgramByID(const ProgramID& id) noexcept
 {
-    return IsProgramIDValid(id) ? &m_shaderProgramsStorage[static_cast<uint64_t>(id)] : nullptr;
+    return IsValidProgramID(id) ? &m_shaderProgramsStorage[id] : nullptr;
 }
 
 
 const ProgramUniformStorage* ShaderManager::GetShaderProgramUniformStorageByID(const ProgramID &id) const noexcept
 {
-    return IsProgramIDValid(id) ? &m_uniformsStorage[static_cast<uint64_t>(id)] : nullptr;
+    return IsValidProgramID(id) ? &m_uniformsStorage[id] : nullptr;
+}
+
+
+bool ShaderManager::IsValidProgramID(const ProgramID &id) const noexcept
+{
+    return id < m_nextAllocatedID && m_shaderProgramsStorage[id].IsValid();
 }
 
 
@@ -865,10 +872,10 @@ bool ShaderManager::Init() noexcept
         return true;
     }
 
-    m_shaderProgramsStorage.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
-    m_uniformsStorage.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
-    m_shaderProgramIDToCreateInfoHashVector.resize(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
-    m_shaderProgramCreateInfoHashToIDMap.reserve(ENG_PREALLOCATED_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramsStorage.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
+    m_uniformsStorage.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramIDToCreateInfoHashVector.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
+    m_shaderProgramCreateInfoHashToIDMap.reserve(ENG_MAX_SHADER_PROGRAMS_COUNT);
     
     m_isInitialized = true;
 
@@ -879,6 +886,15 @@ bool ShaderManager::Init() noexcept
 void ShaderManager::Terminate() noexcept
 {
     m_shaderProgramsStorage.clear();
+    m_uniformsStorage.clear();
+    
+    m_shaderProgramIDToCreateInfoHashVector.clear();
+    m_shaderProgramCreateInfoHashToIDMap.clear();
+
+    m_programIDFreeList.clear();
+
+    m_nextAllocatedID = 0;
+
     m_isInitialized = false;
 }
 
@@ -986,29 +1002,23 @@ ProgramID ShaderManager::AllocateProgramID() noexcept
 {
     if (m_programIDFreeList.empty()) {
         ProgramID programID = m_nextAllocatedID;
-        ++m_nextAllocatedID.m_id;
+        ++m_nextAllocatedID;
 
         return programID;
     }
 
     ProgramID programID = m_programIDFreeList.front();
-    m_programIDFreeList.pop();
+    m_programIDFreeList.pop_front();
         
     return programID;
 }
 
 
-void ShaderManager::DeallocateProgramID(const ProgramID &id) noexcept
+void ShaderManager::DeallocateProgramID(const ProgramID &ID) noexcept
 {
-    if (id < m_nextAllocatedID) {
-        m_programIDFreeList.push(id);
+    if (ID < m_nextAllocatedID && std::find(m_programIDFreeList.cbegin(), m_programIDFreeList.cend(), ID) == m_programIDFreeList.cend()) {
+        m_programIDFreeList.emplace_back(ID);
     }
-}
-
-
-bool ShaderManager::IsProgramIDValid(const ProgramID &id) const noexcept
-{
-    return id < m_nextAllocatedID && m_shaderProgramsStorage[static_cast<uint64_t>(id)].IsValid();
 }
 
 

@@ -138,7 +138,7 @@ void RenderSystem::RunColorPass() noexcept
         programCreateInfo.stageCreateInfosCount = _countof(stages);
 
         ProgramID programID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(programID.IsValid(), "Failed to register shader program");
+        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(programID), "Failed to register shader program");
 
         pProgram = ShaderManager::GetInstance().GetShaderProgramByID(programID);
         pProgram->Bind();

@@ -3,12 +3,12 @@
 #include "utils/file/file.h"
 #include "utils/data_structures/strid.h"
 
-#include <queue>
+#include "core.h"
+
+#include <deque>
 
 #include <limits>
 #include <cstdint>
-
-#include "core.h"
 
 
 enum class ShaderStageType : uint32_t
@@ -247,38 +247,7 @@ private:
 };
 
 
-class ProgramID
-{
-    friend class ShaderManager;
-
-public:
-    ProgramID() = default;
-
-    explicit operator uint64_t() const noexcept { return m_id; }
-
-    bool operator==(const ProgramID& other) const noexcept { return m_id == other.m_id; }
-    bool operator!=(const ProgramID& other) const noexcept { return m_id != other.m_id; }
-    bool operator<(const ProgramID& other) const noexcept { return m_id < other.m_id; }
-    bool operator>(const ProgramID& other) const noexcept { return m_id > other.m_id; }
-    bool operator<=(const ProgramID& other) const noexcept { return m_id <= other.m_id; }
-    bool operator>=(const ProgramID& other) const noexcept { return m_id >= other.m_id; }
-
-    bool IsValid() const noexcept { return m_id != INVALID_ID; }
-
-private:
-    ProgramID(uint64_t id) : m_id(id) {}
-
-    void Invalidate() noexcept { m_id = INVALID_ID; }
-    uint64_t Hash() const noexcept { return m_id; }
-    
-    ProgramID& operator=(uint64_t newID) noexcept { m_id = newID; return *this; }
-
-private:
-    static inline constexpr uint64_t INVALID_ID = std::numeric_limits<uint64_t>::max();
-
-private:
-    uint64_t m_id = INVALID_ID;
-};
+using ProgramID = uint64_t;
 
 
 class ShaderManager
@@ -300,8 +269,9 @@ public:
     void UnregisterShaderProgram(const ProgramID& id) noexcept;
     
     ShaderProgram* GetShaderProgramByID(const ProgramID& id) noexcept;
-
     const ProgramUniformStorage* GetShaderProgramUniformStorageByID(const ProgramID& id) const noexcept;
+
+    bool IsValidProgramID(const ProgramID& id) const noexcept;
 
 private:
     ShaderManager() = default;
@@ -315,9 +285,7 @@ private:
     void FillProgramUniformStorage(const ShaderProgram& program, ProgramUniformStorage& storage) noexcept;
 
     ProgramID AllocateProgramID() noexcept;
-    void DeallocateProgramID(const ProgramID& id) noexcept;
-
-    bool IsProgramIDValid(const ProgramID& id) const noexcept;
+    void DeallocateProgramID(const ProgramID& ID) noexcept;
 
     bool IsInitialized() const noexcept;
 
@@ -333,7 +301,7 @@ private:
     std::vector<uint64_t> m_shaderProgramIDToCreateInfoHashVector;
     std::unordered_map<uint64_t, ProgramID, ShaderCreateInfoHashHasher> m_shaderProgramCreateInfoHashToIDMap;
 
-    std::queue<ProgramID> m_programIDFreeList;
+    std::deque<ProgramID> m_programIDFreeList;
 
     ProgramID m_nextAllocatedID = 0;
 
