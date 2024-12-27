@@ -1,7 +1,6 @@
 #pragma once
 
 #include "window_system/window.h"
-#include "timer/timer.h"
 
 #include <memory>
 #include <cstdint>
@@ -31,8 +30,7 @@ public:
     bool IsInitialized() const noexcept;
 
     Window& GetWindow() noexcept;
-    Timer& GetTimer() noexcept;
-
+    
 private:
     Engine(const char* title, uint32_t width, uint32_t height);
 
@@ -40,7 +38,6 @@ private:
     Engine& operator=(Engine&& other) noexcept = default;
 
 private:
-    Timer m_timer;
     std::unique_ptr<Window> m_pWindow = nullptr;
 
     bool m_isInitialized = false;

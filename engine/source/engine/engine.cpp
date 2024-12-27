@@ -64,7 +64,6 @@ void Engine::Update() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
     
-    m_timer.Tick();
     m_pWindow->ProcessEvents();
 }
 
@@ -118,12 +117,6 @@ Window &Engine::GetWindow() noexcept
 {
     ENG_ASSERT(m_pWindow && m_pWindow->IsInitialized(), "Invalid nullptr or is not initialized");
     return *m_pWindow;
-}
-
-
-Timer &Engine::GetTimer() noexcept
-{
-    return m_timer;
 }
 
 

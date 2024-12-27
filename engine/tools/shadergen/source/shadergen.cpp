@@ -23,9 +23,49 @@ enum CMD_ARGS
 namespace fs = std::filesystem;
 
 
-static std::unordered_map<std::string, std::string> g_glslToEngineResourceTypeMap = {
-    { "sampler2D", "ShaderResourceType::TYPE_SAMPLER_2D" }
-};
+
+
+static const char* TranslateGLSLToEngineResourceType(const fs::path& filepath, const std::string& type) noexcept
+{
+    static const std::unordered_map<std::string, const char*> GLSLToEngineResTypeMap = {
+        { "sampler2D", "ShaderResourceType::TYPE_SAMPLER_2D" },
+        { "bool", "ShaderResourceType::TYPE_BOOL" },
+        { "int", "ShaderResourceType::TYPE_INT" },
+        { "uint", "ShaderResourceType::TYPE_UINT" },
+        { "float", "ShaderResourceType::TYPE_FLOAT" },
+        { "double", "ShaderResourceType::TYPE_DOUBLE" },
+    };
+
+    const auto typeIt = GLSLToEngineResTypeMap.find(type);
+
+    if (typeIt == GLSLToEngineResTypeMap.cend()) {
+        fprintf_s(stderr, "\n-- [SHADERGEN] Invalid shader resource view (SRV) type: %s (%s)\n", type.c_str(), filepath.string().c_str());
+        return nullptr;
+    }
+    
+    return typeIt->second;
+}
+
+
+static const char* TranslateGLSLToEngineConstantPrimitiveType(const fs::path& filepath, const std::string& type) noexcept
+{
+    static const std::unordered_map<std::string, const char*> GLSLToEnginePrimitiveTypeMap = {
+        { "bool", "bool" },
+        { "int", "int32_t" },
+        { "uint", "uint32_t" },
+        { "float", "float" },
+        { "double", "double" },
+    };
+
+    const auto typeIt = GLSLToEnginePrimitiveTypeMap.find(type);
+
+    if (typeIt == GLSLToEnginePrimitiveTypeMap.cend()) {
+        fprintf_s(stderr, "\n-- [SHADERGEN] Invalid constant primitive type: %s (%s)\n", type.c_str(), filepath.string().c_str());
+        return nullptr;
+    }
+    
+    return typeIt->second;
+}
 
 
 static std::vector<char> ReadTextFile(const fs::path& filepath) noexcept
@@ -83,11 +123,20 @@ static void WriteTextFile(const fs::path& filepath, const char* pData, size_t si
 }
 
 
-static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const std::vector<char>& fileContent) noexcept
+static bool CheckFileContentInput(const fs::path& filepath, const char* pFileContent, size_t fileSize) noexcept
 {
-    static std::regex SRV_TEXTURE_PATTERN(R"(DECLARE_SRV_TEXTURE\(([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
-    
-    auto beginIt = std::cregex_iterator(fileContent.data(), fileContent.data() + fileContent.size(), SRV_TEXTURE_PATTERN);
+    if (!pFileContent || fileSize == 0) {
+        fprintf_s(stderr, "\n-- [SHADERGEN] Warning: %s shader file is empty\n", filepath.string().c_str());
+        return false;
+    }
+
+    return true;
+}
+
+
+static std::vector<std::cmatch> FindPatternMatches(const std::regex& pattern, const char* pFileContent, size_t fileSize) noexcept
+{
+    auto beginIt = std::cregex_iterator(pFileContent, pFileContent + fileSize, pattern);
     auto endIt = std::cregex_iterator();
 
     std::vector<std::cmatch> matches;
@@ -101,31 +150,97 @@ static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const std::vect
 }
 
 
-static void FillSrvTextureDeclaration(std::stringstream& ss, const std::vector<char>& fileData, const fs::path& filepath) noexcept
+static std::vector<std::cmatch> FindConstantDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
 {
-    if (fileData.empty()) {
-        fprintf_s(stderr, "\n-- [SHADERGEN] Warning: %s shader file is empty\n", filepath.string().c_str());
+    static std::regex CONSTANT_PATTERN(R"(DECLARE_CONSTANT\(([^,]+), ([^,]+), ([^,]+)\))");
+    
+    return FindPatternMatches(CONSTANT_PATTERN, pFileContent, fileSize);
+}
+
+
+static std::vector<std::cmatch> FindSrvVariableDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
+{
+    static std::regex SRV_VAR_PATTERN(R"(DECLARE_SRV_VARIABLE\(([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
+
+    return FindPatternMatches(SRV_VAR_PATTERN, pFileContent, fileSize);
+}
+
+
+static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
+{
+    static std::regex SRV_TEXTURE_PATTERN(R"(DECLARE_SRV_TEXTURE\(([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
+    
+    return FindPatternMatches(SRV_TEXTURE_PATTERN, pFileContent, fileSize);
+}
+
+
+static void FillConstantDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
+{
+    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
         return;
     }
 
-    const std::vector<std::cmatch> srvTexturesDeclMatches = FindSrvTextureDeclarationMatches(fileData);
+    const std::vector<std::cmatch> constantDeclMatches = FindConstantDeclarationMatches(pFileContent, fileSize);
 
-    for (const std::cmatch& match : srvTexturesDeclMatches) {
-        const std::string resType = match[1].str();
-        
-        const auto engineResTypeIt = g_glslToEngineResourceTypeMap.find(resType);
+    for (const std::cmatch& match : constantDeclMatches) {        
+        const char* pType = TranslateGLSLToEngineConstantPrimitiveType(filepath, match[1].str());
+        assert(pType);
 
-        if (engineResTypeIt == g_glslToEngineResourceTypeMap.cend()) {
-            fprintf_s(stderr, "\n-- [SHADERGEN] Invalid resuorce type: %s (%s)\n", resType.c_str(), filepath.string().c_str());
-            assert(false);
-            return;
-        }
+        ss << "inline constexpr " << pType << ' ' << match[2].str() << " = " << match[3].str() << ";\n";
+    }
+
+    if (!constantDeclMatches.empty()) {
+        ss << "\n\n";
+    }
+}
+
+
+static void FillSrvVariablesDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
+{
+    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
+        return;
+    }
+
+    const std::vector<std::cmatch> srvVarsDeclMatches = FindSrvVariableDeclarationMatches(pFileContent, fileSize);
+
+    for (const std::cmatch& match : srvVarsDeclMatches) {        
+        const char* pType = TranslateGLSLToEngineResourceType(filepath, match[1].str());
+        assert(pType);
 
         ss <<
         "struct " << match[2].str() << " {\n"
-        "    inline static constexpr ShaderResourceBindStruct<" << engineResTypeIt->second << "> _SRV_BIND = {" << match[3].str() << ", " << match[4].str() <<  "};\n"
-        "};"
+        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { " << match[3].str() << ", 0 };\n"
+        "};\n"
         "\n";
+    }
+
+    if (!srvVarsDeclMatches.empty()) {
+        ss << "\n";
+    }
+}
+
+
+static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
+{
+    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
+        return;
+    }
+
+    const std::vector<std::cmatch> srvTexturesDeclMatches = FindSrvTextureDeclarationMatches(pFileContent, fileSize);
+
+    for (const std::cmatch& match : srvTexturesDeclMatches) {
+        const char* pType = TranslateGLSLToEngineResourceType(filepath, match[1].str());
+        assert(pType);
+
+        ss <<
+        "struct " << match[2].str() << " {\n"
+        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { " << match[3].str() << ", " << match[4].str() << " };\n"
+        "};\n"
+        "\n";
+    }
+
+    if (!srvTexturesDeclMatches.empty()) {
+        ss << "\n";
     }
 }
 
@@ -178,7 +293,9 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     "\n"
     "\n";
 
-    FillSrvTextureDeclaration(ss, inputFileContent, inputParams.outputDirectory);
+    FillConstantDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
+    FillSrvVariablesDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
+    FillSrvTextureDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
     
     const std::filesystem::path outputFilepath = inputParams.outputDirectory / 
         ("auto_" + inputParams.inputFilepath.filename().replace_extension(".h").string());

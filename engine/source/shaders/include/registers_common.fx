@@ -3,6 +3,6 @@
 
 #include <reflection.fx>
 
-DECLARE_SRV_TEXTURE(sampler2D, COMMON_TEST_TEXTURE, 0, 0);
+DECLARE_SRV_VARIABLE(float, ELAPSED_TIME, 0, 0.f);
 
 #endif

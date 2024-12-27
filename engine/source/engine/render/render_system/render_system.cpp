@@ -9,6 +9,9 @@
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
+#include "utils/timer/timer.h"
+
+#include "engine/auto/auto_registers_common.h"
 
 
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
@@ -92,6 +95,9 @@ void RenderSystem::RunGBufferPass() noexcept
 
 void RenderSystem::RunColorPass() noexcept
 {
+    static Timer timer;
+    timer.Tick();
+
     static bool isInitialized = false;
     static ShaderProgram* pProgram = nullptr;
     static uint32_t vao = 0;
@@ -130,9 +136,7 @@ void RenderSystem::RunColorPass() noexcept
         const ShaderStageCreateInfo* stages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
         ShaderProgramCreateInfo programCreateInfo = {};
-    #if defined(ENG_DEBUG)
         programCreateInfo.dbgName = "base_shader";
-    #endif
 
         programCreateInfo.pStageCreateInfos = stages;
         programCreateInfo.stageCreateInfosCount = _countof(stages);
@@ -150,11 +154,10 @@ void RenderSystem::RunColorPass() noexcept
     }
 
     Engine& engine = Engine::GetInstance();
-    Timer& timer = engine.GetTimer();
     Window& window = engine.GetWindow();
 
     const float elapsedTime = timer.GetElapsedTimeInSec();
-    pProgram->GetUniformStorage().SetUniformFloat("u_elapsedTime", elapsedTime);
+    glUniform1f(ELAPSED_TIME::_BINDING.GetLocation(), elapsedTime);
     
     glViewport(0, 0, window.GetWidth(), window.GetHeight());
 
