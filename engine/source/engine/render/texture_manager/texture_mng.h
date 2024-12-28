@@ -37,25 +37,6 @@ struct TextureCreateInfo
 };
 
 
-class TextureParams
-{
-    friend class TextureManager;
-    friend class Texture;
-
-public:
-    uint64_t Hash() const noexcept;
-
-private:
-    ds::StrID m_name = "";
-    
-    uint32_t m_internalType = 0;
-    
-    uint32_t m_width = 0;
-    uint32_t m_height = 0;
-    uint32_t m_depth = 0;
-};
-
-
 class Texture
 {
     friend class TextureManager;
@@ -84,7 +65,13 @@ private:
     void Destroy() noexcept;
 
 private:
-    const TextureParams* m_pParams = nullptr;
+    ds::StrID m_name = "";
+    
+    uint32_t m_internalType = 0;
+    
+    uint32_t m_width = 0;
+    uint32_t m_height = 0;
+    uint32_t m_depth = 0;
 
     uint32_t m_renderID = 0;
 };
@@ -124,7 +111,6 @@ private:
 
 private:
     std::vector<Texture> m_texturesStorage;
-    std::vector<Texture> m_textureParamsStorage;
 
     std::unordered_map<TextureID, ds::StrID> m_textureIDToNameMap;
     std::unordered_map<ds::StrID, TextureID> m_textureNameToIDMap;
@@ -137,7 +123,6 @@ private:
 };
 
 
-uint64_t amHash(const TextureParams& params) noexcept;
 uint64_t amHash(const Texture& texture) noexcept;
 
 

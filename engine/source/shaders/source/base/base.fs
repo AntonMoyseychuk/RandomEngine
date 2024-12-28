@@ -1,4 +1,4 @@
-#version 460
+#version 460 core
 
 #include <registers_common.fx>
 #include <common_math.fx>
@@ -14,6 +14,6 @@ void main()
 #if defined(ENV_DEBUG)
     fs_out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 #else
-    fs_out_color = fs_in_color * abs(sin(ELAPSED_TIME * M_PI));
+    fs_out_color = fs_in_color * abs(sin(COMMON_ELAPSED_TIME * M_PI));
 #endif
 }

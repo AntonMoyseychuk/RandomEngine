@@ -157,7 +157,7 @@ void RenderSystem::RunColorPass() noexcept
     Window& window = engine.GetWindow();
 
     const float elapsedTime = timer.GetElapsedTimeInSec();
-    glUniform1f(ELAPSED_TIME::_BINDING.GetLocation(), elapsedTime);
+    glUniform1f(COMMON_ELAPSED_TIME::_BINDING.GetLocation(), elapsedTime);
     
     glViewport(0, 0, window.GetWidth(), window.GetHeight());
 

@@ -8,30 +8,15 @@
 
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
+#include "engine/auto/auto_registers_common.h"
 
-static constexpr size_t ENG_MAX_TEXTURES_COUNT = 4096; // TODO: make it configurable
 
 
 static std::unique_ptr<TextureManager> g_pTextureMng = nullptr;
 
 
-uint64_t TextureParams::Hash() const noexcept
-{
-    ds::HashBuilder builder;
-
-    builder.AddValue(m_name);
-    builder.AddValue(m_internalType);
-    builder.AddValue(m_width);
-    builder.AddValue(m_height);
-    builder.AddValue(m_depth);
-
-    return builder.Value();
-}
-
-
 Texture::Texture(Texture &&other) noexcept
 {
-    std::swap(m_pParams, other.m_pParams);
     std::swap(m_renderID, other.m_renderID);
 }
 
@@ -40,7 +25,6 @@ Texture& Texture::operator=(Texture &&other) noexcept
 {
     Destroy();
 
-    std::swap(m_pParams, other.m_pParams);
     std::swap(m_renderID, other.m_renderID);
 
     return *this;
@@ -61,17 +45,13 @@ void Texture::Unbind(uint32_t unit) const noexcept
 
 bool Texture::IsValid() const noexcept
 {
-    return m_pParams != nullptr && m_renderID != 0;
+    return m_renderID != 0;
 }
 
 
 uint64_t Texture::Hash() const noexcept
 {
     ds::HashBuilder builder;
-    
-    if (m_pParams) {
-        builder.AddValue(*m_pParams);
-    }
 
     builder.AddValue(m_renderID);
 
@@ -89,8 +69,6 @@ bool Texture::Init(const TextureCreateInfo &createInfo) noexcept
 void Texture::Destroy() noexcept
 {
     if (IsValid()) {
-        m_pParams = nullptr;
-
         glDeleteTextures(1, &m_renderID);
         m_renderID = 0;
     }
@@ -116,8 +94,7 @@ bool TextureManager::Init() noexcept
         return true;
     }
 
-    m_texturesStorage.resize(ENG_MAX_TEXTURES_COUNT);
-    m_textureParamsStorage.resize(ENG_MAX_TEXTURES_COUNT);
+    m_texturesStorage.resize(COMMON_MAX_TEXTURES_COUNT);
 
     m_isInitialized = true;
 
@@ -128,7 +105,6 @@ bool TextureManager::Init() noexcept
 void TextureManager::Terminate() noexcept
 {
     m_texturesStorage.clear();
-    m_textureParamsStorage.clear();
 
     m_textureIDToNameMap.clear();
     m_textureNameToIDMap.clear();
@@ -168,12 +144,6 @@ void TextureManager::DeallocateProgramID(const TextureID &ID) noexcept
 bool TextureManager::IsInitialized() const noexcept
 {
     return m_isInitialized;
-}
-
-
-uint64_t amHash(const TextureParams& params) noexcept
-{
-    return params.Hash();
 }
 
 

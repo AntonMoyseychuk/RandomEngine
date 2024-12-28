@@ -47,12 +47,14 @@ endif()
 set(ENGINE_CXX_AUTO_FILES)
 
 
+set(SHADERGEN_EXEC_FILEPATH ${SHADERGEN_OUTPUT_DIR}/shadergen)
+
 foreach(FILE ${ENGINE_SHADER_AUTOGEN_FILES})
     get_filename_component(FILE_NAME ${FILE} NAME_WE)
 
     add_custom_command(PRE_BUILD
         OUTPUT ${ENGINE_CXX_AUTO_FILES_OUTPUT_DIR}/auto_${FILE_NAME}.h
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tools/shadergen/shadergen
+        COMMAND ${SHADERGEN_EXEC_FILEPATH}
         ARGS ${FILE} ${ENGINE_CXX_AUTO_FILES_OUTPUT_DIR}
         DEPENDS ${FILE}
         COMMENT "Generating ${FILE_NAME}.h..."
@@ -63,11 +65,27 @@ endforeach()
 
 
 # Creating engine lib
-file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS ${ENGINE_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS 
+    ${ENGINE_SOURCE_DIR}/*.cpp
+    ${ENGINE_SOURCE_DIR}/*.h
+    ${ENGINE_SOURCE_DIR}/*.hpp)
 
 add_library(engine STATIC ${ENGINE_SRC_FILES} ${ENGINE_CXX_AUTO_FILES})
 
 # Setting target options
+set(ENGINE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/engine")
+
+set_target_properties(engine
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY ${ENGINE_OUTPUT_DIR}
+)
+
+set_target_properties(engine
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG ${ENGINE_OUTPUT_DIR}
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE ${ENGINE_OUTPUT_DIR}
+)
+
 target_precompile_headers(engine PRIVATE ${ENGINE_SOURCE_DIR}/pch.h)
 
 target_compile_options(engine PRIVATE
