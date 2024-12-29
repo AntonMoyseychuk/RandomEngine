@@ -296,6 +296,8 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     FillConstantDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
     FillSrvVariablesDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
     FillSrvTextureDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
+
+    ss << '\n';
     
     const std::filesystem::path outputFilepath = inputParams.outputDirectory / 
         ("auto_" + inputParams.inputFilepath.filename().replace_extension(".h").string());

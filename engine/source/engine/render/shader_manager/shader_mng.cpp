@@ -383,7 +383,7 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
     ShaderProgram program;
 
     if (!program.Init(createInfo)) {
-        return ProgramID{};
+        return PROGRAM_ID_INVALID;
     }
 
     ProgramID programID = AllocateProgramID();

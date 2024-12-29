@@ -80,6 +80,8 @@ private:
 
 using ProgramID = uint64_t;
 
+inline constexpr ProgramID PROGRAM_ID_INVALID = UINT64_MAX;
+
 
 class ShaderManager
 {
@@ -97,11 +99,11 @@ public:
     ~ShaderManager();
 
     ProgramID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;
-    void UnregisterShaderProgram(const ProgramID& id) noexcept;
+    void UnregisterShaderProgram(const ProgramID& ID) noexcept;
     
-    ShaderProgram* GetShaderProgramByID(const ProgramID& id) noexcept;
+    ShaderProgram* GetShaderProgramByID(const ProgramID& ID) noexcept;
     
-    bool IsValidProgramID(const ProgramID& id) const noexcept;
+    bool IsValidProgramID(const ProgramID& ID) const noexcept;
 
 private:
     ShaderManager() = default;

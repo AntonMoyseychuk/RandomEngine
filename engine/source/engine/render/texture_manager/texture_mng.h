@@ -5,35 +5,104 @@
 #include <deque>
 
 
-enum class TextureType : uint32_t
+enum class TextureFormat
 {
-    TYPE_1D,                   // 1-dimensional images.
-    TYPE_2D,                   // 2-dimensional images.
-    TYPE_3D,                   // 3-dimensional images.
-    TYPE_RECTANGLE,            // 2-dimensional (only one image. No mipmapping). Texture coordinates used for these textures are not normalized.
-    TYPE_BUFFER,               // 1-dimensional (only one image. No mipmapping). The storage for this data comes from a Buffer Object.
-    TYPE_CUBE_MAP,             // There are exactly 6 distinct sets of 2D images, each image being of the same size and must be of a square size.
-    TYPE_1D_ARRAY,             // It contains multiple sets of 1-dimensional images. The array length is part of the texture's size.
-    TYPE_2D_ARRAY,             // It contains multiple sets of 2-dimensional images. The array length is part of the texture's size.
-    TYPE_CUBE_MAP_ARRAY,       // It contains multiple sets of cube maps. The array length * 6 (number of cube faces) is part of the texture size.
-    TYPE_2D_MULTISAMPLE,       // 2-dimensional (only one image. No mipmapping). Each pixel in these images contains multiple samples instead of just one value.
-    TYPE_2D_MULTISAMPLE_ARRAY, // Combines 2D array and 2D multisample types. (No mipmapping).
+    FORMAT_R8,
+    FORMAT_R8_SNORM,
+    FORMAT_R16,
+    FORMAT_R16_SNORM,
+    FORMAT_RG8,
+    FORMAT_RG8_SNORM,
+    FORMAT_RG16,
+    FORMAT_RG16_SNORM,
+    FORMAT_RGB8_SNORM,
+    FORMAT_RGB16_SNORM,
+    FORMAT_RGBA8,
+    FORMAT_RGBA8_SNORM,
+    FORMAT_RGBA16,
+    FORMAT_SRGB8,
+    FORMAT_SRGB8_ALPHA8,
+    FORMAT_R16F,
+    FORMAT_RG16F,
+    FORMAT_RGB16F,
+    FORMAT_RGBA16F,
+    FORMAT_R32F,
+    FORMAT_RG32F,
+    FORMAT_RGB32F,
+    FORMAT_RGBA32F,
+    FORMAT_R8I,
+    FORMAT_R8UI,
+    FORMAT_R16I,
+    FORMAT_R16UI,
+    FORMAT_R32I,
+    FORMAT_R32UI,
+    FORMAT_RG8UI,
+    FORMAT_RG16I,
+    FORMAT_RG16UI,
+    FORMAT_RG32UI,
+    FORMAT_RGB8I,
+    FORMAT_RGB8UI,
+    FORMAT_RGB16I,
+    FORMAT_RGB16UI,
+    FORMAT_RGB32I,
+    FORMAT_RGB32UI,
+    FORMAT_RGBA8I,
+    FORMAT_RGBA16I,
+    FORMAT_RGBA16UI,
+    FORMAT_RGBA32I,
+    FORMAT_RGBA32UI,
     
-    TYPE_INVALID,
-    TYPE_COUNT = TYPE_INVALID,
+    FORMAT_INVALID,
+    FORMAT_COUNT = FORMAT_INVALID,
 };
 
 
-struct TextureCreateInfo
+enum class TextureInputDataFormat
 {
-    const void** pData = nullptr;
-    const size_t* dataSizeInBytes = nullptr;
+    INPUT_FORMAT_R,
+    INPUT_FORMAT_RG,
+    INPUT_FORMAT_RGB,
+    INPUT_FORMAT_BGR,
+    INPUT_FORMAT_RGBA, 
+    INPUT_FORMAT_DEPTH,
+    INPUT_FORMAT_STENCIL,
+    
+    INPUT_FORMAT_INVALID,
+    INPUT_FORMAT_COUNT = INPUT_FORMAT_INVALID,
+};
 
-    TextureType type;
 
+enum class TextureInputDataType
+{
+    INPUT_TYPE_UNSIGNED_BYTE,
+    INPUT_TYPE_BYTE,
+    INPUT_TYPE_UNSIGNED_SHORT,
+    INPUT_TYPE_SHORT,
+    INPUT_TYPE_UNSIGNED_INT,
+    INPUT_TYPE_INT,
+    INPUT_TYPE_FLOAT,
+    
+    INPUT_TYPE_INVALID,
+    INPUT_TYPE_COUNT = INPUT_TYPE_INVALID,
+};
+
+
+struct TextureInputData
+{
+    const void* pData = nullptr;
+
+    TextureInputDataFormat format = TextureInputDataFormat::INPUT_FORMAT_INVALID;
+    TextureInputDataType dataType = TextureInputDataType::INPUT_TYPE_INVALID;
+};
+
+
+struct Texture2DCreateInfo
+{
+    TextureInputData inputData = {};
+    TextureFormat format;
     uint32_t width = 0;
     uint32_t height = 0;
-    uint32_t depth = 0;
+    uint32_t mipmapsCount = 0;
 };
 
 
@@ -51,23 +120,32 @@ public:
     Texture(Texture&& other) noexcept;
     Texture& operator=(Texture&& other) noexcept;
 
-    void Bind(uint32_t unit = 0) const noexcept;
-    void Unbind(uint32_t unit = 0) const noexcept;
-
     bool IsValid() const noexcept;
+
+    bool IsType1D() const noexcept;
+    bool IsType2D() const noexcept;
+    bool IsType3D() const noexcept;
+    bool IsTypeBuffer() const noexcept;
+    bool IsTypeCubeMap() const noexcept;
+    bool IsTypeArray1D() const noexcept;
+    bool IsTypeArray2D() const noexcept;
+    bool IsTypeCubeMapArray() const noexcept;
+    bool IsTypeMultisample2D() const noexcept;
+    bool IsTypeMultisampleArray2D() const noexcept;
 
     uint64_t Hash() const noexcept;
 
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
-    bool Init(const TextureCreateInfo& createInfo) noexcept;
+    bool Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
 
 private:
     ds::StrID m_name = "";
     
-    uint32_t m_internalType = 0;
+    uint16_t m_type = 0;
+    uint16_t m_levelsCount = 0;
     
     uint32_t m_width = 0;
     uint32_t m_height = 0;
@@ -78,6 +156,8 @@ private:
 
 
 using TextureID = uint64_t;
+
+inline constexpr TextureID TEXTURE_ID_INVALID = UINT64_MAX;
 
 
 class TextureManager
@@ -94,6 +174,16 @@ public:
     TextureManager& operator=(const TextureManager& other) = delete;
 
     ~TextureManager();
+
+    TextureID AllocateTexture2D(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept;
+
+    Texture* GetTextureByID(const TextureID& ID) noexcept;
+    Texture* GetTextureByName(ds::StrID name) noexcept;
+    
+    void DeallocateTexture(ds::StrID name);
+    void DeallocateTexture(const TextureID& ID);
+
+    bool IsValidTextureID(const TextureID& ID) const noexcept;
     
 private:
     TextureManager() = default;
@@ -104,15 +194,15 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    TextureID AllocateProgramID() noexcept;
-    void DeallocateProgramID(const TextureID& ID) noexcept;
+    TextureID AllocateTextureID() noexcept;
+    void DeallocateTextureID(const TextureID& ID) noexcept;
 
     bool IsInitialized() const noexcept;
 
 private:
     std::vector<Texture> m_texturesStorage;
 
-    std::unordered_map<TextureID, ds::StrID> m_textureIDToNameMap;
+    std::vector<ds::StrID> m_textureIDToNameVector;
     std::unordered_map<ds::StrID, TextureID> m_textureNameToIDMap;
 
     std::deque<TextureID> m_textureIDFreeList;
