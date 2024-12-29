@@ -11,7 +11,6 @@
 #include "engine/auto/auto_registers_common.h"
 
 
-
 static std::unique_ptr<TextureManager> g_pTextureMng = nullptr;
 
 
@@ -374,6 +373,8 @@ bool TextureManager::Init() noexcept
     m_textureIDToNameVector.resize(COMMON_MAX_TEXTURES_COUNT);
     m_textureNameToIDMap.reserve(COMMON_MAX_TEXTURES_COUNT);
 
+    // InitializeSamplers();
+
     m_nextAllocatedID = 0;
 
     m_isInitialized = true;
@@ -390,6 +391,8 @@ void TextureManager::Terminate() noexcept
     m_textureNameToIDMap.clear();
 
     m_textureIDFreeList.clear();
+
+    // DestroySamplers();
 
     m_nextAllocatedID = 0;
 

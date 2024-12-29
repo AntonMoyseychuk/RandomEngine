@@ -3,6 +3,34 @@
 #include "utils/data_structures/strid.h"
 
 #include <deque>
+#include <vector>
+
+
+class TextureSampler
+{
+    friend class TextureManager;
+
+public:
+    TextureSampler(const TextureSampler& other) = delete;
+    TextureSampler& operator=(const TextureSampler& other) = delete;
+    TextureSampler(TextureSampler&& other) noexcept = delete;
+    TextureSampler& operator=(TextureSampler&& other) noexcept = delete;
+
+    // ~TextureSampler() { Destroy(); }
+
+private:
+    // TextureSampler() = default;
+
+    bool Init() noexcept;
+    void Destroy() noexcept;
+
+    bool IsValid() const noexcept { return m_renderID != 0; }
+
+    uint32_t GetRenderID() const noexcept { return m_renderID; }
+
+private:
+    uint32_t m_renderID = 0;
+};
 
 
 enum class TextureFormat
@@ -196,6 +224,9 @@ private:
 
     TextureID AllocateTextureID() noexcept;
     void DeallocateTextureID(const TextureID& ID) noexcept;
+
+    void InitializeSamplers() noexcept;
+    void DestroySamplers() noexcept;
 
     bool IsInitialized() const noexcept;
 

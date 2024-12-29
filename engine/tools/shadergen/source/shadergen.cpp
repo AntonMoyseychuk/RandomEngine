@@ -150,6 +150,14 @@ static std::vector<std::cmatch> FindPatternMatches(const std::regex& pattern, co
 }
 
 
+static std::string RemoveTextComments(const std::vector<char>& fileContent) noexcept
+{
+    static std::regex COMMENTS_PATTERN(R"(//.*?$|/\\*[^]*?\\*/)");
+    
+    return std::regex_replace(fileContent.data(), COMMENTS_PATTERN, "");
+}
+
+
 static std::vector<std::cmatch> FindConstantDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
 {
     static std::regex CONSTANT_PATTERN(R"(DECLARE_CONSTANT\(([^,]+), ([^,]+), ([^,]+)\))");
@@ -186,7 +194,10 @@ static void FillConstantDeclaration(std::stringstream& ss, const char* pFileCont
         const char* pType = TranslateGLSLToEngineConstantPrimitiveType(filepath, match[1].str());
         assert(pType);
 
-        ss << "inline constexpr " << pType << ' ' << match[2].str() << " = " << match[3].str() << ";\n";
+        const std::string name = match[2].str();
+        const std::string value = match[3].str();
+
+        ss << "inline constexpr " << pType << ' ' << name << " = " << value << ";\n";
     }
 
     if (!constantDeclMatches.empty()) {
@@ -207,9 +218,12 @@ static void FillSrvVariablesDeclaration(std::stringstream& ss, const char* pFile
         const char* pType = TranslateGLSLToEngineResourceType(filepath, match[1].str());
         assert(pType);
 
+        const std::string name = match[2].str();
+        const std::string location = match[3].str();
+
         ss <<
-        "struct " << match[2].str() << " {\n"
-        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { " << match[3].str() << ", 0 };\n"
+        "struct " << name << " {\n"
+        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { " << location << ", -1 };\n"
         "};\n"
         "\n";
     }
@@ -232,9 +246,14 @@ static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileCo
         const char* pType = TranslateGLSLToEngineResourceType(filepath, match[1].str());
         assert(pType);
 
+        const std::string name = match[2].str();
+        const std::string binding = match[3].str();
+        const std::string samplerIdx = match[4].str();
+
         ss <<
-        "struct " << match[2].str() << " {\n"
-        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { " << match[3].str() << ", " << match[4].str() << " };\n"
+        "struct " << name << " {\n"
+        "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { -1, " << binding << " };\n"
+        "    inline static constexpr uint32_t _SAMPLER_IDX = " << samplerIdx << ";\n"
         "};\n"
         "\n";
     }
@@ -282,6 +301,7 @@ ShaderGenInputParams GetInputParams(int argc, char* argv[]) noexcept
 void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
 {
     const std::vector<char> inputFileContent = ReadTextFile(inputParams.inputFilepath);
+    const std::string commentLessFileContent = RemoveTextComments(inputFileContent);
 
     std::stringstream ss;
 
@@ -293,9 +313,9 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     "\n"
     "\n";
 
-    FillConstantDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
-    FillSrvVariablesDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
-    FillSrvTextureDeclaration(ss, inputFileContent.data(), inputFileContent.size(), inputParams.inputFilepath);
+    FillConstantDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
+    FillSrvVariablesDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
+    FillSrvTextureDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
 
     ss << '\n';
     

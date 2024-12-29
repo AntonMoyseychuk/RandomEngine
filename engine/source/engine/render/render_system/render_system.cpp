@@ -191,8 +191,7 @@ void RenderSystem::RunColorPass() noexcept
         isInitialized = true;
     }
 
-    Engine& engine = Engine::GetInstance();
-    Window& window = engine.GetWindow();
+    Window& window = Engine::GetInstance().GetWindow();
 
     const float elapsedTime = timer.GetElapsedTimeInSec();
     glUniform1f(COMMON_ELAPSED_TIME::_BINDING.GetLocation(), elapsedTime / 2.f);
