@@ -29,6 +29,14 @@ TextureSamplerState &TextureSamplerState::operator=(TextureSamplerState &&other)
     std::swap(m_dbgName, other.m_dbgName);
 #endif
     std::swap(m_renderID, other.m_renderID);
+
+    return *this;
+}
+
+
+void TextureSamplerState::Bind(uint32_t unit) noexcept
+{
+    glBindSampler(unit, m_renderID);
 }
 
 
@@ -178,6 +186,12 @@ Texture& Texture::operator=(Texture &&other) noexcept
     std::swap(m_renderID, other.m_renderID);
 
     return *this;
+}
+
+
+void Texture::Bind(uint32_t unit) noexcept
+{
+    glBindTextureUnit(unit, m_renderID);
 }
 
 

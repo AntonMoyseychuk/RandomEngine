@@ -33,6 +33,8 @@ public:
 
     ~TextureSamplerState() { Destroy(); }
 
+    void Bind(uint32_t unit) noexcept;
+
     bool IsValid() const noexcept { return m_renderID != 0; }
 
     uint32_t GetRenderID() const noexcept { return m_renderID; }
@@ -164,6 +166,8 @@ public:
 
     Texture(Texture&& other) noexcept;
     Texture& operator=(Texture&& other) noexcept;
+
+    void Bind(uint32_t unit) noexcept;
 
     bool IsValid() const noexcept;
 

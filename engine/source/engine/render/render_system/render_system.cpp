@@ -196,9 +196,9 @@ void RenderSystem::RunColorPass() noexcept
         pTexture = TextureManager::GetInstance().GetTextureByID(textureID);
         pSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
 
-        glBindTextureUnit(resGetResourceBinding(TEST_TEXTURE).GetBinding(), pTexture->GetRenderID());
-        glBindSampler(resGetResourceBinding(TEST_TEXTURE).GetBinding(), pSampler->GetRenderID());
-
+        pTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+        pSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+        
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
 

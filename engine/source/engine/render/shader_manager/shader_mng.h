@@ -56,7 +56,6 @@ public:
     ShaderProgram& operator=(ShaderProgram&& other) noexcept;
 
     void Bind() const noexcept;
-    void Unbind() const noexcept;
 
     ENG_DEPRECATED("Prefer to use uniform buffers")
     void SetLocalSrvBool(const ShaderResourceBindStruct<ShaderResourceType::TYPE_BOOL>& bind, bool value) noexcept;

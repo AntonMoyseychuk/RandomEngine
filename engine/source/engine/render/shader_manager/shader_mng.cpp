@@ -10,7 +10,6 @@
 
 
 static constexpr size_t ENG_MAX_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable
-static constexpr size_t ENG_MAX_UNIFORM_NAME_LENGTH = 128;    // TODO: make it configurable
 static constexpr size_t ENG_MAX_SHADER_INCLUDE_DEPTH = 128;   // TODO: make it configurable
 
 
@@ -252,12 +251,6 @@ void ShaderProgram::Bind() const noexcept
 {
     ENG_ASSERT_GRAPHICS_API(IsValid(), "Binding of invalid shader program");
     glUseProgram(m_renderID);
-}
-
-
-void ShaderProgram::Unbind() const noexcept
-{
-    glUseProgram(0);
 }
 
 
