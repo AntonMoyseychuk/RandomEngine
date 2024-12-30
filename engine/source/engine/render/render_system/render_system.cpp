@@ -208,7 +208,7 @@ void RenderSystem::RunColorPass() noexcept
     Window& window = Engine::GetInstance().GetWindow();
 
     const float elapsedTime = timer.GetElapsedTimeInSec();
-    glUniform1f(resGetResourceBinding(COMMON_ELAPSED_TIME).GetLocation(), elapsedTime / 2.f);
+    pProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);
     
     glViewport(0, 0, window.GetWidth(), window.GetHeight());
 

@@ -250,7 +250,7 @@ ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
 
 void ShaderProgram::Bind() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Trying to bind invalid shader program");
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Binding of invalid shader program");
     glUseProgram(m_renderID);
 }
 
@@ -258,6 +258,41 @@ void ShaderProgram::Bind() const noexcept
 void ShaderProgram::Unbind() const noexcept
 {
     glUseProgram(0);
+}
+
+
+void ShaderProgram::SetLocalSrvBool(const ShaderResourceBindStruct<ShaderResourceType::TYPE_BOOL>& bind, bool value) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending boolean uniform to invalid shader program");
+    glProgramUniform1i(m_renderID, bind.GetLocation(), value);
+}
+
+
+void ShaderProgram::SetLocalSrvInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_INT> &bind, int32_t value) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending int uniform to invalid shader program");
+    glProgramUniform1i(m_renderID, bind.GetLocation(), value);
+}
+
+
+void ShaderProgram::SetLocalSrvUInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_UINT> &bind, uint32_t value) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending uint uniform to invalid shader program");
+    glProgramUniform1ui(m_renderID, bind.GetLocation(), value);
+}
+
+
+void ShaderProgram::SetLocalSrvFloat(const ShaderResourceBindStruct<ShaderResourceType::TYPE_FLOAT> &bind, float value) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending float uniform to invalid shader program");
+    glProgramUniform1f(m_renderID, bind.GetLocation(), value);
+}
+
+
+void ShaderProgram::SetLocalSrvDouble(const ShaderResourceBindStruct<ShaderResourceType::TYPE_DOUBLE> &bind, double value) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending double uniform to invalid shader program");
+    glProgramUniform1d(m_renderID, bind.GetLocation(), value);
 }
 
 

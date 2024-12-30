@@ -52,7 +52,15 @@
 
 #if __cplusplus == 201703L
   // From C++17
-  #define ENG_MAYBE_UNUSED [[maybe_unused]]
+  #define ENG_MAYBE_UNUSED        [[maybe_unused]]
+  #define ENG_DEPRECATED(message) [[deprecated(message)]]
 #else
+  #if __cplusplus == 201402L
+    // From C++14
+    #define ENG_DEPRECATED(message) [[deprecated(message)]]
+  #else
+    #define ENG_DEPRECATED(message)
+  #endif
+
   #define ENG_MAYBE_UNUSED
 #endif

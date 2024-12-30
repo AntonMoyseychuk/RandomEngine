@@ -5,7 +5,6 @@
 
 enum class ShaderResourceType : uint32_t
 {
-
     TYPE_BOOL,
     TYPE_INT,
     TYPE_UINT,

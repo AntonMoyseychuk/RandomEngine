@@ -3,6 +3,8 @@
 #include "utils/file/file.h"
 #include "utils/data_structures/strid.h"
 
+#include "resource_bind.h"
+
 #include "core.h"
 
 #include <deque>
@@ -55,6 +57,17 @@ public:
 
     void Bind() const noexcept;
     void Unbind() const noexcept;
+
+    ENG_DEPRECATED("Prefer to use uniform buffers")
+    void SetLocalSrvBool(const ShaderResourceBindStruct<ShaderResourceType::TYPE_BOOL>& bind, bool value) noexcept;
+    ENG_DEPRECATED("Prefer to use uniform buffers")
+    void SetLocalSrvInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_INT>& bind, int32_t value) noexcept;
+    ENG_DEPRECATED("Prefer to use uniform buffers")
+    void SetLocalSrvUInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_UINT>& bind, uint32_t value) noexcept;
+    ENG_DEPRECATED("Prefer to use uniform buffers")
+    void SetLocalSrvFloat(const ShaderResourceBindStruct<ShaderResourceType::TYPE_FLOAT>& bind, float value) noexcept;
+    ENG_DEPRECATED("Prefer to use uniform buffers")
+    void SetLocalSrvDouble(const ShaderResourceBindStruct<ShaderResourceType::TYPE_DOUBLE>& bind, double value) noexcept;
 
     bool IsValidRenderID() const noexcept { return m_renderID != 0; }
     bool IsValid() const noexcept { return IsValidRenderID(); }
