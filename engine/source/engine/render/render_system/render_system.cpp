@@ -95,17 +95,18 @@ void RenderSystem::RunGBufferPass() noexcept
 
 void RenderSystem::RunColorPass() noexcept
 {
-    srand(time(0));
-
     static Timer timer;
     timer.Tick();
 
     static bool isInitialized = false;
     static ShaderProgram* pProgram = nullptr;
     static Texture* pTexture = nullptr;
+    static TextureSamplerState* pSampler = nullptr;
     static uint32_t vao = 0;
 
     if (!isInitialized) {
+        srand(time(0));
+
         static constexpr const char* pIncludeDir = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
 
         ShaderStageCreateInfo vsStageCreateInfo = {};
@@ -148,16 +149,32 @@ void RenderSystem::RunColorPass() noexcept
         ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(programID), "Failed to register shader program");
 
         constexpr size_t texWidth = 256;
+        constexpr size_t texWidthDiv2 = texWidth / 2;
         constexpr size_t texHeight = 256;
+        constexpr size_t texHeightDiv2 = texHeight / 2;
         constexpr size_t texSizeInPixels = texWidth * texHeight;
         constexpr size_t texComponentsCount = 4;
         constexpr size_t texSizeInBytes = texSizeInPixels * texComponentsCount;
+        
+        constexpr uint8_t texColors[4][4] = {
+            { 255,   0,   0, 255 },
+            {   0, 255,   0, 255 },
+            {   0,   0, 255, 255 },
+            {   255, 0, 255, 255 },
+        };
+
         uint8_t pTexData[texSizeInBytes] = {};
-        for (size_t i = 0; i < texSizeInPixels; ++i) {
-            pTexData[texComponentsCount * i + 0] = rand() % 256;
-            pTexData[texComponentsCount * i + 1] = rand() % 256;
-            pTexData[texComponentsCount * i + 2] = rand() % 256;
-            pTexData[texComponentsCount * i + 3] = 255;
+        for (size_t y = 0; y < texHeight; ++y) {
+            for (size_t x = 0; x < texWidth; ++x) {
+                const size_t colorIdx = (y / (texHeightDiv2 - 1) + ((y / (texHeightDiv2 - 1)) % 2)) + x / texWidthDiv2;
+
+                const size_t pixelIdx = (y * texWidth + x);
+
+                pTexData[texComponentsCount * pixelIdx + 0] = texColors[colorIdx][0];
+                pTexData[texComponentsCount * pixelIdx + 1] = texColors[colorIdx][1];
+                pTexData[texComponentsCount * pixelIdx + 2] = texColors[colorIdx][2];
+                pTexData[texComponentsCount * pixelIdx + 3] = texColors[colorIdx][3];
+            }
         }
 
         Texture2DCreateInfo texCreateInfo = {};
@@ -177,13 +194,10 @@ void RenderSystem::RunColorPass() noexcept
         pProgram->Bind();
 
         pTexture = TextureManager::GetInstance().GetTextureByID(textureID);
+        pSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
 
-        glTextureParameteri(pTexture->GetRenderID(), GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTextureParameteri(pTexture->GetRenderID(), GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTextureParameteri(pTexture->GetRenderID(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTextureParameteri(pTexture->GetRenderID(), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glBindTextureUnit(TEST_TEXTURE::_BINDING.GetBinding(), pTexture->GetRenderID());
+        glBindTextureUnit(resGetResourceBinding(TEST_TEXTURE).GetBinding(), pTexture->GetRenderID());
+        glBindSampler(resGetResourceBinding(TEST_TEXTURE).GetBinding(), pSampler->GetRenderID());
 
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
@@ -194,7 +208,7 @@ void RenderSystem::RunColorPass() noexcept
     Window& window = Engine::GetInstance().GetWindow();
 
     const float elapsedTime = timer.GetElapsedTimeInSec();
-    glUniform1f(COMMON_ELAPSED_TIME::_BINDING.GetLocation(), elapsedTime / 2.f);
+    glUniform1f(resGetResourceBinding(COMMON_ELAPSED_TIME).GetLocation(), elapsedTime / 2.f);
     
     glViewport(0, 0, window.GetWidth(), window.GetHeight());
 

@@ -15,6 +15,6 @@ void main()
 #if defined(ENV_DEBUG)
     fs_out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 #else
-    fs_out_color = fs_in_color * texture(TEST_TEXTURE, fs_in_texCoords) * abs(sin(COMMON_ELAPSED_TIME * M_PI));
+    fs_out_color = /*fs_in_color **/ texture(TEST_TEXTURE, fs_in_texCoords) * abs(sin(COMMON_ELAPSED_TIME * M_PI));
 #endif
 }

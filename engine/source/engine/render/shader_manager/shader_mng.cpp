@@ -317,14 +317,12 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 
 void ShaderProgram::Destroy() noexcept
 {
-    if (IsValid()) {
-    #if defined(ENG_DEBUG)
-        m_dbgName = "";
-    #endif
+#if defined(ENG_DEBUG)
+    m_dbgName = "";
+#endif
 
-        glDeleteProgram(m_renderID);
-        m_renderID = 0;
-    }
+    glDeleteProgram(m_renderID);
+    m_renderID = 0;
 }
 
 

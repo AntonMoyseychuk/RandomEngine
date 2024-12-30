@@ -2,33 +2,50 @@
 
 #include "utils/data_structures/strid.h"
 
+#include "core.h"
+
 #include <deque>
 #include <vector>
 
 
-class TextureSampler
+struct TextureSamplerStateCreateInfo
+{
+    uint32_t wrapModeS = 0;
+    uint32_t wrapModeT = 0;
+    uint32_t wrapModeR = 0;
+    uint32_t minFiltering = 0;
+    uint32_t magFiltering = 0;
+};
+
+
+class TextureSamplerState
 {
     friend class TextureManager;
 
 public:
-    TextureSampler(const TextureSampler& other) = delete;
-    TextureSampler& operator=(const TextureSampler& other) = delete;
-    TextureSampler(TextureSampler&& other) noexcept = delete;
-    TextureSampler& operator=(TextureSampler&& other) noexcept = delete;
+    TextureSamplerState() = default;
 
-    // ~TextureSampler() { Destroy(); }
+    TextureSamplerState(const TextureSamplerState& other) = delete;
+    TextureSamplerState& operator=(const TextureSamplerState& other) = delete;
+    
+    TextureSamplerState(TextureSamplerState&& other) noexcept;
+    TextureSamplerState& operator=(TextureSamplerState&& other) noexcept;
 
-private:
-    // TextureSampler() = default;
-
-    bool Init() noexcept;
-    void Destroy() noexcept;
+    ~TextureSamplerState() { Destroy(); }
 
     bool IsValid() const noexcept { return m_renderID != 0; }
 
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
+    bool Init(const TextureSamplerStateCreateInfo& createInfo, ds::StrID dbgName = "") noexcept;
+    void Destroy() noexcept;
+
+private:
+#if defined(ENG_DEBUG)
+    ds::StrID m_dbgName = "";
+#endif
+
     uint32_t m_renderID = 0;
 };
 
@@ -211,7 +228,10 @@ public:
     void DeallocateTexture(ds::StrID name);
     void DeallocateTexture(const TextureID& ID);
 
+    TextureSamplerState* GetSampler(uint32_t samplerIdx) noexcept;
+
     bool IsValidTextureID(const TextureID& ID) const noexcept;
+    bool IsValidSamplerIdx(uint32_t samplerIdx) const noexcept;
     
 private:
     TextureManager() = default;
@@ -231,6 +251,7 @@ private:
     bool IsInitialized() const noexcept;
 
 private:
+    std::vector<TextureSamplerState> m_textureSamplersStorage;
     std::vector<Texture> m_texturesStorage;
 
     std::vector<ds::StrID> m_textureIDToNameVector;

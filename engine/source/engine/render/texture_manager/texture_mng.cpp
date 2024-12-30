@@ -4,14 +4,65 @@
 #include "utils/debug/assertion.h"
 #include "utils/data_structures/hash.h"
 
-#include "core.h"
-
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
 #include "engine/auto/auto_registers_common.h"
 
 
 static std::unique_ptr<TextureManager> g_pTextureMng = nullptr;
+
+
+TextureSamplerState::TextureSamplerState(TextureSamplerState &&other) noexcept
+{
+#if defined(ENG_DEBUG)
+    std::swap(m_dbgName, other.m_dbgName);
+#endif
+    std::swap(m_renderID, other.m_renderID);
+}
+
+
+TextureSamplerState &TextureSamplerState::operator=(TextureSamplerState &&other) noexcept
+{
+    Destroy();
+
+#if defined(ENG_DEBUG)
+    std::swap(m_dbgName, other.m_dbgName);
+#endif
+    std::swap(m_renderID, other.m_renderID);
+}
+
+
+bool TextureSamplerState::Init(const TextureSamplerStateCreateInfo &createInfo, ds::StrID dbgName) noexcept
+{
+    if (IsValid()) {
+        ENG_LOG_GRAPHICS_API_WARN("Recreating of \'{}\' sampler by \'{}\'", m_dbgName.CStr(), dbgName.CStr());
+        Destroy();
+    }
+
+#if defined(ENG_DEBUG)
+    m_dbgName = dbgName;
+#endif
+
+    glCreateSamplers(1, &m_renderID);
+    glSamplerParameteri(m_renderID, GL_TEXTURE_MIN_FILTER, createInfo.minFiltering);
+    glSamplerParameteri(m_renderID, GL_TEXTURE_MAG_FILTER, createInfo.magFiltering);
+    glSamplerParameteri(m_renderID, GL_TEXTURE_WRAP_S, createInfo.wrapModeS);
+    glSamplerParameteri(m_renderID, GL_TEXTURE_WRAP_T, createInfo.wrapModeT);
+    glSamplerParameteri(m_renderID, GL_TEXTURE_WRAP_R, createInfo.wrapModeR);
+
+    return true;
+}
+
+
+void TextureSamplerState::Destroy() noexcept
+{
+#if defined(ENG_DEBUG)
+    m_dbgName = "";
+#endif
+
+    glDeleteSamplers(1, &m_renderID);
+    m_renderID = 0;
+}
 
 
 static GLenum GetTextureInternalGLFormat(TextureFormat format) noexcept
@@ -262,17 +313,15 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
 
 void Texture::Destroy() noexcept
 {
-    if (IsValid()) {
-        glDeleteTextures(1, &m_renderID);
+    glDeleteTextures(1, &m_renderID);
 
-        m_name = "";
-        m_type = 0;
-        m_levelsCount = 0;
-        m_width = 0;
-        m_height = 0;
-        m_depth = 0;
-        m_renderID = 0;
-    }
+    m_name = "";
+    m_type = 0;
+    m_levelsCount = 0;
+    m_width = 0;
+    m_height = 0;
+    m_depth = 0;
+    m_renderID = 0;
 }
 
 
@@ -357,9 +406,21 @@ void TextureManager::DeallocateTexture(const TextureID& ID)
 }
 
 
+TextureSamplerState *TextureManager::GetSampler(uint32_t samplerIdx) noexcept
+{
+    return IsValidSamplerIdx(samplerIdx) ? &m_textureSamplersStorage[samplerIdx] : nullptr;
+}
+
+
 bool TextureManager::IsValidTextureID(const TextureID &ID) const noexcept
 {
     return ID < m_nextAllocatedID && m_texturesStorage[ID].IsValid();
+}
+
+
+bool TextureManager::IsValidSamplerIdx(uint32_t samplerIdx) const noexcept
+{
+    return samplerIdx < m_textureSamplersStorage.size();
 }
 
 
@@ -373,7 +434,7 @@ bool TextureManager::Init() noexcept
     m_textureIDToNameVector.resize(COMMON_MAX_TEXTURES_COUNT);
     m_textureNameToIDMap.reserve(COMMON_MAX_TEXTURES_COUNT);
 
-    // InitializeSamplers();
+    InitializeSamplers();
 
     m_nextAllocatedID = 0;
 
@@ -392,7 +453,7 @@ void TextureManager::Terminate() noexcept
 
     m_textureIDFreeList.clear();
 
-    // DestroySamplers();
+    DestroySamplers();
 
     m_nextAllocatedID = 0;
 
@@ -420,6 +481,115 @@ void TextureManager::DeallocateTextureID(const TextureID &ID) noexcept
 {
     if (ID < m_nextAllocatedID && std::find(m_textureIDFreeList.cbegin(), m_textureIDFreeList.cend(), ID) == m_textureIDFreeList.cend()) {
         m_textureIDFreeList.emplace_back(ID);
+    }
+}
+
+
+void TextureManager::InitializeSamplers() noexcept
+{
+    std::array<TextureSamplerStateCreateInfo, COMMON_SMP_COUNT> samplerStateCreateInfos;
+    std::array<ds::StrID, COMMON_SMP_COUNT> samplerDbgNames;
+
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_NEAREST_IDX].wrapModeS = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_NEAREST_IDX].wrapModeT = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_NEAREST_IDX].wrapModeR = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_NEAREST_IDX].minFiltering = GL_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_NEAREST_IDX].wrapModeS = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_NEAREST_IDX].wrapModeT = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_NEAREST_IDX].wrapModeR = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_NEAREST_IDX].minFiltering = GL_NEAREST_MIPMAP_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_LINEAR_IDX].wrapModeS = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_LINEAR_IDX].wrapModeT = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_LINEAR_IDX].wrapModeR = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_LINEAR_IDX].minFiltering = GL_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_LINEAR_IDX].wrapModeS = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_LINEAR_IDX].wrapModeT = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_LINEAR_IDX].wrapModeR = GL_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_LINEAR_IDX].minFiltering = GL_LINEAR_MIPMAP_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_REPEAT_MIP_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_NEAREST_IDX].wrapModeS = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_NEAREST_IDX].wrapModeT = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_NEAREST_IDX].wrapModeR = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_NEAREST_IDX].minFiltering = GL_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX].wrapModeS = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX].wrapModeT = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX].wrapModeR = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX].minFiltering = GL_NEAREST_MIPMAP_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_LINEAR_IDX].wrapModeS = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_LINEAR_IDX].wrapModeT = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_LINEAR_IDX].wrapModeR = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_LINEAR_IDX].minFiltering = GL_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX].wrapModeS = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX].wrapModeT = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX].wrapModeR = GL_MIRRORED_REPEAT;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX].minFiltering = GL_LINEAR_MIPMAP_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_NEAREST_IDX].wrapModeS = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_NEAREST_IDX].wrapModeT = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_NEAREST_IDX].wrapModeR = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_NEAREST_IDX].minFiltering = GL_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_NEAREST_IDX].wrapModeS = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_NEAREST_IDX].wrapModeT = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_NEAREST_IDX].wrapModeR = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_NEAREST_IDX].minFiltering = GL_NEAREST_MIPMAP_NEAREST;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_NEAREST_IDX].magFiltering = GL_NEAREST;
+
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_LINEAR_IDX].wrapModeS = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_LINEAR_IDX].wrapModeT = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_LINEAR_IDX].wrapModeR = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_LINEAR_IDX].minFiltering = GL_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_LINEAR_IDX].wrapModeS = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_LINEAR_IDX].wrapModeT = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_LINEAR_IDX].wrapModeR = GL_CLAMP_TO_EDGE;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_LINEAR_IDX].minFiltering = GL_LINEAR_MIPMAP_LINEAR;
+    samplerStateCreateInfos[COMMON_SMP_CLAMP_MIP_LINEAR_IDX].magFiltering = GL_LINEAR;
+
+#if defined(ENG_DEBUG)
+    samplerDbgNames[COMMON_SMP_REPEAT_NEAREST_IDX] = "repeat_nearest";
+    samplerDbgNames[COMMON_SMP_REPEAT_MIP_NEAREST_IDX] = "repeat_mip_nearest";
+    samplerDbgNames[COMMON_SMP_REPEAT_LINEAR_IDX] = "repeat_linear";
+    samplerDbgNames[COMMON_SMP_REPEAT_MIP_LINEAR_IDX] = "repeat_mip_linear";
+    samplerDbgNames[COMMON_SMP_MIRRORED_NEAREST_IDX] = "mirrored_nearest";
+    samplerDbgNames[COMMON_SMP_MIRRORED_MIP_NEAREST_IDX] = "mirrored_mip_nearest";
+    samplerDbgNames[COMMON_SMP_MIRRORED_LINEAR_IDX] = "mirrored_linear";
+    samplerDbgNames[COMMON_SMP_MIRRORED_MIP_LINEAR_IDX] = "mirrored_mip_linear";
+    samplerDbgNames[COMMON_SMP_CLAMP_NEAREST_IDX] = "clamp_nearest";
+    samplerDbgNames[COMMON_SMP_CLAMP_MIP_NEAREST_IDX] = "clamp_mip_nearest";
+    samplerDbgNames[COMMON_SMP_CLAMP_LINEAR_IDX] = "clamp_linear";
+    samplerDbgNames[COMMON_SMP_CLAMP_MIP_LINEAR_IDX] = "clamp_mip_linear";
+#endif
+
+    m_textureSamplersStorage.resize(COMMON_SMP_COUNT);
+
+    for (uint32_t samplerIdx = 0; samplerIdx < COMMON_SMP_COUNT; ++samplerIdx) {
+        ENG_MAYBE_UNUSED bool samplerIniitalized = m_textureSamplersStorage[samplerIdx].Init(samplerStateCreateInfos[samplerIdx], samplerDbgNames[samplerIdx]);
+        ENG_ASSERT_GRAPHICS_API(samplerIniitalized, "Sampler \'{}\' initialization failed", samplerDbgNames[samplerIdx].CStr());
+    }
+}
+
+
+void TextureManager::DestroySamplers() noexcept
+{
+    for (uint32_t samplerIdx = 0; samplerIdx < COMMON_SMP_COUNT; ++samplerIdx) {
+        m_textureSamplersStorage[samplerIdx].Destroy();
     }
 }
 

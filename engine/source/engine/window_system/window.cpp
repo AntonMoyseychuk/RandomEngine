@@ -40,7 +40,7 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
     glfwSetWindowUserPointer(m_pWindow, this);
 
     glfwMakeContextCurrent(m_pWindow);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     m_input.BindWindow(this);
     ENG_ASSERT_WINDOW(m_input.IsInitialized(), "Input system initialization failed");
