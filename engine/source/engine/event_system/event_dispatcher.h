@@ -48,19 +48,18 @@ public:
     static EventListener Create(const CallbackType& callback) noexcept { return EventListener(Event<T>::GetTypeID(), callback); }
 
 public:
-    void Excecute(const void* pEvent) const noexcept { m_callback(pEvent); }
-
     std::type_index GetTypeID() const noexcept { return m_typeID; }
 
 private:
     EventListener(std::type_index typeID, const CallbackType& callback)
         : m_callback(callback), m_typeID(typeID) {}
 
+    void Excecute(const void* pEvent) const noexcept { m_callback(pEvent); }
+
 private:
     CallbackType m_callback;
     std::type_index m_typeID;
 };
-
 
 
 class EventDispatcher
@@ -69,10 +68,14 @@ public:
     static EventDispatcher& GetInstance();
 
 public:
-    template<typename T>
+    EventDispatcher(const EventDispatcher& dispatcher) = delete;
+    EventDispatcher& operator=(const EventDispatcher& dispatcher) = delete;
+    EventDispatcher(EventDispatcher&& dispatcher) noexcept = delete;
+    EventDispatcher& operator=(EventDispatcher&& dispatcher) noexcept = delete;
+
     void Subscribe(const EventListener& listener) noexcept;
 
-    template<typename EventT, typename... Args>
+    template<typename EventType, typename... Args>
     void Notify(Args&&... args) noexcept;
 
 private:

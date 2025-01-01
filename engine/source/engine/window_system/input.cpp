@@ -301,49 +301,49 @@ bool Input::BindWindow(Window* pWindow) noexcept
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
-    dispatcher.Subscribe<EventKeyPressed>(
+    dispatcher.Subscribe(
         EventListener::Create<EventKeyPressed>([this](const void* pEvent) 
         {
             OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyPressed>(pEvent).GetKey()), KeyState::STATE_PRESSED);
         }
     ));
 
-    dispatcher.Subscribe<EventKeyReleased>(
+    dispatcher.Subscribe(
         EventListener::Create<EventKeyReleased>([this](const void* pEvent)
         {
             OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyReleased>(pEvent).GetKey()), KeyState::STATE_RELEASED);
         }
     ));
 
-    dispatcher.Subscribe<EventKeyHold>(
+    dispatcher.Subscribe(
         EventListener::Create<EventKeyHold>([this](const void* pEvent) 
         {
             OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyHold>(pEvent).GetKey()), KeyState::STATE_HOLD);
         }
     ));
 
-    dispatcher.Subscribe<EventMousePressed>(
+    dispatcher.Subscribe(
         EventListener::Create<EventMousePressed>([this](const void* pEvent)
         {
             OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMousePressed>(pEvent).GetButton()), MouseButtonState::STATE_PRESSED);
         }
     ));
 
-    dispatcher.Subscribe<EventMouseReleased>(
+    dispatcher.Subscribe(
         EventListener::Create<EventMouseReleased>([this](const void* pEvent)
         {
             OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseReleased>(pEvent).GetButton()), MouseButtonState::STATE_RELEASED);
         }
     ));
 
-    dispatcher.Subscribe<EventMouseHold>(
+    dispatcher.Subscribe(
         EventListener::Create<EventMouseHold>([this](const void* pEvent)
         {
             OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseHold>(pEvent).GetButton()), MouseButtonState::STATE_HOLD);
         }
     ));
 
-    dispatcher.Subscribe<EventCursorMoved>(
+    dispatcher.Subscribe(
         EventListener::Create<EventCursorMoved>([this](const void* pEvent)
         {
             const EventCursorMoved& event = CastEventTo<EventCursorMoved>(pEvent);
@@ -351,19 +351,19 @@ bool Input::BindWindow(Window* pWindow) noexcept
         }
     ));
 
-    dispatcher.Subscribe<EventCursorMoved>(
+    dispatcher.Subscribe(
         EventListener::Create<EventCursorMoved>([this](const void* pEvent) {
 
         }
     ));
 
-    dispatcher.Subscribe<EventCursorEntered>(
+    dispatcher.Subscribe(
         EventListener::Create<EventCursorEntered>([this](const void* pEvent) {
         
         }
     ));
 
-    dispatcher.Subscribe<EventMouseWheel>(
+    dispatcher.Subscribe(
         EventListener::Create<EventMouseWheel>([this](const void* pEvent) {
         
         }

@@ -115,13 +115,13 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
     
-    dispatcher.Subscribe<EventWindowClosed>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowClosed>([this](const void* pEvent) {
             m_state.set(STATE_CLOSED);
         }
     ));
 
-    dispatcher.Subscribe<EventWindowResized>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowResized>([this](const void* pEvent) {
             const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
             
@@ -130,40 +130,40 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
         }
     ));
 
-    dispatcher.Subscribe<EventWindowFocused>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowFocused>([this](const void* pEvent) {
             m_state.set(STATE_FOCUSED);
         }
     ));
 
-    dispatcher.Subscribe<EventWindowUnfocused>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowUnfocused>([this](const void* pEvent) {
             m_state.reset(STATE_FOCUSED);
         }
     ));
 
-    dispatcher.Subscribe<EventWindowMaximized>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowMaximized>([this](const void* pEvent) {
             m_state.set(STATE_MAXIMIZED);
             m_state.reset(STATE_MINIMIZED);
         }
     ));
 
-    dispatcher.Subscribe<EventWindowMinimized>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowMinimized>([this](const void* pEvent) {
             m_state.set(STATE_MINIMIZED);
             m_state.reset(STATE_MAXIMIZED);
         }
     ));
 
-    dispatcher.Subscribe<EventWindowSizeRestored>(
+    dispatcher.Subscribe(
         EventListener::Create<EventWindowSizeRestored>([this](const void* pEvent) {
             m_state.reset(STATE_MAXIMIZED);
             m_state.reset(STATE_MINIMIZED);
         }
     ));
 
-    dispatcher.Subscribe<EventFramebufferResized>(
+    dispatcher.Subscribe(
         EventListener::Create<EventFramebufferResized>([this](const void* pEvent) {
             const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
             
