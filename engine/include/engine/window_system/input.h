@@ -171,10 +171,6 @@ class Input
 {
     friend class Window;
 
-    friend void OnKeyCallback(void* pWindow, int key, int scancode, int action, int mods) noexcept;
-    friend void OnMouseButtonCallback(void* pWindow, int button, int action, int mods) noexcept;
-    friend void OnMouseMoveCallback(void* pWindow, double xpos, double ypos) noexcept;
-
 public:
     Input(Window* pWindow);
 

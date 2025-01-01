@@ -3,6 +3,8 @@
 #include "engine/window_system/input.h"
 #include "engine/window_system/window.h"
 
+#include "engine/event_system/event_dispatcher.h"
+
 #include "utils/debug/assertion.h"
 
 #include <GLFW/glfw3.h>
@@ -154,88 +156,6 @@ static MouseButton GLFWButtonToCustomMouseButton(int32_t glfwButton) noexcept
 }
 
 
-static KeyState GLFWKeyStateToCustomKeyState(int32_t glfwState) noexcept
-{
-    switch (glfwState) {
-        case GLFW_PRESS: return KeyState::STATE_PRESSED;
-        case GLFW_RELEASE: return KeyState::STATE_RELEASED;
-        case GLFW_REPEAT: return KeyState::STATE_HOLD;
-    
-        default:
-            ENG_ASSERT_WINDOW_FAIL("Invalid GLFW key state: {}", glfwState);
-            return KeyState::STATE_COUNT;
-    }
-}
-
-
-static MouseButtonState GLFWButtonStateToCustomMouseButtonState(int32_t glfwState) noexcept
-{
-    switch (glfwState) {
-        case GLFW_PRESS: return MouseButtonState::STATE_PRESSED;
-        case GLFW_RELEASE: return MouseButtonState::STATE_RELEASED;
-        case GLFW_REPEAT: return MouseButtonState::STATE_HOLD;
-    
-        default:
-            ENG_ASSERT_WINDOW_FAIL("Invalid GLFW mouse button state: {}", glfwState);
-            return MouseButtonState::STATE_COUNT;
-    }
-}
-
-
-void OnKeyCallback(void* pWindow, int key, ENG_MAYBE_UNUSED int scancode, int action, ENG_MAYBE_UNUSED int mods) noexcept
-{
-    Window* pBoundWindow = static_cast<Window*>(glfwGetWindowUserPointer((GLFWwindow*)pWindow));
-
-    ENG_ASSERT_WINDOW(pBoundWindow, "There is no any bounded windows to input");
-
-    const KeyboardKey keyboardKey = GLFWKeyToCustomKey(key);
-    const KeyState keyState = GLFWKeyStateToCustomKeyState(action);
-    
-    pBoundWindow->GetInput().OnKeyEvent(keyboardKey, keyState);
-}
-
-
-static void OnKeyCallbackWrapper(GLFWwindow* pWindow, int key, int scancode, int action, int mods) noexcept
-{
-    OnKeyCallback(pWindow, key, scancode, action, mods);
-}
-
-
-void OnMouseButtonCallback(void* pWindow, int button, int action, ENG_MAYBE_UNUSED int mods) noexcept
-{
-    Window* pBoundWindow = static_cast<Window*>(glfwGetWindowUserPointer((GLFWwindow*)pWindow));
-
-    ENG_ASSERT_WINDOW(pBoundWindow, "There is no any bounded windows to input");
-
-    const MouseButton mouseButton = GLFWButtonToCustomMouseButton(button);
-    const MouseButtonState buttonState = GLFWButtonStateToCustomMouseButtonState(action);
-    
-    pBoundWindow->GetInput().OnMouseButtonEvent(mouseButton, buttonState);
-}
-
-
-static void OnMouseButtonCallbackWrapper(GLFWwindow* pWindow, int button, int action, int mods) noexcept
-{
-    OnMouseButtonCallback(pWindow, button, action, mods);
-}
-
-
-void OnMouseMoveCallback(void* pWindow, double xpos, double ypos) noexcept
-{
-    Window* pBoundWindow = static_cast<Window*>(glfwGetWindowUserPointer((GLFWwindow*)pWindow));
-
-    ENG_ASSERT_WINDOW(pBoundWindow, "There is no any bounded windows to input");
-    
-    pBoundWindow->GetInput().OnMouseMoveEvent(xpos, ypos);
-}
-
-
-static void OnMouseMoveCallbackWrapper(GLFWwindow* pWindow, double xpos, double ypos) noexcept
-{
-    OnMouseMoveCallback(pWindow, xpos, ypos);
-}
-
-
 Input::Input(Window* pWindow)
 {
     const bool isWindowBinded = BindWindow(pWindow);
@@ -274,10 +194,114 @@ bool Input::BindWindow(Window* pWindow) noexcept
 
     m_pBoundWindow = pWindow;
 
-    glfwSetKeyCallback(m_pBoundWindow->m_pWindow, OnKeyCallbackWrapper);
-    glfwSetMouseButtonCallback(m_pBoundWindow->m_pWindow, OnMouseButtonCallbackWrapper);
-    glfwSetCursorPosCallback(m_pBoundWindow->m_pWindow, OnMouseMoveCallbackWrapper);
-    // glfwSetScrollCallback(m_pWindow, nullptr);
+    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    
+    static KeyPressedListener keyPressedListener = [this](const EventKeyPressed& event) {
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_PRESSED);
+    };
+    dispatcher.Subscribe(keyPressedListener);
+
+    static KeyReleasedListener keyReleasedListener = [this](const EventKeyReleased& event) {
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_RELEASED);
+    };
+    dispatcher.Subscribe(keyReleasedListener);
+
+    static KeyHoldListener keyHoldListener = [this](const EventKeyHold& event) {
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_HOLD);
+    };
+    dispatcher.Subscribe(keyHoldListener);
+
+    static MousePressedListener mousePressedListener = [this](const EventMousePressed& event) {
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_PRESSED);
+    };
+    dispatcher.Subscribe(mousePressedListener);
+
+    static MouseReleasedListener mouseReleasedListener = [this](const EventMouseReleased& event) {
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_RELEASED);
+    };
+    dispatcher.Subscribe(mouseReleasedListener);
+
+    static MouseHoldListener mouseHoldListener = [this](const EventMouseHold& event) {
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_HOLD);
+    };
+    dispatcher.Subscribe(mouseHoldListener);
+
+    static CursorMovedListener cursorMovedEvent = [this](const EventCursorMoved& event) {
+        OnMouseMoveEvent(event.GetX(), event.GetY());
+    };
+    dispatcher.Subscribe(cursorMovedEvent);
+
+    static CursorLeavedListener cursorLeavedEvent = [this](const EventCursorLeaved& event) {
+        
+    };
+    dispatcher.Subscribe(cursorLeavedEvent);
+
+    static CursorEnteredListener cursorEnteredEvent = [this](const EventCursorEntered& event) {
+        
+    };
+    dispatcher.Subscribe(cursorEnteredEvent);
+
+    static MouseWheelListener wheelListener = [this](const EventMouseWheel& event) {
+        
+    };
+    dispatcher.Subscribe(wheelListener);
+
+    glfwSetKeyCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        
+        switch (action) {
+            case GLFW_PRESS:
+                dispatcher.PushEvent(EventKeyPressed(key, scancode));
+                break;
+            case GLFW_RELEASE:
+                dispatcher.PushEvent(EventKeyReleased(key, scancode));
+                break;
+            case GLFW_REPEAT:
+                dispatcher.PushEvent(EventKeyHold(key, scancode));
+                break;
+            default:
+                break;
+        }
+    });
+
+    glfwSetCursorPosCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xpos, double ypos){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.PushEvent(EventCursorMoved(xpos, ypos));
+    });
+
+    glfwSetCursorEnterCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t entered){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+
+        if (entered) {
+            dispatcher.PushEvent(EventCursorEntered{});
+        } else {
+            dispatcher.PushEvent(EventCursorLeaved{});
+        }
+    });
+    
+    
+    glfwSetMouseButtonCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        
+        switch (action) {
+            case GLFW_PRESS:
+                dispatcher.PushEvent(EventMousePressed(button));
+                break;
+            case GLFW_RELEASE:
+                dispatcher.PushEvent(EventMouseReleased(button));
+                break;
+            case GLFW_REPEAT:
+                dispatcher.PushEvent(EventMouseHold(button));
+                break;
+            default:
+                break;
+        }
+    });
+
+    glfwSetScrollCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xoffset, double yoffset){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.PushEvent(EventMouseWheel(xoffset, yoffset));
+    });
 
     return true;
 }
@@ -286,24 +310,12 @@ bool Input::BindWindow(Window* pWindow) noexcept
 void Input::OnKeyEvent(KeyboardKey key, KeyState state) noexcept
 {
     m_keyStates[static_cast<size_t>(key)] = state;
-    
-    // if (m_keyEvents.size() >= MAX_STORED_EVENTS_COUNT - 1) {
-    //     m_keyEvents.pop_front();
-    // }
-
-    // m_keyEvents.emplace_back(KeyEvent{key, state});
 }
 
 
 void Input::OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept
 {
     m_mouseButtonStates[static_cast<size_t>(button)] = state;
-
-    // if (m_mouseButtonEvents.size() >= MAX_STORED_EVENTS_COUNT - 1) {
-    //     m_mouseButtonEvents.pop_front();
-    // }
-
-    // m_mouseButtonEvents.emplace_back(MouseButtonEvent{button, state});
 }
 
 

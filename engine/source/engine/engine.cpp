@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "engine/engine.h"
+#include "engine/event_system/event_dispatcher.h"
 
 #include "engine/render/render_system/render_system.h"
 
@@ -64,7 +65,8 @@ void Engine::Update() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
     
-    m_pWindow->ProcessEvents();
+    m_pWindow->PollEvents();
+    EventDispatcher::GetInstance().ProcessEvents();
 }
 
 

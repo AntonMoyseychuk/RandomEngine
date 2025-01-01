@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "engine/window_system/window.h"
 
+#include "engine/event_system/event_dispatcher.h"
+
 #include "utils/debug/assertion.h"
 
 #include <GLFW/glfw3.h>
@@ -24,6 +26,54 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
         return;
     }
 
+    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    
+    static WindowClosedListener windowClosedListener = [this](const EventWindowClosed& event) {
+        m_state.set(STATE_CLOSED);
+    };
+    dispatcher.Subscribe(windowClosedListener);
+
+    static WindowResizedListener windowResizedListener = [this](const EventWindowResized& event) {
+        m_windowWidth = event.GetWidth();
+        m_windowHeight = event.GetHeight();
+    };
+    dispatcher.Subscribe(windowResizedListener);
+
+    static WindowFocusedListener windowFocusedListener = [this](const EventWindowFocused& event) {
+        m_state.set(STATE_FOCUSED);
+    };
+    dispatcher.Subscribe(windowFocusedListener);
+
+    static WindowUnfocusedListener windowUnfocusedListener = [this](const EventWindowUnfocused& event) {
+        m_state.reset(STATE_FOCUSED);
+    };
+    dispatcher.Subscribe(windowUnfocusedListener);
+
+    static WindowMaximizedListener windowMaximizedListener = [this](const EventWindowMaximized& event) {
+        m_state.set(STATE_MAXIMIZED);
+        m_state.reset(STATE_MINIMIZED);
+    };
+    dispatcher.Subscribe(windowMaximizedListener);
+
+    static WindowMinimizedListener windowMinimizedListener = [this](const EventWindowMinimized& event) {
+        m_state.set(STATE_MINIMIZED);
+        m_state.reset(STATE_MAXIMIZED);
+    };
+    dispatcher.Subscribe(windowMinimizedListener);
+
+    static WindowSizeResoredListener windowSizeRestoredListener = [this](const EventWindowSizeRestored& event) {
+        m_state.reset(STATE_MAXIMIZED);
+        m_state.reset(STATE_MINIMIZED);
+    };
+    dispatcher.Subscribe(windowSizeRestoredListener);
+
+    static FramebufferResizedListener framebufferResizedListener = [this](const EventFramebufferResized& event) {
+        m_framebufferWidth = event.GetWidth();
+        m_framebufferHeight = event.GetHeight();
+    };
+    dispatcher.Subscribe(framebufferResizedListener);
+
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -37,15 +87,65 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
     m_pWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
     ENG_ASSERT_WINDOW(m_pWindow, "Window creation failed");
 
+    m_windowWidth = width;
+    m_windowHeight = height;
+
+    int32_t framebufferWidth, framebufferHeight;
+    glfwGetFramebufferSize(m_pWindow, &framebufferWidth, &framebufferHeight);
+    m_framebufferWidth = framebufferWidth;
+    m_framebufferHeight = framebufferHeight;
+
     glfwSetWindowUserPointer(m_pWindow, this);
 
     glfwMakeContextCurrent(m_pWindow);
     glfwSwapInterval(0);
 
+    glfwSetWindowCloseCallback(m_pWindow, [](GLFWwindow* pWindow){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.PushEvent(EventWindowClosed{});
+    });
+
+    glfwSetWindowIconifyCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t iconified){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (iconified) {
+            dispatcher.PushEvent(EventWindowMinimized{});
+        } else {
+            dispatcher.PushEvent(EventWindowSizeRestored{});
+        }
+    });
+
+    glfwSetWindowMaximizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t maximized){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (maximized) {
+            dispatcher.PushEvent(EventWindowMaximized{});
+        } else {
+            dispatcher.PushEvent(EventWindowSizeRestored{});
+        }
+    });
+
+    glfwSetWindowFocusCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t focused){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (focused) {
+            dispatcher.PushEvent(EventWindowFocused{});
+        } else {
+            dispatcher.PushEvent(EventWindowUnfocused{});
+        }
+    });
+
+    glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.PushEvent(EventWindowResized(width, height));
+    });
+
+    glfwSetFramebufferSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.PushEvent(EventFramebufferResized(width, height));
+    });
+
     m_input.BindWindow(this);
     ENG_ASSERT_WINDOW(m_input.IsInitialized(), "Input system initialization failed");
 
-    // glfwSetFramebufferSizeCallback(m_pWindow, nullptr);
+    m_state.reset(STATE_CLOSED);
 }
 
 
@@ -55,7 +155,7 @@ Window::~Window()
 }
 
 
-void Window::ProcessEvents() noexcept
+void Window::PollEvents() noexcept
 {
     ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
     glfwPollEvents();
@@ -83,35 +183,6 @@ void Window::HideWindow() noexcept
 }
 
 
-void Window::Close() noexcept
-{
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
-    glfwSetWindowShouldClose(m_pWindow, GLFW_TRUE);
-}
-
-
-uint32_t Window::GetWidth() const noexcept
-{
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
-    
-    int32_t width = 0;
-    glfwGetFramebufferSize(m_pWindow, &width, nullptr);
-
-    return width;
-}
-
-
-uint32_t Window::GetHeight() const noexcept
-{
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
-
-    int32_t height = 0;
-    glfwGetFramebufferSize(m_pWindow, nullptr, &height);
-
-    return height;
-}
-
-
 const char* Window::GetTitle() const noexcept
 {
     ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
@@ -126,10 +197,10 @@ void Window::SetTitle(const char *title) noexcept
 }
 
 
-bool Window::IsClosed() const noexcept
+bool Window::IsVisible() const noexcept
 {
     ENG_CHECK_WINDOW_INIT_STATUS(m_pWindow);
-    return glfwWindowShouldClose(m_pWindow);
+    return glfwGetWindowAttrib(m_pWindow, GLFW_VISIBLE);
 }
 
 

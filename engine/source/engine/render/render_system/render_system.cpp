@@ -210,7 +210,7 @@ void RenderSystem::RunColorPass() noexcept
     const float elapsedTime = timer.GetElapsedTimeInSec();
     pProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);
     
-    glViewport(0, 0, window.GetWidth(), window.GetHeight());
+    glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
 
     const float deltaTime = timer.GetDeltaTimeInMillisec();
 
