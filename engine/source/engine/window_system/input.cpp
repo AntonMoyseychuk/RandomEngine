@@ -13,6 +13,111 @@
 #define ENG_CHECK_BINDED_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "[Input]: Binded window is nullptr")
 
 
+#define DECLARE_MOUSE_BUTTON_EVENT_BODY(EventName)          \
+public:                                                     \
+    EventName(int32_t button)                               \
+        : m_button(button) {}                               \
+                                                            \
+    int32_t GetButton() const noexcept { return m_button; } \
+                                                            \
+private:                                                    \
+    int32_t m_button;
+
+
+#define DECLARE_KEYBOARD_EVENT_BODY(EventName)                  \
+public:                                                         \
+    EventName(int32_t key, int32_t scancode)                    \
+        : m_key(key), m_scancode(scancode) {}                   \
+                                                                \
+    int32_t GetKey() const noexcept { return m_key; }           \
+    int32_t GetScancode() const noexcept { return m_scancode; } \
+                                                                \
+private:                                                        \
+    int32_t m_key;                                              \
+    int32_t m_scancode;
+
+
+
+class EventMousePressed
+{
+    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMousePressed)
+};
+
+
+class EventMouseReleased
+{
+    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMouseReleased)
+};
+
+
+class EventMouseHold
+{
+    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMouseHold)
+};
+
+
+class EventCursorLeaved
+{
+public:
+    EventCursorLeaved() = default;
+};
+
+
+class EventCursorEntered
+{
+public:
+    EventCursorEntered() = default;
+};
+
+
+class EventKeyPressed
+{
+    DECLARE_KEYBOARD_EVENT_BODY(EventKeyPressed)
+};
+
+
+class EventKeyReleased
+{
+    DECLARE_KEYBOARD_EVENT_BODY(EventKeyReleased)
+};
+
+
+class EventKeyHold
+{
+    DECLARE_KEYBOARD_EVENT_BODY(EventKeyHold)
+};
+
+
+class EventCursorMoved
+{
+public:
+    EventCursorMoved(float x, float y)
+        : m_xpos(x), m_ypos(y) {}
+
+    float GetX() const noexcept { return m_xpos; }
+    float GetY() const noexcept { return m_ypos; }
+
+private:
+    float m_xpos;
+    float m_ypos;
+};
+
+
+class EventMouseWheel
+{
+public:
+    EventMouseWheel(float xoffset, float yoffset)
+        : m_xoffset(xoffset), m_yoffset(yoffset) {}
+
+    float GetDX() const noexcept { return m_xoffset; }
+    float GetDY() const noexcept { return m_yoffset; }
+
+private:
+    float m_xoffset;
+    float m_yoffset;
+};
+
+
 static KeyboardKey GLFWKeyToCustomKey(int32_t glfwKey) noexcept
 {
     switch (glfwKey) {
@@ -195,69 +300,87 @@ bool Input::BindWindow(Window* pWindow) noexcept
     m_pBoundWindow = pWindow;
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    
-    static KeyPressedListener keyPressedListener = [this](const EventKeyPressed& event) {
-        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_PRESSED);
-    };
-    dispatcher.Subscribe(keyPressedListener);
 
-    static KeyReleasedListener keyReleasedListener = [this](const EventKeyReleased& event) {
-        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_RELEASED);
-    };
-    dispatcher.Subscribe(keyReleasedListener);
+    dispatcher.Subscribe<EventKeyPressed>(
+        EventListener::Create<EventKeyPressed>([this](const void* pEvent) 
+        {
+            OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyPressed>(pEvent).GetKey()), KeyState::STATE_PRESSED);
+        }
+    ));
 
-    static KeyHoldListener keyHoldListener = [this](const EventKeyHold& event) {
-        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_HOLD);
-    };
-    dispatcher.Subscribe(keyHoldListener);
+    dispatcher.Subscribe<EventKeyReleased>(
+        EventListener::Create<EventKeyReleased>([this](const void* pEvent)
+        {
+            OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyReleased>(pEvent).GetKey()), KeyState::STATE_RELEASED);
+        }
+    ));
 
-    static MousePressedListener mousePressedListener = [this](const EventMousePressed& event) {
-        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_PRESSED);
-    };
-    dispatcher.Subscribe(mousePressedListener);
+    dispatcher.Subscribe<EventKeyHold>(
+        EventListener::Create<EventKeyHold>([this](const void* pEvent) 
+        {
+            OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyHold>(pEvent).GetKey()), KeyState::STATE_HOLD);
+        }
+    ));
 
-    static MouseReleasedListener mouseReleasedListener = [this](const EventMouseReleased& event) {
-        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_RELEASED);
-    };
-    dispatcher.Subscribe(mouseReleasedListener);
+    dispatcher.Subscribe<EventMousePressed>(
+        EventListener::Create<EventMousePressed>([this](const void* pEvent)
+        {
+            OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMousePressed>(pEvent).GetButton()), MouseButtonState::STATE_PRESSED);
+        }
+    ));
 
-    static MouseHoldListener mouseHoldListener = [this](const EventMouseHold& event) {
-        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_HOLD);
-    };
-    dispatcher.Subscribe(mouseHoldListener);
+    dispatcher.Subscribe<EventMouseReleased>(
+        EventListener::Create<EventMouseReleased>([this](const void* pEvent)
+        {
+            OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseReleased>(pEvent).GetButton()), MouseButtonState::STATE_RELEASED);
+        }
+    ));
 
-    static CursorMovedListener cursorMovedEvent = [this](const EventCursorMoved& event) {
-        OnMouseMoveEvent(event.GetX(), event.GetY());
-    };
-    dispatcher.Subscribe(cursorMovedEvent);
+    dispatcher.Subscribe<EventMouseHold>(
+        EventListener::Create<EventMouseHold>([this](const void* pEvent)
+        {
+            OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseHold>(pEvent).GetButton()), MouseButtonState::STATE_HOLD);
+        }
+    ));
 
-    static CursorLeavedListener cursorLeavedEvent = [this](const EventCursorLeaved& event) {
+    dispatcher.Subscribe<EventCursorMoved>(
+        EventListener::Create<EventCursorMoved>([this](const void* pEvent)
+        {
+            const EventCursorMoved& event = CastEventTo<EventCursorMoved>(pEvent);
+            OnMouseMoveEvent(event.GetX(), event.GetY());
+        }
+    ));
+
+    dispatcher.Subscribe<EventCursorMoved>(
+        EventListener::Create<EventCursorMoved>([this](const void* pEvent) {
+
+        }
+    ));
+
+    dispatcher.Subscribe<EventCursorEntered>(
+        EventListener::Create<EventCursorEntered>([this](const void* pEvent) {
         
-    };
-    dispatcher.Subscribe(cursorLeavedEvent);
+        }
+    ));
 
-    static CursorEnteredListener cursorEnteredEvent = [this](const EventCursorEntered& event) {
+    dispatcher.Subscribe<EventMouseWheel>(
+        EventListener::Create<EventMouseWheel>([this](const void* pEvent) {
         
-    };
-    dispatcher.Subscribe(cursorEnteredEvent);
-
-    static MouseWheelListener wheelListener = [this](const EventMouseWheel& event) {
-        
-    };
-    dispatcher.Subscribe(wheelListener);
+        }
+    ));
 
     glfwSetKeyCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         
         switch (action) {
             case GLFW_PRESS:
-                dispatcher.PushEvent(EventKeyPressed(key, scancode));
+                dispatcher.Notify<EventKeyPressed>(key, scancode);
                 break;
             case GLFW_RELEASE:
-                dispatcher.PushEvent(EventKeyReleased(key, scancode));
+                dispatcher.Notify<EventKeyReleased>(key, scancode);
                 break;
             case GLFW_REPEAT:
-                dispatcher.PushEvent(EventKeyHold(key, scancode));
+                dispatcher.Notify<EventKeyHold>(key, scancode);
                 break;
             default:
                 break;
@@ -266,16 +389,16 @@ bool Input::BindWindow(Window* pWindow) noexcept
 
     glfwSetCursorPosCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xpos, double ypos){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-        dispatcher.PushEvent(EventCursorMoved(xpos, ypos));
+        dispatcher.Notify<EventCursorMoved>((float)xpos, (float)ypos);
     });
 
     glfwSetCursorEnterCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t entered){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
         if (entered) {
-            dispatcher.PushEvent(EventCursorEntered{});
+            dispatcher.Notify<EventCursorEntered>();
         } else {
-            dispatcher.PushEvent(EventCursorLeaved{});
+            dispatcher.Notify<EventCursorLeaved>();
         }
     });
     
@@ -285,13 +408,13 @@ bool Input::BindWindow(Window* pWindow) noexcept
         
         switch (action) {
             case GLFW_PRESS:
-                dispatcher.PushEvent(EventMousePressed(button));
+                dispatcher.Notify<EventMousePressed>(button);
                 break;
             case GLFW_RELEASE:
-                dispatcher.PushEvent(EventMouseReleased(button));
+                dispatcher.Notify<EventMouseReleased>(button);
                 break;
             case GLFW_REPEAT:
-                dispatcher.PushEvent(EventMouseHold(button));
+                dispatcher.Notify<EventMouseHold>(button);
                 break;
             default:
                 break;
@@ -300,7 +423,7 @@ bool Input::BindWindow(Window* pWindow) noexcept
 
     glfwSetScrollCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xoffset, double yoffset){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-        dispatcher.PushEvent(EventMouseWheel(xoffset, yoffset));
+        dispatcher.Notify<EventMouseWheel>((float)xoffset, (float)yoffset);
     });
 
     return true;

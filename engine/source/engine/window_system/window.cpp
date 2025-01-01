@@ -11,6 +11,93 @@
 #define ENG_CHECK_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "Window is not initialized")
 
 
+class EventWindowResized
+{
+public:
+    EventWindowResized(int32_t width, int32_t height)
+        : m_width(width), m_height(height) {}
+
+    int32_t GetWidth() const noexcept { return m_width; }
+    int32_t GetHeight() const noexcept { return m_height; }
+
+private:
+    int32_t m_width;
+    int32_t m_height;
+};
+
+
+class EventWindowMinimized
+{
+public:
+    EventWindowMinimized() = default;
+};
+
+
+class EventWindowMaximized
+{
+public:
+    EventWindowMaximized() = default;
+};
+
+
+class EventWindowSizeRestored
+{
+public:
+    EventWindowSizeRestored() = default;
+};
+
+
+class EventWindowClosed
+{
+public:
+    EventWindowClosed() = default;
+};
+
+
+class EventWindowFocused
+{
+public:
+    EventWindowFocused() = default;
+};
+
+
+class EventWindowUnfocused
+{
+public:
+    EventWindowUnfocused() = default;
+};
+
+
+class EventWindowPositionChanged
+{
+public:
+    EventWindowPositionChanged(int32_t x, int32_t y)
+        : m_xpos(x), m_ypos(y) {}
+
+    int32_t GetX() const noexcept { return m_xpos; }
+    int32_t GetY() const noexcept { return m_ypos; }
+
+private:
+    int32_t m_xpos;
+    int32_t m_ypos;
+};
+
+
+class EventFramebufferResized
+{
+public:
+    EventFramebufferResized(int32_t width, int32_t height)
+        : m_width(width), m_height(height) {}
+
+    int32_t GetWidth() const noexcept { return m_width; }
+    int32_t GetHeight() const noexcept { return m_height; }
+
+private:
+    int32_t m_width;
+    int32_t m_height;
+};
+
+
 static bool g_isWindowSystemInitialized = false;
 
 
@@ -28,50 +115,62 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
     
-    static WindowClosedListener windowClosedListener = [this](const EventWindowClosed& event) {
-        m_state.set(STATE_CLOSED);
-    };
-    dispatcher.Subscribe(windowClosedListener);
+    dispatcher.Subscribe<EventWindowClosed>(
+        EventListener::Create<EventWindowClosed>([this](const void* pEvent) {
+            m_state.set(STATE_CLOSED);
+        }
+    ));
 
-    static WindowResizedListener windowResizedListener = [this](const EventWindowResized& event) {
-        m_windowWidth = event.GetWidth();
-        m_windowHeight = event.GetHeight();
-    };
-    dispatcher.Subscribe(windowResizedListener);
+    dispatcher.Subscribe<EventWindowResized>(
+        EventListener::Create<EventWindowResized>([this](const void* pEvent) {
+            const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
+            
+            m_windowWidth = event.GetWidth();
+            m_windowHeight = event.GetHeight();
+        }
+    ));
 
-    static WindowFocusedListener windowFocusedListener = [this](const EventWindowFocused& event) {
-        m_state.set(STATE_FOCUSED);
-    };
-    dispatcher.Subscribe(windowFocusedListener);
+    dispatcher.Subscribe<EventWindowFocused>(
+        EventListener::Create<EventWindowFocused>([this](const void* pEvent) {
+            m_state.set(STATE_FOCUSED);
+        }
+    ));
 
-    static WindowUnfocusedListener windowUnfocusedListener = [this](const EventWindowUnfocused& event) {
-        m_state.reset(STATE_FOCUSED);
-    };
-    dispatcher.Subscribe(windowUnfocusedListener);
+    dispatcher.Subscribe<EventWindowUnfocused>(
+        EventListener::Create<EventWindowUnfocused>([this](const void* pEvent) {
+            m_state.reset(STATE_FOCUSED);
+        }
+    ));
 
-    static WindowMaximizedListener windowMaximizedListener = [this](const EventWindowMaximized& event) {
-        m_state.set(STATE_MAXIMIZED);
-        m_state.reset(STATE_MINIMIZED);
-    };
-    dispatcher.Subscribe(windowMaximizedListener);
+    dispatcher.Subscribe<EventWindowMaximized>(
+        EventListener::Create<EventWindowMaximized>([this](const void* pEvent) {
+            m_state.set(STATE_MAXIMIZED);
+            m_state.reset(STATE_MINIMIZED);
+        }
+    ));
 
-    static WindowMinimizedListener windowMinimizedListener = [this](const EventWindowMinimized& event) {
-        m_state.set(STATE_MINIMIZED);
-        m_state.reset(STATE_MAXIMIZED);
-    };
-    dispatcher.Subscribe(windowMinimizedListener);
+    dispatcher.Subscribe<EventWindowMinimized>(
+        EventListener::Create<EventWindowMinimized>([this](const void* pEvent) {
+            m_state.set(STATE_MINIMIZED);
+            m_state.reset(STATE_MAXIMIZED);
+        }
+    ));
 
-    static WindowSizeResoredListener windowSizeRestoredListener = [this](const EventWindowSizeRestored& event) {
-        m_state.reset(STATE_MAXIMIZED);
-        m_state.reset(STATE_MINIMIZED);
-    };
-    dispatcher.Subscribe(windowSizeRestoredListener);
+    dispatcher.Subscribe<EventWindowSizeRestored>(
+        EventListener::Create<EventWindowSizeRestored>([this](const void* pEvent) {
+            m_state.reset(STATE_MAXIMIZED);
+            m_state.reset(STATE_MINIMIZED);
+        }
+    ));
 
-    static FramebufferResizedListener framebufferResizedListener = [this](const EventFramebufferResized& event) {
-        m_framebufferWidth = event.GetWidth();
-        m_framebufferHeight = event.GetHeight();
-    };
-    dispatcher.Subscribe(framebufferResizedListener);
+    dispatcher.Subscribe<EventFramebufferResized>(
+        EventListener::Create<EventFramebufferResized>([this](const void* pEvent) {
+            const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+            
+            m_framebufferWidth = event.GetWidth();
+            m_framebufferHeight = event.GetHeight();
+        }
+    ));
 
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -102,44 +201,44 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
 
     glfwSetWindowCloseCallback(m_pWindow, [](GLFWwindow* pWindow){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-        dispatcher.PushEvent(EventWindowClosed{});
+        dispatcher.Notify<EventWindowClosed>();
     });
 
     glfwSetWindowIconifyCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t iconified){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         if (iconified) {
-            dispatcher.PushEvent(EventWindowMinimized{});
+            dispatcher.Notify<EventWindowMinimized>();
         } else {
-            dispatcher.PushEvent(EventWindowSizeRestored{});
+            dispatcher.Notify<EventWindowSizeRestored>();
         }
     });
 
     glfwSetWindowMaximizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t maximized){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         if (maximized) {
-            dispatcher.PushEvent(EventWindowMaximized{});
+            dispatcher.Notify<EventWindowMaximized>();
         } else {
-            dispatcher.PushEvent(EventWindowSizeRestored{});
+            dispatcher.Notify<EventWindowSizeRestored>();
         }
     });
 
     glfwSetWindowFocusCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t focused){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         if (focused) {
-            dispatcher.PushEvent(EventWindowFocused{});
+            dispatcher.Notify<EventWindowFocused>();
         } else {
-            dispatcher.PushEvent(EventWindowUnfocused{});
+            dispatcher.Notify<EventWindowUnfocused>();
         }
     });
 
     glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-        dispatcher.PushEvent(EventWindowResized(width, height));
+        dispatcher.Notify<EventWindowResized>(width, height);
     });
 
     glfwSetFramebufferSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-        dispatcher.PushEvent(EventFramebufferResized(width, height));
+        dispatcher.Notify<EventFramebufferResized>(width, height);
     });
 
     m_input.BindWindow(this);

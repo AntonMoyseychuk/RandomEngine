@@ -66,7 +66,6 @@ void Engine::Update() noexcept
     ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
     
     m_pWindow->PollEvents();
-    EventDispatcher::GetInstance().ProcessEvents();
 }
 
 
