@@ -352,7 +352,7 @@ bool Input::BindWindow(Window* pWindow) noexcept
     ));
 
     dispatcher.Subscribe(
-        EventListener::Create<EventCursorMoved>([this](const void* pEvent) {
+        EventListener::Create<EventCursorLeaved>([this](const void* pEvent) {
 
         }
     ));

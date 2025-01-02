@@ -160,7 +160,8 @@ enum class MouseButtonState : uint8_t
 
 struct CursorPositon
 {
-    float x = 0.0f, y = 0.0f;
+    float x = 0.0f;
+    float y = 0.0f;
 };
 
 

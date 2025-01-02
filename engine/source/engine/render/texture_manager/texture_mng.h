@@ -8,16 +8,6 @@
 #include <vector>
 
 
-struct TextureSamplerStateCreateInfo
-{
-    uint32_t wrapModeS = 0;
-    uint32_t wrapModeT = 0;
-    uint32_t wrapModeR = 0;
-    uint32_t minFiltering = 0;
-    uint32_t magFiltering = 0;
-};
-
-
 class TextureSamplerState
 {
     friend class TextureManager;
@@ -40,7 +30,7 @@ public:
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
-    bool Init(const TextureSamplerStateCreateInfo& createInfo, ds::StrID dbgName = "") noexcept;
+    bool Init(const void* pCreateInfo, ds::StrID dbgName = "") noexcept;
     void Destroy() noexcept;
 
 private:

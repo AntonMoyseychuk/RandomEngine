@@ -9,6 +9,16 @@
 #include "engine/auto/auto_registers_common.h"
 
 
+struct TextureSamplerStateCreateInfo
+{
+    uint32_t wrapModeS = 0;
+    uint32_t wrapModeT = 0;
+    uint32_t wrapModeR = 0;
+    uint32_t minFiltering = 0;
+    uint32_t magFiltering = 0;
+};
+
+
 static std::unique_ptr<TextureManager> g_pTextureMng = nullptr;
 
 
@@ -40,8 +50,10 @@ void TextureSamplerState::Bind(uint32_t unit) noexcept
 }
 
 
-bool TextureSamplerState::Init(const TextureSamplerStateCreateInfo &createInfo, ds::StrID dbgName) noexcept
+bool TextureSamplerState::Init(const void* pCreateInfo, ds::StrID dbgName) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(pCreateInfo != nullptr, "pCreateInfo is nullptr");
+
     if (IsValid()) {
         ENG_LOG_GRAPHICS_API_WARN("Recreating of \'{}\' sampler by \'{}\'", m_dbgName.CStr(), dbgName.CStr());
         Destroy();
@@ -50,6 +62,8 @@ bool TextureSamplerState::Init(const TextureSamplerStateCreateInfo &createInfo, 
 #if defined(ENG_DEBUG)
     m_dbgName = dbgName;
 #endif
+
+    const TextureSamplerStateCreateInfo& createInfo = *reinterpret_cast<const TextureSamplerStateCreateInfo*>(pCreateInfo);
 
     glCreateSamplers(1, &m_renderID);
     glSamplerParameteri(m_renderID, GL_TEXTURE_MIN_FILTER, createInfo.minFiltering);
@@ -594,7 +608,9 @@ void TextureManager::InitializeSamplers() noexcept
     m_textureSamplersStorage.resize(COMMON_SMP_COUNT);
 
     for (uint32_t samplerIdx = 0; samplerIdx < COMMON_SMP_COUNT; ++samplerIdx) {
-        ENG_MAYBE_UNUSED bool samplerIniitalized = m_textureSamplersStorage[samplerIdx].Init(samplerStateCreateInfos[samplerIdx], samplerDbgNames[samplerIdx]);
+        const TextureSamplerStateCreateInfo* pCreateInfo = &samplerStateCreateInfos[samplerIdx];
+
+        ENG_MAYBE_UNUSED bool samplerIniitalized = m_textureSamplersStorage[samplerIdx].Init(pCreateInfo, samplerDbgNames[samplerIdx]);
         ENG_ASSERT_GRAPHICS_API(samplerIniitalized, "Sampler \'{}\' initialization failed", samplerDbgNames[samplerIdx].CStr());
     }
 }
