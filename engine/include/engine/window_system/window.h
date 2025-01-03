@@ -6,6 +6,81 @@
 #include <bitset>
 
 
+struct EventWindowMinimized
+{
+};
+
+
+struct EventWindowMaximized
+{
+};
+
+
+struct EventWindowSizeRestored
+{
+};
+
+
+struct EventWindowClosed
+{
+};
+
+
+struct EventWindowFocused
+{
+};
+
+
+struct EventWindowUnfocused
+{
+};
+
+
+struct EventWindowPositionChanged
+{
+public:
+    EventWindowPositionChanged(int32_t x, int32_t y)
+        : m_xpos(x), m_ypos(y) {}
+
+    int32_t GetX() const noexcept { return m_xpos; }
+    int32_t GetY() const noexcept { return m_ypos; }
+
+private:
+    int32_t m_xpos;
+    int32_t m_ypos;
+};
+
+
+struct EventWindowResized
+{
+public:
+    EventWindowResized(int32_t width, int32_t height)
+        : m_width(width), m_height(height) {}
+
+    int32_t GetWidth() const noexcept { return m_width; }
+    int32_t GetHeight() const noexcept { return m_height; }
+
+private:
+    int32_t m_width;
+    int32_t m_height;
+};
+
+
+struct EventFramebufferResized
+{
+public:
+    EventFramebufferResized(int32_t width, int32_t height)
+        : m_width(width), m_height(height) {}
+
+    int32_t GetWidth() const noexcept { return m_width; }
+    int32_t GetHeight() const noexcept { return m_height; }
+
+private:
+    int32_t m_width;
+    int32_t m_height;
+};
+
+
 struct GLFWwindow;
 
 

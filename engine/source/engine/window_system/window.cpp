@@ -11,93 +11,6 @@
 #define ENG_CHECK_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "Window is not initialized")
 
 
-class EventWindowResized
-{
-public:
-    EventWindowResized(int32_t width, int32_t height)
-        : m_width(width), m_height(height) {}
-
-    int32_t GetWidth() const noexcept { return m_width; }
-    int32_t GetHeight() const noexcept { return m_height; }
-
-private:
-    int32_t m_width;
-    int32_t m_height;
-};
-
-
-class EventWindowMinimized
-{
-public:
-    EventWindowMinimized() = default;
-};
-
-
-class EventWindowMaximized
-{
-public:
-    EventWindowMaximized() = default;
-};
-
-
-class EventWindowSizeRestored
-{
-public:
-    EventWindowSizeRestored() = default;
-};
-
-
-class EventWindowClosed
-{
-public:
-    EventWindowClosed() = default;
-};
-
-
-class EventWindowFocused
-{
-public:
-    EventWindowFocused() = default;
-};
-
-
-class EventWindowUnfocused
-{
-public:
-    EventWindowUnfocused() = default;
-};
-
-
-class EventWindowPositionChanged
-{
-public:
-    EventWindowPositionChanged(int32_t x, int32_t y)
-        : m_xpos(x), m_ypos(y) {}
-
-    int32_t GetX() const noexcept { return m_xpos; }
-    int32_t GetY() const noexcept { return m_ypos; }
-
-private:
-    int32_t m_xpos;
-    int32_t m_ypos;
-};
-
-
-class EventFramebufferResized
-{
-public:
-    EventFramebufferResized(int32_t width, int32_t height)
-        : m_width(width), m_height(height) {}
-
-    int32_t GetWidth() const noexcept { return m_width; }
-    int32_t GetHeight() const noexcept { return m_height; }
-
-private:
-    int32_t m_width;
-    int32_t m_height;
-};
-
-
 static bool g_isWindowSystemInitialized = false;
 
 
@@ -118,15 +31,6 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
     dispatcher.Subscribe(
         EventListener::Create<EventWindowClosed>([this](const void* pEvent) {
             m_state.set(STATE_CLOSED);
-        }
-    ));
-
-    dispatcher.Subscribe(
-        EventListener::Create<EventWindowResized>([this](const void* pEvent) {
-            const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
-            
-            m_windowWidth = event.GetWidth();
-            m_windowHeight = event.GetHeight();
         }
     ));
 
@@ -160,6 +64,15 @@ Window::Window(const char* title, uint32_t width, uint32_t height)
         EventListener::Create<EventWindowSizeRestored>([this](const void* pEvent) {
             m_state.reset(STATE_MAXIMIZED);
             m_state.reset(STATE_MINIMIZED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowResized>([this](const void* pEvent) {
+            const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
+            
+            m_windowWidth = event.GetWidth();
+            m_windowHeight = event.GetHeight();
         }
     ));
 

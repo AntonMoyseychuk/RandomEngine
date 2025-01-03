@@ -249,7 +249,7 @@ ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
 
 void ShaderProgram::Bind() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Binding of invalid shader program");
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Attempt to bind invalid shader program");
     glUseProgram(m_renderID);
 }
 

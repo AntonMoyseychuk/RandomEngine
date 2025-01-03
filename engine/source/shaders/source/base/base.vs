@@ -13,10 +13,14 @@ struct Vertex
 };
 
 
-Vertex vertices[3] = Vertex[3](
+Vertex vertices[6] = Vertex[6](
     Vertex(vec4(-0.7f, -0.7f, 0.0f, 1.0f), vec4(1.0f, 0.0f, 0.0f, 1.0f), vec2(-2.0f, -2.0f)),
     Vertex(vec4( 0.7f, -0.7f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f), vec2( 2.0f, -2.0f)),
-    Vertex(vec4( 0.0f,  0.7f, 0.0f, 1.0f), vec4(0.0f, 0.0f, 1.0f, 1.0f), vec2( 0.0f,  2.0f))
+    Vertex(vec4(-0.7f,  0.7f, 0.0f, 1.0f), vec4(0.0f, 0.0f, 1.0f, 1.0f), vec2(-2.0f,  2.0f)),
+
+    Vertex(vec4( 0.7f, -0.7f, 0.0f, 1.0f), vec4(1.0f, 0.0f, 0.0f, 1.0f), vec2( 2.0f, -2.0f)),
+    Vertex(vec4( 0.7f,  0.7f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f), vec2( 2.0f,  2.0f)),
+    Vertex(vec4(-0.7f,  0.7f, 0.0f, 1.0f), vec4(0.0f, 0.0f, 1.0f, 1.0f), vec2(-2.0f,  2.0f))
 );
 
 

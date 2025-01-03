@@ -218,7 +218,7 @@ void RenderSystem::RunColorPass() noexcept
     sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
     window.SetTitle(title);
 
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 1);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
 }
 
 

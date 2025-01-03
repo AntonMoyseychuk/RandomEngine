@@ -205,6 +205,7 @@ Texture& Texture::operator=(Texture &&other) noexcept
 
 void Texture::Bind(uint32_t unit) noexcept
 {
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Attempt to bind invalid texture");
     glBindTextureUnit(unit, m_renderID);
 }
 
