@@ -1,8 +1,5 @@
 #pragma once
 
-#include "engine/render/texture_manager/texture_mng.h"
-#include "engine/render/shader_manager/shader_mng.h"
-
 #include <memory>
 
 

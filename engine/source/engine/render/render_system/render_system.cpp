@@ -3,14 +3,16 @@
 
 #include "engine/engine.h"
 
-#include "engine/window_system/window.h"
-
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "engine/render/texture_manager/texture_mng.h"
+#include "engine/render/shader_manager/shader_mng.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
 #include "utils/timer/timer.h"
 
+#include "engine/render/platform/OpenGL/opengl_driver.h"
+
+#include "engine/auto/auto_texture_incl.h"
 #include "engine/auto/auto_registers_common.h"
 
 
@@ -178,7 +180,7 @@ void RenderSystem::RunColorPass() noexcept
         }
 
         Texture2DCreateInfo texCreateInfo = {};
-        texCreateInfo.format = TextureFormat::FORMAT_RGBA8;
+        texCreateInfo.format = resGetTexResourceFormat(TEST_TEXTURE);
         texCreateInfo.width = texWidth;
         texCreateInfo.height = texHeight;
         texCreateInfo.mipmapsCount = 0;

@@ -176,7 +176,7 @@ static std::vector<std::cmatch> FindSrvVariableDeclarationMatches(const char* pF
 
 static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
 {
-    static std::regex SRV_TEXTURE_PATTERN(R"(DECLARE_SRV_TEXTURE\(([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
+    static std::regex SRV_TEXTURE_PATTERN(R"(DECLARE_SRV_TEXTURE\(([^,]+), ([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
     
     return FindPatternMatches(SRV_TEXTURE_PATTERN, pFileContent, fileSize);
 }
@@ -248,12 +248,14 @@ static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileCo
 
         const std::string name = match[2].str();
         const std::string binding = match[3].str();
-        const std::string samplerIdx = match[4].str();
+        const std::string format = match[4].str();
+        const std::string samplerIdx = match[5].str();
 
         ss <<
         "struct " << name << " {\n"
         "    inline static constexpr ShaderResourceBindStruct<" << pType << "> _BINDING = { -1, " << binding << " };\n"
         "    inline static constexpr uint32_t _SAMPLER_IDX = " << samplerIdx << ";\n"
+        "    inline static constexpr uint32_t _FORMAT = " << format << ";\n"
         "};\n"
         "\n";
     }

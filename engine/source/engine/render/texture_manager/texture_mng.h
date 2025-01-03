@@ -42,58 +42,6 @@ private:
 };
 
 
-enum class TextureFormat
-{
-    FORMAT_R8,
-    FORMAT_R8_SNORM,
-    FORMAT_R16,
-    FORMAT_R16_SNORM,
-    FORMAT_RG8,
-    FORMAT_RG8_SNORM,
-    FORMAT_RG16,
-    FORMAT_RG16_SNORM,
-    FORMAT_RGB8_SNORM,
-    FORMAT_RGB16_SNORM,
-    FORMAT_RGBA8,
-    FORMAT_RGBA8_SNORM,
-    FORMAT_RGBA16,
-    FORMAT_SRGB8,
-    FORMAT_SRGB8_ALPHA8,
-    FORMAT_R16F,
-    FORMAT_RG16F,
-    FORMAT_RGB16F,
-    FORMAT_RGBA16F,
-    FORMAT_R32F,
-    FORMAT_RG32F,
-    FORMAT_RGB32F,
-    FORMAT_RGBA32F,
-    FORMAT_R8I,
-    FORMAT_R8UI,
-    FORMAT_R16I,
-    FORMAT_R16UI,
-    FORMAT_R32I,
-    FORMAT_R32UI,
-    FORMAT_RG8UI,
-    FORMAT_RG16I,
-    FORMAT_RG16UI,
-    FORMAT_RG32UI,
-    FORMAT_RGB8I,
-    FORMAT_RGB8UI,
-    FORMAT_RGB16I,
-    FORMAT_RGB16UI,
-    FORMAT_RGB32I,
-    FORMAT_RGB32UI,
-    FORMAT_RGBA8I,
-    FORMAT_RGBA16I,
-    FORMAT_RGBA16UI,
-    FORMAT_RGBA32I,
-    FORMAT_RGBA32UI,
-    
-    FORMAT_INVALID,
-    FORMAT_COUNT = FORMAT_INVALID,
-};
-
-
 enum class TextureInputDataFormat
 {
     INPUT_FORMAT_R,
@@ -136,7 +84,7 @@ struct TextureInputData
 struct Texture2DCreateInfo
 {
     TextureInputData inputData = {};
-    TextureFormat format;
+    uint32_t format; // Reflected from shader
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t mipmapsCount = 0;

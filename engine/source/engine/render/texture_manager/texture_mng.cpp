@@ -6,6 +6,7 @@
 
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
+#include "engine/auto/auto_texture_incl.h"
 #include "engine/auto/auto_registers_common.h"
 
 
@@ -16,6 +17,58 @@ struct TextureSamplerStateCreateInfo
     uint32_t wrapModeR = 0;
     uint32_t minFiltering = 0;
     uint32_t magFiltering = 0;
+};
+
+
+enum class TextureFormat
+{
+    FORMAT_R8,
+    FORMAT_R8_SNORM,
+    FORMAT_R16,
+    FORMAT_R16_SNORM,
+    FORMAT_RG8,
+    FORMAT_RG8_SNORM,
+    FORMAT_RG16,
+    FORMAT_RG16_SNORM,
+    FORMAT_RGB8_SNORM,
+    FORMAT_RGB16_SNORM,
+    FORMAT_RGBA8,
+    FORMAT_RGBA8_SNORM,
+    FORMAT_RGBA16,
+    FORMAT_SRGB8,
+    FORMAT_SRGB8_ALPHA8,
+    FORMAT_R16F,
+    FORMAT_RG16F,
+    FORMAT_RGB16F,
+    FORMAT_RGBA16F,
+    FORMAT_R32F,
+    FORMAT_RG32F,
+    FORMAT_RGB32F,
+    FORMAT_RGBA32F,
+    FORMAT_R8I,
+    FORMAT_R8UI,
+    FORMAT_R16I,
+    FORMAT_R16UI,
+    FORMAT_R32I,
+    FORMAT_R32UI,
+    FORMAT_RG8UI,
+    FORMAT_RG16I,
+    FORMAT_RG16UI,
+    FORMAT_RG32UI,
+    FORMAT_RGB8I,
+    FORMAT_RGB8UI,
+    FORMAT_RGB16I,
+    FORMAT_RGB16UI,
+    FORMAT_RGB32I,
+    FORMAT_RGB32UI,
+    FORMAT_RGBA8I,
+    FORMAT_RGBA16I,
+    FORMAT_RGBA16UI,
+    FORMAT_RGBA32I,
+    FORMAT_RGBA32UI,
+    
+    FORMAT_INVALID,
+    FORMAT_COUNT = FORMAT_INVALID,
 };
 
 
@@ -84,6 +137,60 @@ void TextureSamplerState::Destroy() noexcept
 
     glDeleteSamplers(1, &m_renderID);
     m_renderID = 0;
+}
+
+
+TextureFormat ConvertShaderTexResourceFormat(uint32_t resFormat) noexcept
+{
+    switch(resFormat) {
+        case TEXTURE_FORMAT_R8: return TextureFormat::FORMAT_R8;
+        case TEXTURE_FORMAT_R8_SNORM: return TextureFormat::FORMAT_R8_SNORM;
+        case TEXTURE_FORMAT_R16: return TextureFormat::FORMAT_R16;
+        case TEXTURE_FORMAT_R16_SNORM: return TextureFormat::FORMAT_R16_SNORM;
+        case TEXTURE_FORMAT_RG8: return TextureFormat::FORMAT_RG8;
+        case TEXTURE_FORMAT_RG8_SNORM: return TextureFormat::FORMAT_RG8_SNORM;
+        case TEXTURE_FORMAT_RG16: return TextureFormat::FORMAT_RG16;
+        case TEXTURE_FORMAT_RG16_SNORM: return TextureFormat::FORMAT_RG16_SNORM;
+        case TEXTURE_FORMAT_RGB8_SNORM: return TextureFormat::FORMAT_RGB8_SNORM;
+        case TEXTURE_FORMAT_RGB16_SNORM: return TextureFormat::FORMAT_RGB16_SNORM;
+        case TEXTURE_FORMAT_RGBA8: return TextureFormat::FORMAT_RGBA8;
+        case TEXTURE_FORMAT_RGBA8_SNORM: return TextureFormat::FORMAT_RGBA8_SNORM;
+        case TEXTURE_FORMAT_RGBA16: return TextureFormat::FORMAT_RGBA16;
+        case TEXTURE_FORMAT_SRGB8: return TextureFormat::FORMAT_SRGB8;
+        case TEXTURE_FORMAT_SRGB8_ALPHA8: return TextureFormat::FORMAT_SRGB8_ALPHA8;
+        case TEXTURE_FORMAT_R16F: return TextureFormat::FORMAT_R16F;
+        case TEXTURE_FORMAT_RG16F: return TextureFormat::FORMAT_RG16F;
+        case TEXTURE_FORMAT_RGB16F: return TextureFormat::FORMAT_RGB16F;
+        case TEXTURE_FORMAT_RGBA16F: return TextureFormat::FORMAT_RGBA16F;
+        case TEXTURE_FORMAT_R32F: return TextureFormat::FORMAT_R32F;
+        case TEXTURE_FORMAT_RG32F: return TextureFormat::FORMAT_RG32F;
+        case TEXTURE_FORMAT_RGB32F: return TextureFormat::FORMAT_RGB32F;
+        case TEXTURE_FORMAT_RGBA32F: return TextureFormat::FORMAT_RGBA32F;
+        case TEXTURE_FORMAT_R8I: return TextureFormat::FORMAT_R8I;
+        case TEXTURE_FORMAT_R8UI: return TextureFormat::FORMAT_R8UI;
+        case TEXTURE_FORMAT_R16I: return TextureFormat::FORMAT_R16I;
+        case TEXTURE_FORMAT_R16UI: return TextureFormat::FORMAT_R16UI;
+        case TEXTURE_FORMAT_R32I: return TextureFormat::FORMAT_R32I;
+        case TEXTURE_FORMAT_R32UI: return TextureFormat::FORMAT_R32UI;
+        case TEXTURE_FORMAT_RG8UI: return TextureFormat::FORMAT_RG8UI;
+        case TEXTURE_FORMAT_RG16I: return TextureFormat::FORMAT_RG16I;
+        case TEXTURE_FORMAT_RG16UI: return TextureFormat::FORMAT_RG16UI;
+        case TEXTURE_FORMAT_RG32UI: return TextureFormat::FORMAT_RG32UI;
+        case TEXTURE_FORMAT_RGB8I: return TextureFormat::FORMAT_RGB8I;
+        case TEXTURE_FORMAT_RGB8UI: return TextureFormat::FORMAT_RGB8UI;
+        case TEXTURE_FORMAT_RGB16I: return TextureFormat::FORMAT_RGB16I;
+        case TEXTURE_FORMAT_RGB16UI: return TextureFormat::FORMAT_RGB16UI;
+        case TEXTURE_FORMAT_RGB32I: return TextureFormat::FORMAT_RGB32I;
+        case TEXTURE_FORMAT_RGB32UI: return TextureFormat::FORMAT_RGB32UI;
+        case TEXTURE_FORMAT_RGBA8I: return TextureFormat::FORMAT_RGBA8I;
+        case TEXTURE_FORMAT_RGBA16I: return TextureFormat::FORMAT_RGBA16I;
+        case TEXTURE_FORMAT_RGBA16UI: return TextureFormat::FORMAT_RGBA16UI;
+        case TEXTURE_FORMAT_RGBA32I: return TextureFormat::FORMAT_RGBA32I;
+        case TEXTURE_FORMAT_RGBA32UI: return TextureFormat::FORMAT_RGBA32UI;
+        default:
+            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid reflected texture format \'{}\'", resFormat);
+            return TextureFormat::FORMAT_INVALID;
+    }
 }
 
 
@@ -293,7 +400,12 @@ uint64_t Texture::Hash() const noexcept
 
 bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept
 {
-    const GLenum internalFormat = GetTextureInternalGLFormat(createInfo.format);
+    const TextureFormat convertedFormat = ConvertShaderTexResourceFormat(createInfo.format);
+    if (convertedFormat == TextureFormat::FORMAT_INVALID) {
+        return false;
+    }
+
+    const GLenum internalFormat = GetTextureInternalGLFormat(convertedFormat);
     if (internalFormat == GL_NONE) {
         return false;
     }
