@@ -122,6 +122,11 @@ public:
 
     uint64_t Hash() const noexcept;
 
+    ds::StrID GetName() const noexcept { return m_name; }
+    uint32_t GetLevelsCount() const noexcept { return m_levelsCount; }
+    uint32_t GetWidth() const noexcept { return m_width; }
+    uint32_t GetHeight() const noexcept { return m_height; }
+    uint32_t GetDepth() const noexcept { return m_depth; }
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:

@@ -410,16 +410,6 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
         return false;
     }
 
-    const GLenum inputDataFormat = GetTextureInputDataGLFormat(createInfo.inputData.format);
-    if (inputDataFormat == GL_NONE) {
-        return false;
-    }
-
-    const GLenum inputDataType = GetTextureInputDataGLType(createInfo.inputData.dataType);
-    if (inputDataType == GL_NONE) {
-        return false;
-    }
-
     if (IsValid()) {
         ENG_LOG_GRAPHICS_API_WARN("Reinitializing of texture \'{}\' (id: {})", m_name.CStr(), m_renderID);
         Destroy();
@@ -440,6 +430,18 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
 
     if (!pData) {
         return true;
+    }
+
+    const GLenum inputDataFormat = GetTextureInputDataGLFormat(createInfo.inputData.format);
+    if (inputDataFormat == GL_NONE) {
+        Destroy();
+        return false;
+    }
+
+    const GLenum inputDataType = GetTextureInputDataGLType(createInfo.inputData.dataType);
+    if (inputDataType == GL_NONE) {
+        Destroy();
+        return false;
     }
 
     glTextureSubImage2D(m_renderID, 0, 0, 0, m_width, m_height, inputDataFormat, inputDataType, pData);

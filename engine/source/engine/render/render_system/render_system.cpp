@@ -4,6 +4,7 @@
 #include "engine/engine.h"
 
 #include "engine/render/texture_manager/texture_mng.h"
+#include "engine/render/rt_manager/rt_manager.h"
 #include "engine/render/shader_manager/shader_mng.h"
 
 #include "utils/file/file.h"
@@ -259,6 +260,10 @@ bool RenderSystem::Init() noexcept
         return false;
     }
 
+    if (!engInitRenderTargetManager()) {
+        return false;
+    }
+
     m_isInitialized = true;
 
     return true;
@@ -269,6 +274,7 @@ void RenderSystem::Terminate() noexcept
 {
     m_isInitialized = false;
 
+    engTerminateRenderTargetManager();
     engTerminateTextureManager();
     engTerminateShaderManager();
 }

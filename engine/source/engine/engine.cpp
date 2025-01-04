@@ -90,7 +90,12 @@ void Engine::EndFrame() noexcept
 
 void Engine::RenderFrame() noexcept
 {
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
     ENG_CHECK_REND_SYS_INITIALIZATION();
+
+    if (m_pWindow->IsMinimized()) {
+        return;
+    }
 
     RenderSystem& renderSys = RenderSystem::GetInstance();
 
@@ -138,6 +143,9 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
     if (!engInitRenderSystem()) {
         return;
     }
+
+    // Notify all subscribed systems to resized their resources
+    EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pWindow->GetFramebufferWidth(), m_pWindow->GetFramebufferHeight());
 
     m_isInitialized = true;
 
