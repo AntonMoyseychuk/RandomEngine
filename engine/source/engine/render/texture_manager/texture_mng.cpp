@@ -66,6 +66,16 @@ enum class TextureFormat
     FORMAT_RGBA16UI,
     FORMAT_RGBA32I,
     FORMAT_RGBA32UI,
+
+    FORMAT_DEPTH16,
+    FORMAT_DEPTH24,
+    FORMAT_DEPTH32,
+    FORMAT_STENCIL1,
+    FORMAT_STENCIL4,
+    FORMAT_STENCIL8,
+    FORMAT_STENCIL16,
+    FORMAT_DEPTH24_STENCIL8,
+    FORMAT_DEPTH32_STENCIL8,
     
     FORMAT_INVALID,
     FORMAT_COUNT = FORMAT_INVALID,
@@ -187,6 +197,15 @@ TextureFormat ConvertShaderTexResourceFormat(uint32_t resFormat) noexcept
         case TEXTURE_FORMAT_RGBA16UI: return TextureFormat::FORMAT_RGBA16UI;
         case TEXTURE_FORMAT_RGBA32I: return TextureFormat::FORMAT_RGBA32I;
         case TEXTURE_FORMAT_RGBA32UI: return TextureFormat::FORMAT_RGBA32UI;
+        case TEXTURE_FORMAT_DEPTH16: return TextureFormat::FORMAT_DEPTH16;
+        case TEXTURE_FORMAT_DEPTH24: return TextureFormat::FORMAT_DEPTH24;
+        case TEXTURE_FORMAT_DEPTH32: return TextureFormat::FORMAT_DEPTH32;
+        case TEXTURE_FORMAT_STENCIL1: return TextureFormat::FORMAT_STENCIL1;
+        case TEXTURE_FORMAT_STENCIL4: return TextureFormat::FORMAT_STENCIL4;
+        case TEXTURE_FORMAT_STENCIL8: return TextureFormat::FORMAT_STENCIL8;
+        case TEXTURE_FORMAT_STENCIL16: return TextureFormat::FORMAT_STENCIL16;
+        case TEXTURE_FORMAT_DEPTH24_STENCIL8: return TextureFormat::FORMAT_DEPTH24_STENCIL8;
+        case TEXTURE_FORMAT_DEPTH32_STENCIL8: return TextureFormat::FORMAT_DEPTH32_STENCIL8;
         default:
             ENG_ASSERT_GRAPHICS_API_FAIL("Invalid reflected texture format \'{}\'", resFormat);
             return TextureFormat::FORMAT_INVALID;
@@ -241,6 +260,15 @@ static GLenum GetTextureInternalGLFormat(TextureFormat format) noexcept
         case TextureFormat::FORMAT_RGBA16UI: return GL_RGBA16UI;
         case TextureFormat::FORMAT_RGBA32I: return GL_RGBA32I;
         case TextureFormat::FORMAT_RGBA32UI: return GL_RGBA32UI;
+        case TextureFormat::FORMAT_DEPTH16: return GL_DEPTH_COMPONENT16;
+        case TextureFormat::FORMAT_DEPTH24: return GL_DEPTH_COMPONENT24;
+        case TextureFormat::FORMAT_DEPTH32: return GL_DEPTH_COMPONENT32F;
+        case TextureFormat::FORMAT_STENCIL1: return GL_STENCIL_INDEX1;
+        case TextureFormat::FORMAT_STENCIL4: return GL_STENCIL_INDEX4;
+        case TextureFormat::FORMAT_STENCIL8: return GL_STENCIL_INDEX8;
+        case TextureFormat::FORMAT_STENCIL16: return GL_STENCIL_INDEX16;
+        case TextureFormat::FORMAT_DEPTH24_STENCIL8: return GL_DEPTH24_STENCIL8;
+        case TextureFormat::FORMAT_DEPTH32_STENCIL8: return GL_DEPTH32F_STENCIL8;
         default:
             ENG_ASSERT_GRAPHICS_API_FAIL("Invalid texture format: {}", static_cast<uint32_t>(format));
             return GL_NONE;

@@ -18,17 +18,6 @@ enum class RTTextureID : uint32_t
 };
 
 
-enum class RTRenderBufferID : uint32_t
-{
-    RT_RENDERBUFFER_COMMON_DEPTH,
-
-    RT_RENDERBUFFER_DEFAULT,
-
-    RT_RENDERBUFFER_COUNT = RT_RENDERBUFFER_DEFAULT,
-    RT_RENDERBUFFER_INVALID = RT_RENDERBUFFER_COUNT,
-};
-
-
 enum class RTFrameBufferID : uint32_t
 {
     RT_FRAMEBUFFER_GBUFFER,
@@ -40,25 +29,9 @@ enum class RTFrameBufferID : uint32_t
 };
 
 
-enum class RenderBufferFormat : uint32_t
+enum class FrameBufferAttachmentType : uint32_t
 {
-    FORMAT_INVALID,
-
-    FORMAT_DEPTH_32,
-    FORMAT_DEPTH_24,
-    FORMAT_DEPTH_16,
-
-    FORMAT_STENCIL_8,
-    FORMAT_STENCIL_4,
-    FORMAT_STENCIL_1,
-
-    FORMAT_DEPTH_24_STENCIL_8,
-    FORMAT_DEPTH_32_STENCIL_8,
-};
-
-
-enum class RenderBufferAttachmentType : uint32_t
-{
+    TYPE_COLOR_ATTACHMENT,
     TYPE_DEPTH_ATTACHMENT,
     TYPE_STENCIL_ATTACHMENT,
     TYPE_DEPTH_STENCIL_ATTACHMENT,
@@ -68,78 +41,20 @@ enum class RenderBufferAttachmentType : uint32_t
 };
 
 
-struct RenderBufferCreateInfo
-{
-    RenderBufferFormat format = RenderBufferFormat::FORMAT_INVALID;
-    uint32_t width = 0;
-    uint32_t height = 0;
-};
-
-
-class RenderBuffer
-{
-    friend class RenderTargetManager;
-
-public:
-    RenderBuffer() = default;
-    ~RenderBuffer() { Destroy(); }
-
-    RenderBuffer(RenderBuffer&& other) noexcept;
-    RenderBuffer& operator=(RenderBuffer&& other) noexcept;
-
-    ds::StrID GetName() const noexcept;
-    RenderBufferFormat GetFormat() const noexcept;
-    uint32_t GetWidth() const noexcept { return m_width; }
-    uint32_t GetHeight() const noexcept { return m_height; }
-    uint32_t GetRenderID() const noexcept { return m_renderID; }
-
-    bool IsValid() const noexcept { return m_renderID != 0; }
-
-private:
-    RenderBuffer(const RenderBuffer& other) = delete;
-    RenderBuffer& operator=(const RenderBuffer& other) = delete;
-
-    bool Init(ds::StrID dbgName, const RenderBufferCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept;
-
-    bool Recreate(ds::StrID dbgName, const RenderBufferCreateInfo& createInfo) noexcept;
-
-private:
-#if defined(ENG_DEBUG)
-    ds::StrID m_dbgName = "";
-#endif
-    uint32_t m_format = 0;
-    uint32_t m_width = 0;
-    uint32_t m_height = 0;
-    uint32_t m_renderID = 0;
-};
-
-
-struct ColorAttachment
+struct FrameBufferAttachment
 {
     Texture* pTexure = nullptr;
-    RTTextureID id = RTTextureID::RT_TEX_INVALID;
-    uint32_t index = UINT32_MAX;
-};
-
-
-struct RenderBufferAttachment
-{
-    RenderBuffer* pRenderBuffer = nullptr;
-    RTRenderBufferID id = RTRenderBufferID::RT_RENDERBUFFER_INVALID;
-    RenderBufferAttachmentType type = RenderBufferAttachmentType::TYPE_INVALID;
+    FrameBufferAttachmentType type = FrameBufferAttachmentType::TYPE_INVALID;
+    
+    uint32_t index = UINT32_MAX; // Ignores if type is not TYPE_COLOR_ATTACHMENT
 };
 
 
 struct FramebufferCreateInfo
 {
-    const ColorAttachment* pColorAttachments = nullptr;
-    const RenderBufferAttachment* pRenderBufferAttachments = nullptr;
-
-    uint32_t colorAttachmentsCount = 0;
-    uint32_t renderBufferAttachmentsCount = 0;
-
-    RTFrameBufferID id = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
+    const FrameBufferAttachment* pAttachments = nullptr;
+    uint32_t attachmentsCount = 0;
+    RTFrameBufferID ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
 };
 
 
@@ -162,7 +77,7 @@ public:
     bool IsValid() const noexcept;
 
     ds::StrID GetName() const noexcept;
-    RTFrameBufferID GetID() const noexcept;
+    RTFrameBufferID GetID() const noexcept { return m_ID; }
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
@@ -175,13 +90,11 @@ private:
 
 private:
 #if defined(ENG_DEBUG)
-    std::vector<ColorAttachment> m_colorAttachments;
-    std::vector<RenderBufferAttachment> m_renderBufferAttachments;
-
+    std::vector<FrameBufferAttachment> m_attachments;
     ds::StrID m_dbgName = "";
-    RTFrameBufferID m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
 #endif
 
+    RTFrameBufferID m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
     uint32_t m_renderID = 0;
 };
 
@@ -222,9 +135,7 @@ private:
 
 private:
     std::vector<FrameBuffer> m_frameBuffers;
-
     std::vector<Texture*> m_RTTextures;
-    std::vector<RenderBuffer> m_RTRenderBuffers;
 
     bool m_isInitialized = false;
 };

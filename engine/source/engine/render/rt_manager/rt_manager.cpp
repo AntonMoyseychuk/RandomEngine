@@ -17,143 +17,6 @@ static std::unique_ptr<RenderTargetManager> s_pRenderTargetMng = nullptr;
 static int32_t MAX_COLOR_ATTACHMENTS = 0;
 
 
-GLenum EngineRenderBufferFormatToGLFormat(RenderBufferFormat format) noexcept
-{
-    switch(format) {
-        case RenderBufferFormat::FORMAT_INVALID: return GL_NONE;
-        case RenderBufferFormat::FORMAT_DEPTH_32: return GL_DEPTH_COMPONENT32F;
-        case RenderBufferFormat::FORMAT_DEPTH_24: return GL_DEPTH_COMPONENT24;
-        case RenderBufferFormat::FORMAT_DEPTH_16: return GL_DEPTH_COMPONENT16;
-        case RenderBufferFormat::FORMAT_STENCIL_8: return GL_STENCIL_INDEX8;
-        case RenderBufferFormat::FORMAT_STENCIL_4: return GL_STENCIL_INDEX4;
-        case RenderBufferFormat::FORMAT_STENCIL_1: return GL_STENCIL_INDEX1;
-        case RenderBufferFormat::FORMAT_DEPTH_24_STENCIL_8: return GL_DEPTH24_STENCIL8;
-        case RenderBufferFormat::FORMAT_DEPTH_32_STENCIL_8: return GL_DEPTH32F_STENCIL8;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid engine render buffer format");
-            return GL_NONE;
-    }
-}
-
-
-RenderBufferFormat GLRenderBufferFormatToEngineFormat(GLenum format) noexcept
-{
-    switch(format) {
-        case GL_NONE: return RenderBufferFormat::FORMAT_INVALID;
-        case GL_DEPTH_COMPONENT32F: return RenderBufferFormat::FORMAT_DEPTH_32;
-        case GL_DEPTH_COMPONENT24: return RenderBufferFormat::FORMAT_DEPTH_24;
-        case GL_DEPTH_COMPONENT16: return RenderBufferFormat::FORMAT_DEPTH_16;
-        case GL_STENCIL_INDEX8: return RenderBufferFormat::FORMAT_STENCIL_8;
-        case GL_STENCIL_INDEX4: return RenderBufferFormat::FORMAT_STENCIL_4;
-        case GL_STENCIL_INDEX1: return RenderBufferFormat::FORMAT_STENCIL_1;
-        case GL_DEPTH24_STENCIL8: return RenderBufferFormat::FORMAT_DEPTH_24_STENCIL_8;
-        case GL_DEPTH32F_STENCIL8: return RenderBufferFormat::FORMAT_DEPTH_32_STENCIL_8;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid GL render buffer format");
-            return RenderBufferFormat::FORMAT_INVALID;
-    }
-}
-
-
-ds::StrID RenderBuffer::GetName() const noexcept
-{
-#if defined(ENG_DEBUG)
-    return m_dbgName;
-#else
-    return "";
-#endif
-}
-
-
-RenderBufferFormat RenderBuffer::GetFormat() const noexcept
-{
-    return GLRenderBufferFormatToEngineFormat(m_format);
-}
-
-
-RenderBuffer::RenderBuffer(RenderBuffer &&other) noexcept
-{
-#if defined(ENG_DEBUG)
-    std::swap(m_dbgName, other.m_dbgName);
-#endif
-    std::swap(m_format, other.m_format);
-    std::swap(m_width, other.m_width);
-    std::swap(m_height, other.m_height);
-    std::swap(m_renderID, other.m_renderID);
-}
-
-
-RenderBuffer &RenderBuffer::operator=(RenderBuffer &&other) noexcept
-{
-    Destroy();
-
-#if defined(ENG_DEBUG)
-    std::swap(m_dbgName, other.m_dbgName);
-#endif
-    std::swap(m_format, other.m_format);
-    std::swap(m_width, other.m_width);
-    std::swap(m_height, other.m_height);
-    std::swap(m_renderID, other.m_renderID);
-
-    return *this;
-}
-
-
-bool RenderBuffer::Init(ds::StrID dbgName, const RenderBufferCreateInfo &createInfo) noexcept
-{
-#if defined(ENG_DEBUG)
-    if (IsValid()) {
-        if (m_dbgName != dbgName) {
-            ENG_LOG_GRAPHICS_API_WARN("Reinitializing of \'{}\' render buffer to \'{}\'", m_dbgName.CStr(), dbgName.CStr());
-        } else {
-            ENG_LOG_GRAPHICS_API_WARN("Reinitializing of \'{}\' render buffer", m_dbgName.CStr());
-        }
-    }
-#endif
-
-    return Recreate(dbgName, createInfo);
-}
-
-
-void RenderBuffer::Destroy() noexcept
-{
-    glDeleteRenderbuffers(1, &m_renderID);
-
-#if defined(ENG_DEBUG)
-    m_dbgName = "";
-#endif
-    m_format = 0;
-    m_width = 0;
-    m_height = 0;
-    m_renderID = 0;
-}
-
-
-bool RenderBuffer::Recreate(ds::StrID dbgName, const RenderBufferCreateInfo &createInfo) noexcept
-{
-    const GLenum internalFormat = EngineRenderBufferFormatToGLFormat(createInfo.format);
-    if (internalFormat == GL_NONE) {
-        return false;
-    }
-
-    if (IsValid()) {
-        Destroy();
-    }
-
-    glCreateRenderbuffers(1, &m_renderID);
-    glNamedRenderbufferStorage(m_renderID, internalFormat, createInfo.width, createInfo.height);
-
-#if defined(ENG_DEBUG)
-    m_dbgName = dbgName;
-#endif
-    m_format = internalFormat;
-    m_width = createInfo.width;
-    m_height = createInfo.height;
-    
-    return true;
-}
-
-
 FrameBuffer::~FrameBuffer()
 {
     Destroy();
@@ -163,13 +26,11 @@ FrameBuffer::~FrameBuffer()
 FrameBuffer::FrameBuffer(FrameBuffer &&other) noexcept
 {
 #if defined(ENG_DEBUG)
-    std::swap(m_colorAttachments, other.m_colorAttachments);
-    std::swap(m_renderBufferAttachments, other.m_renderBufferAttachments);
-
+    std::swap(m_attachments, other.m_attachments);
     std::swap(m_dbgName, other.m_dbgName);
-    std::swap(m_ID, other.m_ID);
 #endif
 
+    std::swap(m_ID, other.m_ID);
     std::swap(m_renderID, other.m_renderID);
 }
 
@@ -179,13 +40,11 @@ FrameBuffer &FrameBuffer::operator=(FrameBuffer &&other) noexcept
     Destroy();
 
 #if defined(ENG_DEBUG)
-    std::swap(m_colorAttachments, other.m_colorAttachments);
-    std::swap(m_renderBufferAttachments, other.m_renderBufferAttachments);
-
+    std::swap(m_attachments, other.m_attachments);
     std::swap(m_dbgName, other.m_dbgName);
-    std::swap(m_ID, other.m_ID);
 #endif
 
+    std::swap(m_ID, other.m_ID);
     std::swap(m_renderID, other.m_renderID);
 
     return *this;
@@ -201,11 +60,7 @@ void FrameBuffer::Bind() noexcept
 
 bool FrameBuffer::IsValid() const noexcept
 {
-#if defined(ENG_DEBUG)
     return m_renderID != 0 && m_ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
-#else
-    return m_renderID != 0;
-#endif
 }
 
 
@@ -215,16 +70,6 @@ ds::StrID FrameBuffer::GetName() const noexcept
     return m_dbgName;
 #else
     return "";
-#endif
-}
-
-
-RTFrameBufferID FrameBuffer::GetID() const noexcept
-{
-#if defined(ENG_DEBUG)
-    return m_ID;
-#else
-    return RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
 #endif
 }
 
@@ -250,46 +95,22 @@ void FrameBuffer::Destroy() noexcept
     glDeleteFramebuffers(1, &m_renderID);
 
 #if defined(ENG_DEBUG)
-    m_colorAttachments.clear();
-    m_renderBufferAttachments.clear();
-
+    m_attachments.clear();
     m_dbgName = "";
-    m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
 #endif
 
+    m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
     m_renderID = 0;
 }
 
 
-bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo & createInfo) noexcept
+bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before framebuffers initializing");
-    ENG_ASSERT_GRAPHICS_API(createInfo.colorAttachmentsCount > 0 && createInfo.colorAttachmentsCount <= MAX_COLOR_ATTACHMENTS, 
-        "Invalid color attachments count");
-
-    ENG_ASSERT_GRAPHICS_API(createInfo.pColorAttachments || createInfo.pRenderBufferAttachments, "All attachements are nullptr (\'{}\')", dbgName.CStr());
     
-    ENG_ASSERT_GRAPHICS_API(createInfo.id != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Framebufer id is invalid");
-
-    if (createInfo.colorAttachmentsCount > 0) {
-        ENG_ASSERT_GRAPHICS_API(createInfo.pColorAttachments, 
-        "Color attachements count is greater than 0 but attachments array is nullptr (\'{}\')", dbgName.CStr());
-    }
-
-    if (createInfo.pColorAttachments != nullptr) {
-        ENG_ASSERT_GRAPHICS_API(createInfo.colorAttachmentsCount > 0, 
-        "Color attachements array is not nullptr but attachments count is 0 (\'{}\')", dbgName.CStr());
-    }
-
-    if (createInfo.renderBufferAttachmentsCount > 0) {
-        ENG_ASSERT_GRAPHICS_API(createInfo.pRenderBufferAttachments, 
-        "Render buffer attachements count is greater than 0 but attachments array is nullptr (\'{}\')", dbgName.CStr());
-    }
-
-    if (createInfo.pRenderBufferAttachments != nullptr) {
-        ENG_ASSERT_GRAPHICS_API(createInfo.renderBufferAttachmentsCount > 0, 
-        "Render buffer attachements array is not nullptr but attachments count is 0 (\'{}\')", dbgName.CStr());
-    }
+    ENG_ASSERT_GRAPHICS_API(createInfo.ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Framebufer ID is invalid");
+    ENG_ASSERT_GRAPHICS_API(createInfo.attachmentsCount > 0 && createInfo.attachmentsCount <= (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid attachments count");
+    ENG_ASSERT_GRAPHICS_API(createInfo.pAttachments, "Attachements are nullptr (\'{}\')", dbgName.CStr());
 
     if (IsValid()) {
         Destroy();
@@ -300,76 +121,56 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo & crea
     uint32_t attachmentsWidth = 0;
     uint32_t attachmentsHeight = 0;
 
-    bool isFirstColorAttachment = true;
+    bool isFirstAttachment = true;
 
 #if defined(ENG_DEBUG)
-    m_colorAttachments.reserve(createInfo.colorAttachmentsCount);
+    m_attachments.reserve(createInfo.attachmentsCount);
 #endif
 
-    for (size_t colorAttachmentIdx = 0; colorAttachmentIdx < createInfo.colorAttachmentsCount; ++colorAttachmentIdx) {
-        const ColorAttachment& colorAttachment = createInfo.pColorAttachments[colorAttachmentIdx];
-        Texture* pTex = colorAttachment.pTexure;
+    static auto GetFrameBufferAttachmentGLType = [](const FrameBufferAttachment& attachment) -> GLenum
+    {
+        switch(attachment.type) {
+            case FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT:
+                ENG_ASSERT_GRAPHICS_API(attachment.index < (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid color attachment index");
+                return GL_COLOR_ATTACHMENT0 + attachment.index;
+            case FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT:
+                return GL_DEPTH_ATTACHMENT;
+            case FrameBufferAttachmentType::TYPE_STENCIL_ATTACHMENT:
+                return GL_STENCIL_ATTACHMENT;
+            case FrameBufferAttachmentType::TYPE_DEPTH_STENCIL_ATTACHMENT:
+                return GL_DEPTH_STENCIL_ATTACHMENT;
+            default:
+                ENG_ASSERT_GRAPHICS_API_FAIL("Invalid frame buffer attachment type");
+                return GL_NONE;
+        }
+    };
 
-        ENG_ASSERT_GRAPHICS_API(colorAttachment.index != UINT32_MAX, "Invalid color attachment index");
+    for (size_t attachmentIdx = 0; attachmentIdx < createInfo.attachmentsCount; ++attachmentIdx) {
+        const FrameBufferAttachment& attachment = createInfo.pAttachments[attachmentIdx];
+        Texture* pTex = attachment.pTexure;
 
-        ENG_ASSERT_GRAPHICS_API(pTex, "Color attachment {} of \'{}\' framebuffer is nullptr", colorAttachmentIdx, dbgName.CStr());
+        const uint32_t texWidth = pTex->GetWidth();
+        const uint32_t texHeight = pTex->GetHeight();
+
+        ENG_ASSERT_GRAPHICS_API(pTex, "Attachment {} of \'{}\' framebuffer is nullptr", attachmentIdx, dbgName.CStr());
         ENG_ASSERT_GRAPHICS_API(pTex->IsValid(), "Invalid color attachment");
         ENG_ASSERT_GRAPHICS_API(pTex->IsType2D(), "Invalid color attachment type. Only 2D textures are supported for now");
 
-        if (isFirstColorAttachment) {
-            attachmentsWidth = pTex->GetWidth();
-            attachmentsHeight = pTex->GetHeight();
-            isFirstColorAttachment = false;
+        if (isFirstAttachment) {
+            attachmentsWidth = texWidth;
+            attachmentsHeight = texHeight;
+            isFirstAttachment = false;
         } else {
-            ENG_ASSERT_GRAPHICS_API(attachmentsWidth == pTex->GetWidth() && attachmentsHeight == pTex->GetHeight(),
-                "Color attachments dimensions must be equal");
+            ENG_ASSERT_GRAPHICS_API(attachmentsWidth == texWidth && attachmentsHeight == texHeight, "Attachments dimensions must be equal");
         }
 
     #if defined(ENG_DEBUG)
-        m_colorAttachments.emplace_back(colorAttachment);
+        m_attachments.emplace_back(attachment);
     #endif
 
-        glNamedFramebufferTexture(m_renderID, GL_COLOR_ATTACHMENT0 + colorAttachment.index, pTex->GetRenderID(), 0);
-    }
+        const GLenum attachmentGLType = GetFrameBufferAttachmentGLType(attachment);
 
-#if defined(ENG_DEBUG)
-    m_renderBufferAttachments.reserve(createInfo.renderBufferAttachmentsCount);
-#endif
-
-    for (size_t renderBufferAttachmentIdx = 0; renderBufferAttachmentIdx < createInfo.renderBufferAttachmentsCount; ++renderBufferAttachmentIdx) {
-        const RenderBufferAttachment& renderBufferAttachment = createInfo.pRenderBufferAttachments[renderBufferAttachmentIdx];
-        RenderBuffer* pRenderBuffer = renderBufferAttachment.pRenderBuffer;
-
-        ENG_ASSERT_GRAPHICS_API(pRenderBuffer, "Render buffer attachment {} of \'{}\' framebuffer is nullptr", renderBufferAttachmentIdx, dbgName.CStr());
-        ENG_ASSERT_GRAPHICS_API(pRenderBuffer->IsValid(), "Invalid render buffer attachment type");
-
-        if (isFirstColorAttachment) {
-            attachmentsWidth = pRenderBuffer->GetWidth();
-            attachmentsHeight = pRenderBuffer->GetHeight();
-            isFirstColorAttachment = false;
-        } else {
-            ENG_ASSERT_GRAPHICS_API(attachmentsWidth == pRenderBuffer->GetWidth() && attachmentsHeight == pRenderBuffer->GetHeight(),
-                "Render buffer attachments dimensions must be equal and the same as color attachments if exists");
-        }
-
-    #if defined(ENG_DEBUG)
-        m_renderBufferAttachments.emplace_back(renderBufferAttachment);
-    #endif
-
-        const GLenum renderBufferAttachmentInternal = [](RenderBufferAttachmentType type) -> GLenum
-        {
-            switch (type) {
-                case RenderBufferAttachmentType::TYPE_DEPTH_ATTACHMENT: return GL_DEPTH_ATTACHMENT;
-                case RenderBufferAttachmentType::TYPE_STENCIL_ATTACHMENT: return GL_STENCIL_ATTACHMENT;
-                case RenderBufferAttachmentType::TYPE_DEPTH_STENCIL_ATTACHMENT: return GL_DEPTH_STENCIL_ATTACHMENT;
-                
-                default:
-                    ENG_ASSERT_GRAPHICS_API_FAIL("Invalid render buffer attachemtn type");
-                    return GL_NONE;
-            }
-        }(renderBufferAttachment.type);
-
-        glNamedFramebufferRenderbuffer(m_renderID, renderBufferAttachmentInternal, GL_RENDERBUFFER, pRenderBuffer->GetRenderID());
+        glNamedFramebufferTexture(m_renderID, attachmentGLType, pTex->GetRenderID(), 0);
     }
 
     if (!CheckCompleteStatus()) {
@@ -380,8 +181,8 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo & crea
 
 #if defined(ENG_DEBUG)
     m_dbgName = dbgName;
-    m_ID = createInfo.id;
 #endif
+    m_ID = createInfo.ID;
 
     return true;
 }
@@ -512,11 +313,6 @@ void RenderTargetManager::ClearFrameBuffers() noexcept
     }
     m_frameBuffers.clear();
 
-    for (RenderBuffer& renderBuffer : m_RTRenderBuffers) {
-        renderBuffer.Destroy();
-    }
-    m_RTRenderBuffers.clear();
-
     TextureManager& texManager = TextureManager::GetInstance();
 
     for (Texture* pTex : m_RTTextures) {
@@ -540,7 +336,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 
     m_RTTextures.resize(static_cast<size_t>(RTTextureID::RT_TEX_COUNT));
 
-    ColorAttachment gbufferAlbedoColorAttachment = {};
+    FrameBufferAttachment gbufferAlbedoColorAttachment = {};
 
     {
         Texture2DCreateInfo gbufferAlbedoTextureCreateInfo = {};
@@ -550,18 +346,20 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferAlbedoTextureCreateInfo.mipmapsCount = 0;
         gbufferAlbedoTextureCreateInfo.inputData = {};
         
-        ds::StrID gbufferAlbedoTexName = "_GBUFFER_ALBEDO_";
+        ds::StrID gbufferAlbedoTexName = "__GBUFFER_ALBEDO__";
         TextureID gbufferAlbedoTexID = texManager.AllocateTexture2D(gbufferAlbedoTexName, gbufferAlbedoTextureCreateInfo);
         Texture* pGbufferAlbedoTex = texManager.GetTextureByID(gbufferAlbedoTexID);
         ENG_ASSERT_GRAPHICS_API(pGbufferAlbedoTex, "Failed to allocate \'{}\' texture", gbufferAlbedoTexName.CStr());
-        m_RTTextures[static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_ALBEDO)] = pGbufferAlbedoTex;
+        
+        const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
+        m_RTTextures[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
 
         gbufferAlbedoColorAttachment.pTexure = pGbufferAlbedoTex;
-        gbufferAlbedoColorAttachment.id = RTTextureID::RT_TEX_GBUFFER_ALBEDO;
+        gbufferAlbedoColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
         gbufferAlbedoColorAttachment.index = 0;
     }
 
-    ColorAttachment gbufferNormalColorAttachment = {};
+    FrameBufferAttachment gbufferNormalColorAttachment = {};
 
     {
         Texture2DCreateInfo gbufferNormalTextureCreateInfo = {};
@@ -571,18 +369,20 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferNormalTextureCreateInfo.mipmapsCount = 0;
         gbufferNormalTextureCreateInfo.inputData = {};
 
-        ds::StrID gbufferNormalTexName = "_GBUFFER_NORMAL_";
+        ds::StrID gbufferNormalTexName = "__GBUFFER_NORMAL__";
         TextureID gbufferNormalTexID = texManager.AllocateTexture2D(gbufferNormalTexName, gbufferNormalTextureCreateInfo);
         Texture* pGbufferNormalTex = texManager.GetTextureByID(gbufferNormalTexID);
         ENG_ASSERT_GRAPHICS_API(pGbufferNormalTex, "Failed to allocate \'{}\' texture", gbufferNormalTexName.CStr());
-        m_RTTextures[static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_NORMAL)] = pGbufferNormalTex;
+        
+        const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_NORMAL);
+        m_RTTextures[gbufferNormalTexIdx] = pGbufferNormalTex;
 
         gbufferNormalColorAttachment.pTexure = pGbufferNormalTex;
-        gbufferNormalColorAttachment.id = RTTextureID::RT_TEX_GBUFFER_NORMAL;
+        gbufferNormalColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
         gbufferNormalColorAttachment.index = 1;
     }
 
-    ColorAttachment gbufferSpecColorAttachment = {};
+    FrameBufferAttachment gbufferSpecColorAttachment = {};
 
     {
         Texture2DCreateInfo gbufferSpecularTextureCreateInfo = {};
@@ -592,16 +392,20 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferSpecularTextureCreateInfo.mipmapsCount = 0;
         gbufferSpecularTextureCreateInfo.inputData = {};
 
-        ds::StrID gbufferSpecularTexName = "_GBUFFER_SPECULAR_";
+        ds::StrID gbufferSpecularTexName = "__GBUFFER_SPECULAR__";
         TextureID gbufferSpecularTexID = texManager.AllocateTexture2D(gbufferSpecularTexName, gbufferSpecularTextureCreateInfo);
         Texture* pGbufferSpecTex = texManager.GetTextureByID(gbufferSpecularTexID);
         ENG_ASSERT_GRAPHICS_API(pGbufferSpecTex, "Failed to allocate \'{}\' texture", gbufferSpecularTexName.CStr());
-        m_RTTextures[static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_SPECULAR)] = pGbufferSpecTex;
+        
+        const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
+        m_RTTextures[gbufferSpecTexIdx] = pGbufferSpecTex;
 
         gbufferSpecColorAttachment.pTexure = pGbufferSpecTex;
-        gbufferSpecColorAttachment.id = RTTextureID::RT_TEX_GBUFFER_SPECULAR;
+        gbufferSpecColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
         gbufferSpecColorAttachment.index = 2;
     }
+
+    FrameBufferAttachment commonDepthAttachment = {};
 
     {
         Texture2DCreateInfo commonDepthTextureCreateInfo = {};
@@ -611,57 +415,37 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         commonDepthTextureCreateInfo.mipmapsCount = 0;
         commonDepthTextureCreateInfo.inputData = {};
 
-        ds::StrID commonDepthTexName = "_COMMON_DEPTH_";
+        ds::StrID commonDepthTexName = "__COMMON_DEPTH__";
         TextureID commonDepthTexID = texManager.AllocateTexture2D(commonDepthTexName, commonDepthTextureCreateInfo);
         Texture* pCommonDepthTex = texManager.GetTextureByID(commonDepthTexID);
         ENG_ASSERT_GRAPHICS_API(pCommonDepthTex, "Failed to allocate \'{}\' texture", commonDepthTexName.CStr());
-        m_RTTextures[static_cast<size_t>(RTTextureID::RT_TEX_COMMON_DEPTH)] = pCommonDepthTex;
-    }
+        
+        const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_COMMON_DEPTH);
+        m_RTTextures[commonDepthTexIdx] = pCommonDepthTex;
 
-    m_RTRenderBuffers.resize(static_cast<size_t>(RTRenderBufferID::RT_RENDERBUFFER_COUNT));
-
-    RenderBufferAttachment commonDepthRenderBufferAttachment = {};
-
-    {
-        RenderBufferCreateInfo renderBufferCommonDepthCreateInfo = {};
-        renderBufferCommonDepthCreateInfo.format = RenderBufferFormat::FORMAT_DEPTH_32;
-        renderBufferCommonDepthCreateInfo.width = width;
-        renderBufferCommonDepthCreateInfo.height = height;
-
-        ds::StrID commonDepthRenderBufferName = "_COMMON_DEPTH_RENDER_BUFFER_";
-        const size_t commonDepthRenderBufferIdx = static_cast<size_t>(RTRenderBufferID::RT_RENDERBUFFER_COMMON_DEPTH);
-        const bool isCommonDepthRenderBufferInitialized = 
-            m_RTRenderBuffers[commonDepthRenderBufferIdx].Init(commonDepthRenderBufferName, renderBufferCommonDepthCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(isCommonDepthRenderBufferInitialized, "Failed to initialize render buffer \'{}\'", commonDepthRenderBufferName.CStr());
-
-        commonDepthRenderBufferAttachment.pRenderBuffer = &m_RTRenderBuffers[commonDepthRenderBufferIdx];
-        commonDepthRenderBufferAttachment.id = RTRenderBufferID::RT_RENDERBUFFER_COMMON_DEPTH;
-        commonDepthRenderBufferAttachment.type = RenderBufferAttachmentType::TYPE_DEPTH_ATTACHMENT;
+        commonDepthAttachment.pTexure = pCommonDepthTex;
+        commonDepthAttachment.type = FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT;
     }
 
     m_frameBuffers.resize(static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_COUNT));
 
     {
         FramebufferCreateInfo gbufferFrameBufferCreateInfo = {};
-        gbufferFrameBufferCreateInfo.id = RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER;
+        gbufferFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER;
 
-        ColorAttachment pColorAttachments[] = { 
-            gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment
+        FrameBufferAttachment pAttachments[] = { 
+            gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment//, commonDepthAttachment
         };
 
-        RenderBufferAttachment pRenderBufferAttachments[] = {
-            commonDepthRenderBufferAttachment
-        };
+        gbufferFrameBufferCreateInfo.pAttachments = pAttachments;
+        gbufferFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
 
-        gbufferFrameBufferCreateInfo.pColorAttachments = pColorAttachments;
-        gbufferFrameBufferCreateInfo.colorAttachmentsCount = _countof(pColorAttachments);
-        gbufferFrameBufferCreateInfo.pRenderBufferAttachments = pRenderBufferAttachments;
-        gbufferFrameBufferCreateInfo.renderBufferAttachmentsCount = _countof(pRenderBufferAttachments);
-
-        ds::StrID gbufferFrameBufferName = "_GBUFFER_FRAMEBUFFER_";
-        ENG_MAYBE_UNUSED bool isgbufferFrameBufferInitialized = 
-            m_frameBuffers[static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER)].Init(gbufferFrameBufferName, gbufferFrameBufferCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(isgbufferFrameBufferInitialized, "Failed to initialize frame buffer \'{}\'", gbufferFrameBufferName.CStr());
+        ds::StrID gbufferFrameBufferName = "__GBUFFER_FRAMEBUFFER__";
+        const size_t gbufferFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
+        
+        if (!m_frameBuffers[gbufferFrameBufferIdx].Init(gbufferFrameBufferName, gbufferFrameBufferCreateInfo)) {
+            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", gbufferFrameBufferName.CStr());
+        }
     }
 }
 
