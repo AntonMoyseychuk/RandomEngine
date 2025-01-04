@@ -169,15 +169,15 @@ public:
 
     TextureID AllocateTexture2D(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept;
 
-    Texture* GetTextureByID(const TextureID& ID) noexcept;
+    Texture* GetTextureByID(TextureID ID) noexcept;
     Texture* GetTextureByName(ds::StrID name) noexcept;
     
     void DeallocateTexture(ds::StrID name);
-    void DeallocateTexture(const TextureID& ID);
+    void DeallocateTexture(TextureID ID);
 
     TextureSamplerState* GetSampler(uint32_t samplerIdx) noexcept;
 
-    bool IsValidTextureID(const TextureID& ID) const noexcept;
+    bool IsValidTextureID(TextureID ID) const noexcept;
     bool IsValidSamplerIdx(uint32_t samplerIdx) const noexcept;
     
 private:
@@ -190,7 +190,7 @@ private:
     void Terminate() noexcept;
 
     TextureID AllocateTextureID() noexcept;
-    void DeallocateTextureID(const TextureID& ID) noexcept;
+    void DeallocateTextureID(TextureID ID) noexcept;
 
     void InitializeSamplers() noexcept;
     void DestroySamplers() noexcept;

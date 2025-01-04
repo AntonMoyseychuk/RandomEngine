@@ -20,7 +20,7 @@ static void Preprocessor_GetShaderVersionPosition(const std::string_view& source
 {
     ENG_ASSERT_GRAPHICS_API(!sourceCode.empty(), "Source code is empty string view");
 
-    static std::regex versionRegex("#version\\s*(\\d+)");
+    static std::regex versionRegex("#version\\s*(\\d+) core");
 
     std::match_results<std::string_view::const_iterator> versionMatch;
     const bool versionFound = std::regex_search(sourceCode.begin(), sourceCode.end(), versionMatch, versionRegex);
@@ -424,7 +424,7 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
 }
 
 
-void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
+void ShaderManager::UnregisterShaderProgram(ProgramID id) noexcept
 {
     if (!IsValidProgramID(id)) {
         return;
@@ -442,13 +442,13 @@ void ShaderManager::UnregisterShaderProgram(const ProgramID &id) noexcept
 }
 
 
-ShaderProgram* ShaderManager::GetShaderProgramByID(const ProgramID& id) noexcept
+ShaderProgram* ShaderManager::GetShaderProgramByID(ProgramID id) noexcept
 {
     return IsValidProgramID(id) ? &m_shaderProgramsStorage[id] : nullptr;
 }
 
 
-bool ShaderManager::IsValidProgramID(const ProgramID &id) const noexcept
+bool ShaderManager::IsValidProgramID(ProgramID id) const noexcept
 {
     return id < m_nextAllocatedID && m_shaderProgramsStorage[id].IsValid();
 }
@@ -507,7 +507,7 @@ ProgramID ShaderManager::AllocateProgramID() noexcept
 }
 
 
-void ShaderManager::DeallocateProgramID(const ProgramID &ID) noexcept
+void ShaderManager::DeallocateProgramID(ProgramID ID) noexcept
 {
     if (ID < m_nextAllocatedID && std::find(m_programIDFreeList.cbegin(), m_programIDFreeList.cend(), ID) == m_programIDFreeList.cend()) {
         m_programIDFreeList.emplace_back(ID);

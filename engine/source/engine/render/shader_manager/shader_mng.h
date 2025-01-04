@@ -111,11 +111,11 @@ public:
     ~ShaderManager();
 
     ProgramID RegisterShaderProgram(const ShaderProgramCreateInfo& createInfo) noexcept;
-    void UnregisterShaderProgram(const ProgramID& ID) noexcept;
+    void UnregisterShaderProgram(ProgramID ID) noexcept;
     
-    ShaderProgram* GetShaderProgramByID(const ProgramID& ID) noexcept;
+    ShaderProgram* GetShaderProgramByID(ProgramID ID) noexcept;
     
-    bool IsValidProgramID(const ProgramID& ID) const noexcept;
+    bool IsValidProgramID(ProgramID ID) const noexcept;
 
 private:
     ShaderManager() = default;
@@ -127,7 +127,7 @@ private:
     void Terminate() noexcept;
 
     ProgramID AllocateProgramID() noexcept;
-    void DeallocateProgramID(const ProgramID& ID) noexcept;
+    void DeallocateProgramID(ProgramID ID) noexcept;
 
     bool IsInitialized() const noexcept;
 

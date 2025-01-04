@@ -535,7 +535,7 @@ TextureID TextureManager::AllocateTexture2D(ds::StrID name, const Texture2DCreat
 }
 
 
-Texture *TextureManager::GetTextureByID(const TextureID &ID) noexcept
+Texture *TextureManager::GetTextureByID(TextureID ID) noexcept
 {
     return IsValidTextureID(ID) ? &m_texturesStorage[static_cast<uint64_t>(ID)] : nullptr;
 }
@@ -559,7 +559,7 @@ void TextureManager::DeallocateTexture(ds::StrID name)
 }
 
 
-void TextureManager::DeallocateTexture(const TextureID& ID)
+void TextureManager::DeallocateTexture(TextureID ID)
 {
     if (!IsValidTextureID(ID)) {
         return;
@@ -583,7 +583,7 @@ TextureSamplerState *TextureManager::GetSampler(uint32_t samplerIdx) noexcept
 }
 
 
-bool TextureManager::IsValidTextureID(const TextureID &ID) const noexcept
+bool TextureManager::IsValidTextureID(TextureID ID) const noexcept
 {
     return ID < m_nextAllocatedID && m_texturesStorage[ID].IsValid();
 }
@@ -648,7 +648,7 @@ TextureID TextureManager::AllocateTextureID() noexcept
 }
 
 
-void TextureManager::DeallocateTextureID(const TextureID &ID) noexcept
+void TextureManager::DeallocateTextureID(TextureID ID) noexcept
 {
     if (ID < m_nextAllocatedID && std::find(m_textureIDFreeList.cbegin(), m_textureIDFreeList.cend(), ID) == m_textureIDFreeList.cend()) {
         m_textureIDFreeList.emplace_back(ID);

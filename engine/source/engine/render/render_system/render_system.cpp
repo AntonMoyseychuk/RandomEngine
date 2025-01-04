@@ -73,8 +73,6 @@ RenderSystem& RenderSystem::GetInstance() noexcept
 
 void RenderSystem::BeginFrame() noexcept
 {
-    static const float pClearColor[] = { 1.f, 1.f, 0.f, 1.f };
-    glClearNamedFramebufferfv(0, GL_COLOR, 0, pClearColor);
 }
 
 
@@ -101,16 +99,34 @@ void RenderSystem::RunColorPass() noexcept
     static Timer timer;
     timer.Tick();
 
+    Window& window = Engine::GetInstance().GetWindow();
+    RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
+
     static bool isInitialized = false;
-    static ShaderProgram* pProgram = nullptr;
-    static Texture* pTexture = nullptr;
-    static TextureSamplerState* pSampler = nullptr;
+    static ShaderProgram* pGBufferProgram = nullptr;
+    static ShaderProgram* pMergeProgram = nullptr;
+
+    static Texture* pTestTexture = nullptr;
+    static TextureSamplerState* pTestTextureSampler = nullptr;
+
     static uint32_t vao = 0;
+
+    static Texture* pGBufferAlbedoTex = nullptr;
+    static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
+    static Texture* pGBufferNormalTex = nullptr;
+    static Texture* pGBufferSpecTex = nullptr;
+    static Texture* pCommonDepthTex = nullptr;
 
     if (!isInitialized) {
         srand(time(0));
 
-        static constexpr const char* pIncludeDir = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
+        static constexpr const char* SHADER_INCLUDE_DIR = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
+        static const char* GBUFFER_DEFINES[] = {
+        #if defined(ENG_DEBUG)
+            "ENV_DEBUG",
+        #endif
+            "PASS_GBUFFER"
+        };
 
         ShaderStageCreateInfo vsStageCreateInfo = {};
 
@@ -120,10 +136,10 @@ void RenderSystem::RunColorPass() noexcept
         vsStageCreateInfo.pSourceCode = vsSourceCode.data();
         vsStageCreateInfo.codeSize = vsSourceCode.size();
 
-        vsStageCreateInfo.pDefines = nullptr;
-        vsStageCreateInfo.definesCount = 0;
+        vsStageCreateInfo.pDefines = GBUFFER_DEFINES;
+        vsStageCreateInfo.definesCount = _countof(GBUFFER_DEFINES);
 
-        vsStageCreateInfo.pIncludeParentPath = pIncludeDir;
+        vsStageCreateInfo.pIncludeParentPath = SHADER_INCLUDE_DIR;
 
 
         ShaderStageCreateInfo psStageCreateInfo = {};
@@ -134,22 +150,51 @@ void RenderSystem::RunColorPass() noexcept
         psStageCreateInfo.pSourceCode = psSourceCode.data();
         psStageCreateInfo.codeSize = psSourceCode.size();
 
-        psStageCreateInfo.pDefines = nullptr;
-        psStageCreateInfo.definesCount = 0;
+        psStageCreateInfo.pDefines = GBUFFER_DEFINES;
+        psStageCreateInfo.definesCount = _countof(GBUFFER_DEFINES);
 
-        psStageCreateInfo.pIncludeParentPath = pIncludeDir;
+        psStageCreateInfo.pIncludeParentPath = SHADER_INCLUDE_DIR;
 
 
-        const ShaderStageCreateInfo* stages[] = { &vsStageCreateInfo, &psStageCreateInfo };
+        const ShaderStageCreateInfo* pGBufferStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
-        ShaderProgramCreateInfo programCreateInfo = {};
-        programCreateInfo.dbgName = "base_shader";
+        ShaderProgramCreateInfo gBufferPassProgramCreateInfo = {};
+        gBufferPassProgramCreateInfo.dbgName = "Pass_GBuffer";
 
-        programCreateInfo.pStageCreateInfos = stages;
-        programCreateInfo.stageCreateInfosCount = _countof(stages);
+        gBufferPassProgramCreateInfo.pStageCreateInfos = pGBufferStages;
+        gBufferPassProgramCreateInfo.stageCreateInfosCount = _countof(pGBufferStages);
 
-        ProgramID programID = ShaderManager::GetInstance().RegisterShaderProgram(programCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(programID), "Failed to register shader program");
+        ProgramID gBufferPassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gBufferPassProgramCreateInfo);
+        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(gBufferPassProgramID), "Failed to register GBUFFER shader program");
+
+        pGBufferProgram = ShaderManager::GetInstance().GetShaderProgramByID(gBufferPassProgramID);
+
+        static const char* MERGE_DEFINES[] = {
+        #if defined(ENG_DEBUG)
+            "ENV_DEBUG",
+        #endif
+            "PASS_MERGE"
+        };
+
+        vsStageCreateInfo.pDefines = MERGE_DEFINES;
+        vsStageCreateInfo.definesCount = _countof(MERGE_DEFINES);
+
+        psStageCreateInfo.pDefines = MERGE_DEFINES;
+        psStageCreateInfo.definesCount = _countof(MERGE_DEFINES);
+
+        const ShaderStageCreateInfo* pMergeStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
+
+        ShaderProgramCreateInfo gMergePassProgramCreateInfo = {};
+        gMergePassProgramCreateInfo.dbgName = "Pass_Merge";
+
+        gMergePassProgramCreateInfo.pStageCreateInfos = pMergeStages;
+        gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
+
+        ProgramID gMergePassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gMergePassProgramCreateInfo);
+        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(gMergePassProgramID), "Failed to register MERGE shader program");
+
+        pMergeProgram = ShaderManager::GetInstance().GetShaderProgramByID(gMergePassProgramID);
+
 
         constexpr size_t texWidth = 256;
         constexpr size_t texWidthDiv2 = texWidth / 2;
@@ -190,38 +235,60 @@ void RenderSystem::RunColorPass() noexcept
 
         texCreateInfo.inputData.pData = pTexData;
 
-        TextureID textureID = TextureManager::GetInstance().AllocateTexture2D("texture", texCreateInfo);
+        TextureID textureID = TextureManager::GetInstance().AllocateTexture2D("TEST_TEXTURE", texCreateInfo);
         ENG_ASSERT_GRAPHICS_API(TextureManager::GetInstance().IsValidTextureID(textureID), "Failed to register texture");
 
-        pProgram = ShaderManager::GetInstance().GetShaderProgramByID(programID);
-        pProgram->Bind();
-
-        pTexture = TextureManager::GetInstance().GetTextureByID(textureID);
-        pSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
-
-        pTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
-        pSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+        pTestTexture = TextureManager::GetInstance().GetTextureByID(textureID);
+        pTestTextureSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
         
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
 
+        pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
+        pGBufferNormalTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_NORMAL);
+        pGBufferSpecTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
+        pCommonDepthTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_COMMON_DEPTH);
+
+        pGBufferAlbedoSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(GBUFFER_ALBEDO_TEX));
+
         isInitialized = true;
     }
 
-    Window& window = Engine::GetInstance().GetWindow();
-
-    const float elapsedTime = timer.GetElapsedTimeInSec();
-    pProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);
     
     glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
+
+    {
+        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
+        rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
+
+        pGBufferProgram->Bind();
+
+        const float elapsedTime = timer.GetElapsedTimeInSec();
+        pGBufferProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);    
+
+        pTestTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+        pTestTextureSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
+    }
+
+    {
+        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
+        rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
+        
+        pMergeProgram->Bind();
+
+        pGBufferAlbedoTex->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
+        pGBufferAlbedoSampler->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
+
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
+    }
 
     const float deltaTime = timer.GetDeltaTimeInMillisec();
 
     char title[256];
     sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
     window.SetTitle(title);
-
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
 }
 
 
