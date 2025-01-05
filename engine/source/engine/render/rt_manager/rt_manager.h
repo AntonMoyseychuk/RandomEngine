@@ -75,6 +75,9 @@ public:
 
     bool IsValid() const noexcept;
 
+    bool HasDepthAttachment() const noexcept { return GetDepthAttachmentCount() > 0; }
+    bool HasStencilAttachment() const noexcept { return GetStencilAttachmentCount() > 0; }
+
     ds::StrID GetName() const noexcept;
     
     uint32_t GetColorAttachmentsCount() const noexcept { return m_attachmentsState.colorAttachmentsCount; }

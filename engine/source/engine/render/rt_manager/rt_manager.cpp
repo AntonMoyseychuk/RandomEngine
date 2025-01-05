@@ -312,19 +312,19 @@ void RenderTargetManager::ClearFrameBuffer(RTFrameBufferID framebufferID, float 
         ClearFrameBufferColorInternal(frameBufferRenderID, index, r, g, b, a);
     }
 
-    const uint32_t frameBufferDepthAttachmentsCount = frameBuffer.GetDepthAttachmentCount();
-    const uint32_t frameBufferStencilAttachmentsCount = frameBuffer.GetStencilAttachmentCount();
+    const bool hasDepthAttachment = frameBuffer.HasDepthAttachment();
+    const bool hasStencilAttachment = frameBuffer.HasStencilAttachment();
     
-    if (frameBufferDepthAttachmentsCount > 0 && frameBufferStencilAttachmentsCount > 0) {
+    if (hasDepthAttachment && hasStencilAttachment) {
         ClearFrameBufferDepthStencilInternal(frameBufferRenderID, depth, stencil);
         return;
     }
 
-    if (frameBufferDepthAttachmentsCount > 0) {
+    if (hasDepthAttachment) {
         ClearFrameBufferDepthInternal(frameBufferRenderID, depth);
     }
 
-    if (frameBufferStencilAttachmentsCount > 0) {
+    if (hasStencilAttachment) {
         ClearFrameBufferStencilInternal(frameBufferRenderID, stencil);
     }
 }
@@ -360,7 +360,7 @@ void RenderTargetManager::ClearFrameBufferDepth(RTFrameBufferID framebufferID, f
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
 
-    if (frameBuffer.GetDepthAttachmentCount() > 0) {
+    if (frameBuffer.HasDepthAttachment()) {
         ClearFrameBufferDepthInternal(frameBuffer.GetRenderID(), depth);
     }
 }
@@ -377,7 +377,7 @@ void RenderTargetManager::ClearFrameBufferStencil(RTFrameBufferID framebufferID,
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
 
-    if (frameBuffer.GetDepthAttachmentCount() > 0) {
+    if (frameBuffer.HasDepthAttachment()) {
         ClearFrameBufferStencilInternal(frameBuffer.GetRenderID(), stencil);
     }
 }
@@ -394,7 +394,7 @@ void RenderTargetManager::ClearFrameBufferDepthStencil(RTFrameBufferID framebuff
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
 
-    if (frameBuffer.GetDepthAttachmentCount() > 0 && frameBuffer.GetStencilAttachmentCount() > 0) {
+    if (frameBuffer.HasDepthAttachment() && frameBuffer.HasStencilAttachment()) {
         ClearFrameBufferDepthStencilInternal(frameBuffer.GetRenderID(), depth, stencil);
     }
 }
