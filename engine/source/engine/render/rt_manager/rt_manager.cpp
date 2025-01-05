@@ -17,6 +17,51 @@ static std::unique_ptr<RenderTargetManager> s_pRenderTargetMng = nullptr;
 static int32_t MAX_COLOR_ATTACHMENTS = 0;
 
 
+static void ClearFrameBufferColorInternal(uint32_t renderID, uint32_t index, const float* pColor) noexcept
+{
+    glClearNamedFramebufferfv(renderID, GL_COLOR, index, pColor);
+}
+
+
+static void ClearFrameBufferDepthInternal(uint32_t renderID, float depth) noexcept
+{
+    glClearNamedFramebufferfv(renderID, GL_DEPTH, 0, &depth);
+}
+
+
+static void ClearFrameBufferStencilInternal(uint32_t renderID, int32_t stencil) noexcept
+{
+    glClearNamedFramebufferiv(renderID, GL_STENCIL, 0, &stencil);
+}
+
+
+static void ClearFrameBufferDepthStencilInternal(uint32_t renderID, float depth, int32_t stencil) noexcept
+{
+    glClearNamedFramebufferfi(renderID, GL_DEPTH_STENCIL, 0, depth, stencil);
+}
+
+
+static void ClearFrameBufferInternal(uint32_t renderID, uint32_t colorAttachmentsCount, const float* pColor, const float *depthOpt, const int32_t *stencilOpt) noexcept
+{
+    for (uint32_t index = 0; index < colorAttachmentsCount; ++index) {
+        ClearFrameBufferColorInternal(renderID, index, pColor);
+    }
+
+    if (depthOpt && stencilOpt) {
+        ClearFrameBufferDepthStencilInternal(renderID, *depthOpt, *stencilOpt);
+        return;
+    }
+
+    if (depthOpt) {
+        ClearFrameBufferDepthInternal(renderID, *depthOpt);
+    }
+
+    if (stencilOpt) {
+        ClearFrameBufferStencilInternal(renderID, *stencilOpt);
+    }
+}
+
+
 FrameBuffer::~FrameBuffer()
 {
     Destroy();
@@ -60,8 +105,64 @@ void FrameBuffer::Bind() noexcept
 }
 
 
+void FrameBuffer::Clear(float r, float g, float b, float a, float depth, int32_t stencil) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
+
+    const float pColor[4] = { r, g, b, a };
+
+    const float* pDepth = HasDepthAttachment() ? &depth : nullptr;
+    const int32_t* pStencil = HasStencilAttachment() ? &stencil : nullptr;
+
+    ClearFrameBufferInternal(m_renderID, GetColorAttachmentsCount(), pColor, pDepth, pStencil);
+}
+
+void FrameBuffer::ClearColor(uint32_t index, float r, float g, float b, float a) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
+    
+    if (index < GetColorAttachmentsCount()) {
+        const float pColor[4] = { r, g, b, a };
+        ClearFrameBufferColorInternal(m_renderID, index, pColor);
+    }
+}
+
+
+void FrameBuffer::ClearDepth(float depth) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
+    
+    if (HasDepthAttachment()) {
+        ClearFrameBufferDepthInternal(m_renderID, depth);
+    }
+}
+
+
+void FrameBuffer::ClearStencil(int32_t stencil) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
+    
+    if (HasStencilAttachment()) {
+        ClearFrameBufferStencilInternal(m_renderID, stencil);
+    }
+}
+
+void FrameBuffer::ClearDepthStencil(float depth, int32_t stencil) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
+    
+    if (HasDepthAttachment() && HasStencilAttachment()) {
+        ClearFrameBufferDepthStencilInternal(m_renderID, depth, stencil);
+    }
+}
+
+
 bool FrameBuffer::IsValid() const noexcept
 {
+    if (m_ID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
+        return true;
+    }
+
     return m_renderID != 0 && m_ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && m_ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
 }
 
@@ -112,6 +213,18 @@ void FrameBuffer::Destroy() noexcept
 
 bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept
 {
+    if (createInfo.ID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
+    #if defined(ENG_DEBUG)
+        m_dbgName = dbgName;
+    #endif
+        m_attachmentsState.colorAttachmentsCount = MAX_COLOR_ATTACHMENTS;
+        m_attachmentsState.depthAttachmentsCount = 1;
+        m_attachmentsState.stencilAttachmentsCount = 1;
+        m_ID = RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT;
+
+        return true;
+    }
+
     ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before framebuffers initializing");
     
     ENG_ASSERT_GRAPHICS_API(createInfo.ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && createInfo.ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
@@ -274,7 +387,7 @@ Texture *RenderTargetManager::GetRTTexture(RTTextureID texID) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(texID != RTTextureID::RT_TEX_INVALID && texID < RTTextureID::RT_TEX_COUNT, "Invalid RT texture ID");
 
-    Texture* pRTTexture = m_RTTextures[static_cast<size_t>(texID)];
+    Texture* pRTTexture = m_RTTextureStorage[static_cast<size_t>(texID)];
     ENG_ASSERT_GRAPHICS_API(pRTTexture != nullptr, "RT texture is nullptr");
     
     return pRTTexture;
@@ -283,120 +396,68 @@ Texture *RenderTargetManager::GetRTTexture(RTTextureID texID) noexcept
 
 void RenderTargetManager::BindFrameBuffer(RTFrameBufferID framebufferID) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid RT framebuffer ID");
-    m_frameBuffers[static_cast<size_t>(framebufferID)].Bind();
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
+    
+    m_frameBufferStorage[static_cast<size_t>(framebufferID)].Bind();
 }
 
 
 void RenderTargetManager::ClearFrameBuffer(RTFrameBufferID framebufferID, float r, float g, float b, float a, float depth, int32_t stencil) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        ClearFrameBufferInternal(0, MAX_COLOR_ATTACHMENTS, r, g, b, a, &depth, &stencil);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
-    FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
+    FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
 
-    const uint32_t frameBufferRenderID = frameBuffer.GetRenderID();
-
-    for (uint32_t index = 0; index < frameBuffer.GetColorAttachmentsCount(); ++index) {
-        ClearFrameBufferColorInternal(frameBufferRenderID, index, r, g, b, a);
-    }
-
-    const bool hasDepthAttachment = frameBuffer.HasDepthAttachment();
-    const bool hasStencilAttachment = frameBuffer.HasStencilAttachment();
-    
-    if (hasDepthAttachment && hasStencilAttachment) {
-        ClearFrameBufferDepthStencilInternal(frameBufferRenderID, depth, stencil);
-        return;
-    }
-
-    if (hasDepthAttachment) {
-        ClearFrameBufferDepthInternal(frameBufferRenderID, depth);
-    }
-
-    if (hasStencilAttachment) {
-        ClearFrameBufferStencilInternal(frameBufferRenderID, stencil);
-    }
+    frameBuffer.Clear(r, g, b, a, depth, stencil);
 }
 
 
 void RenderTargetManager::ClearFrameBufferColor(RTFrameBufferID framebufferID, uint32_t index, float r, float g, float b, float a) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        ClearFrameBufferColorInternal(0, index, r, g, b, a);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
-    FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
+    FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
 
-    if (index < frameBuffer.GetColorAttachmentsCount()) {
-        ClearFrameBufferColorInternal(frameBuffer.GetRenderID(), index, r, g, b, a);
-    }
+    frameBuffer.ClearColor(index, r, g, b, a);
 }
 
 
 void RenderTargetManager::ClearFrameBufferDepth(RTFrameBufferID framebufferID, float depth) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        ClearFrameBufferDepthInternal(0, depth);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
-    FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
+    FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
 
-    if (frameBuffer.HasDepthAttachment()) {
-        ClearFrameBufferDepthInternal(frameBuffer.GetRenderID(), depth);
-    }
+    frameBuffer.ClearDepth(depth);
 }
 
 void RenderTargetManager::ClearFrameBufferStencil(RTFrameBufferID framebufferID, int32_t stencil) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        ClearFrameBufferStencilInternal(0, stencil);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
-    FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
+    FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
 
-    if (frameBuffer.HasDepthAttachment()) {
-        ClearFrameBufferStencilInternal(frameBuffer.GetRenderID(), stencil);
-    }
+    frameBuffer.ClearStencil(stencil);
 }
 
 void RenderTargetManager::ClearFrameBufferDepthStencil(RTFrameBufferID framebufferID, float depth, int32_t stencil) noexcept
 {
-    if (framebufferID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        ClearFrameBufferDepthStencilInternal(0, depth, stencil);
-        return;
-    }
-
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
+        "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
-    FrameBuffer& frameBuffer = m_frameBuffers[frameBufferIdx];
+    FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
 
-    if (frameBuffer.HasDepthAttachment() && frameBuffer.HasStencilAttachment()) {
-        ClearFrameBufferDepthStencilInternal(frameBuffer.GetRenderID(), depth, stencil);
-    }
+    frameBuffer.ClearDepthStencil(depth, stencil);
 }
 
 
@@ -439,15 +500,15 @@ void RenderTargetManager::ClearFrameBuffersStorage() noexcept
 {
     TextureManager& texManager = TextureManager::GetInstance();
 
-    for (Texture* pTex : m_RTTextures) {
+    for (Texture* pTex : m_RTTextureStorage) {
         texManager.DeallocateTexture(pTex->GetName());
     }
-    m_RTTextures.clear();
+    m_RTTextureStorage.clear();
 
-    for (FrameBuffer& framebuffer : m_frameBuffers) {
+    for (FrameBuffer& framebuffer : m_frameBufferStorage) {
         framebuffer.Destroy();
     }
-    m_frameBuffers.clear();
+    m_frameBufferStorage.clear();
 }
 
 
@@ -463,7 +524,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 
     TextureManager& texManager = TextureManager::GetInstance();
 
-    m_RTTextures.resize(static_cast<size_t>(RTTextureID::RT_TEX_COUNT));
+    m_RTTextureStorage.resize(static_cast<size_t>(RTTextureID::RT_TEX_COUNT));
 
     FrameBufferAttachment gbufferAlbedoColorAttachment = {};
 
@@ -481,7 +542,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         ENG_ASSERT_GRAPHICS_API(pGbufferAlbedoTex, "Failed to allocate \'{}\' texture", gbufferAlbedoTexName.CStr());
         
         const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
-        m_RTTextures[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
+        m_RTTextureStorage[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
 
         gbufferAlbedoColorAttachment.pTexure = pGbufferAlbedoTex;
         gbufferAlbedoColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
@@ -504,7 +565,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         ENG_ASSERT_GRAPHICS_API(pGbufferNormalTex, "Failed to allocate \'{}\' texture", gbufferNormalTexName.CStr());
         
         const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_NORMAL);
-        m_RTTextures[gbufferNormalTexIdx] = pGbufferNormalTex;
+        m_RTTextureStorage[gbufferNormalTexIdx] = pGbufferNormalTex;
 
         gbufferNormalColorAttachment.pTexure = pGbufferNormalTex;
         gbufferNormalColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
@@ -527,7 +588,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         ENG_ASSERT_GRAPHICS_API(pGbufferSpecTex, "Failed to allocate \'{}\' texture", gbufferSpecularTexName.CStr());
         
         const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
-        m_RTTextures[gbufferSpecTexIdx] = pGbufferSpecTex;
+        m_RTTextureStorage[gbufferSpecTexIdx] = pGbufferSpecTex;
 
         gbufferSpecColorAttachment.pTexure = pGbufferSpecTex;
         gbufferSpecColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
@@ -550,13 +611,23 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         ENG_ASSERT_GRAPHICS_API(pCommonDepthTex, "Failed to allocate \'{}\' texture", commonDepthTexName.CStr());
         
         const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_COMMON_DEPTH);
-        m_RTTextures[commonDepthTexIdx] = pCommonDepthTex;
+        m_RTTextureStorage[commonDepthTexIdx] = pCommonDepthTex;
 
         commonDepthAttachment.pTexure = pCommonDepthTex;
         commonDepthAttachment.type = FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT;
     }
 
-    m_frameBuffers.resize(static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_COUNT));
+    m_frameBufferStorage.resize(static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_COUNT));
+
+    {
+        FramebufferCreateInfo defaultFrameBufferCreateInfo = {};
+        defaultFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT;
+
+        ds::StrID defaultFrameBufferName = "__DEFAULT_FRAMEBUFFER__";
+        const size_t defaultFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
+        
+        m_frameBufferStorage[defaultFrameBufferIdx].Init(defaultFrameBufferName, defaultFrameBufferCreateInfo);
+    }
 
     {
         FramebufferCreateInfo gbufferFrameBufferCreateInfo = {};
@@ -572,55 +643,10 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         ds::StrID gbufferFrameBufferName = "__GBUFFER_FRAMEBUFFER__";
         const size_t gbufferFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
         
-        if (!m_frameBuffers[gbufferFrameBufferIdx].Init(gbufferFrameBufferName, gbufferFrameBufferCreateInfo)) {
+        if (!m_frameBufferStorage[gbufferFrameBufferIdx].Init(gbufferFrameBufferName, gbufferFrameBufferCreateInfo)) {
             ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", gbufferFrameBufferName.CStr());
         }
     }
-}
-
-void RenderTargetManager::ClearFrameBufferInternal(uint32_t frameBufferRenderID, uint32_t colorAttachmentsCount, float r, float g, float b, float a, const float *depth, const int32_t *stencil) noexcept
-{
-    for (uint32_t index = 0; index < colorAttachmentsCount; ++index) {
-        ClearFrameBufferColorInternal(frameBufferRenderID, index, r, g, b, a);
-    }
-
-    if (depth && stencil) {
-        ClearFrameBufferDepthStencilInternal(frameBufferRenderID, *depth, *stencil);
-        return;
-    }
-
-    if (depth) {
-        ClearFrameBufferDepthInternal(frameBufferRenderID, *depth);
-    }
-
-    if (stencil) {
-        ClearFrameBufferStencilInternal(frameBufferRenderID, *stencil);
-    }
-}
-
-
-void RenderTargetManager::ClearFrameBufferColorInternal(uint32_t frameBufferRenderID, uint32_t index, float r, float g, float b, float a) noexcept
-{
-    const float pClearColor[] = { r, g, b, a };
-    glClearNamedFramebufferfv(frameBufferRenderID, GL_COLOR, index, pClearColor);
-}
-
-
-void RenderTargetManager::ClearFrameBufferDepthInternal(uint32_t frameBufferRenderID, float depth) noexcept
-{
-    glClearNamedFramebufferfv(frameBufferRenderID, GL_DEPTH, 0, &depth);
-}
-
-
-void RenderTargetManager::ClearFrameBufferStencilInternal(uint32_t frameBufferRenderID, int32_t stencil) noexcept
-{
-    glClearNamedFramebufferiv(frameBufferRenderID, GL_STENCIL, 0, &stencil);
-}
-
-
-void RenderTargetManager::ClearFrameBufferDepthStencilInternal(uint32_t frameBufferRenderID, float depth, int32_t stencil) noexcept
-{
-    glClearNamedFramebufferfi(frameBufferRenderID, GL_DEPTH_STENCIL, 0, depth, stencil);
 }
 
 
