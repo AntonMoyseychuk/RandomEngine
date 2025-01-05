@@ -516,16 +516,16 @@ TextureID TextureManager::AllocateTexture2D(ds::StrID name, const Texture2DCreat
         DeallocateTexture(name);
     }
 
-    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID < m_texturesStorage.size() - 1, "Texture storage overflow");
+    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
 
     Texture texture;
 
     if (!texture.Init(name, createInfo)) {
-        return TEXTURE_ID_INVALID;
+        return TextureID{};
     }
 
     TextureID textureID = AllocateTextureID();
-    const uint64_t index = textureID;
+    const uint64_t index = textureID.Value();
     
     m_textureIDToNameVector[index] = name;
     m_textureNameToIDMap[name] = textureID;
@@ -537,7 +537,7 @@ TextureID TextureManager::AllocateTexture2D(ds::StrID name, const Texture2DCreat
 
 Texture *TextureManager::GetTextureByID(TextureID ID) noexcept
 {
-    return IsValidTextureID(ID) ? &m_texturesStorage[static_cast<uint64_t>(ID)] : nullptr;
+    return IsValidTexture(ID) ? &m_texturesStorage[ID.Value()] : nullptr;
 }
 
 
@@ -561,13 +561,13 @@ void TextureManager::DeallocateTexture(ds::StrID name)
 
 void TextureManager::DeallocateTexture(TextureID ID)
 {
-    if (!IsValidTextureID(ID)) {
+    if (!IsValidTexture(ID)) {
         return;
     }
 
-    const uint64_t index = ID;
+    const uint64_t index = ID.Value();
 
-    ds::StrID& texName = m_textureIDToNameVector[ID];
+    ds::StrID& texName = m_textureIDToNameVector[index];
     m_textureNameToIDMap.erase(texName);
     texName = "";
 
@@ -583,9 +583,9 @@ TextureSamplerState *TextureManager::GetSampler(uint32_t samplerIdx) noexcept
 }
 
 
-bool TextureManager::IsValidTextureID(TextureID ID) const noexcept
+bool TextureManager::IsValidTexture(TextureID ID) const noexcept
 {
-    return ID < m_nextAllocatedID && m_texturesStorage[ID].IsValid();
+    return ID < m_nextAllocatedID && m_texturesStorage[ID.Value()].IsValid();
 }
 
 
@@ -607,7 +607,7 @@ bool TextureManager::Init() noexcept
 
     InitializeSamplers();
 
-    m_nextAllocatedID = 0;
+    m_nextAllocatedID = TextureID(0);
 
     m_isInitialized = true;
 
@@ -626,7 +626,7 @@ void TextureManager::Terminate() noexcept
 
     DestroySamplers();
 
-    m_nextAllocatedID = 0;
+    m_nextAllocatedID = TextureID(0);
 
     m_isInitialized = false;
 }
@@ -636,7 +636,7 @@ TextureID TextureManager::AllocateTextureID() noexcept
 {
     if (m_textureIDFreeList.empty()) {
         TextureID textureID = m_nextAllocatedID;
-        ++m_nextAllocatedID;
+        m_nextAllocatedID = TextureID(m_nextAllocatedID.Value() + 1);
 
         return textureID;
     }

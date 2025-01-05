@@ -2,6 +2,7 @@
 
 #include "utils/file/file.h"
 #include "utils/data_structures/strid.h"
+#include "utils/data_structures/base_id.h"
 
 #include "resource_bind.h"
 
@@ -90,9 +91,7 @@ private:
 };
 
 
-using ProgramID = uint64_t;
-
-inline constexpr ProgramID PROGRAM_ID_INVALID = UINT64_MAX;
+using ProgramID = BaseID;
 
 
 class ShaderManager
@@ -115,7 +114,7 @@ public:
     
     ShaderProgram* GetShaderProgramByID(ProgramID ID) noexcept;
     
-    bool IsValidProgramID(ProgramID ID) const noexcept;
+    bool IsValidProgram(ProgramID ID) const noexcept;
 
 private:
     ShaderManager() = default;
@@ -144,7 +143,7 @@ private:
 
     std::deque<ProgramID> m_programIDFreeList;
 
-    ProgramID m_nextAllocatedID = 0;
+    ProgramID m_nextAllocatedID = ProgramID(0);
 
     bool m_isInitialized = false;
 };

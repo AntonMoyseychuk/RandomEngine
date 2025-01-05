@@ -404,16 +404,16 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
         return idIter->second;
     }
 
-    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
+    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
 
     ShaderProgram program;
 
     if (!program.Init(createInfo)) {
-        return PROGRAM_ID_INVALID;
+        return ProgramID{};
     }
 
     ProgramID programID = AllocateProgramID();
-    const uint64_t index = programID;
+    const uint64_t index = programID.Value();
     
     m_shaderProgramCreateInfoHashToIDMap[createInfoHash] = programID;
     m_shaderProgramIDToCreateInfoHashVector[index] = createInfoHash;
@@ -424,13 +424,13 @@ ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &cr
 }
 
 
-void ShaderManager::UnregisterShaderProgram(ProgramID id) noexcept
+void ShaderManager::UnregisterShaderProgram(ProgramID ID) noexcept
 {
-    if (!IsValidProgramID(id)) {
+    if (!IsValidProgram(ID)) {
         return;
     }
 
-    const uint64_t index = id;
+    const uint64_t index = ID.Value();
 
     uint64_t& createInfoHash = m_shaderProgramIDToCreateInfoHashVector[index];
     m_shaderProgramCreateInfoHashToIDMap.erase(createInfoHash);
@@ -438,19 +438,19 @@ void ShaderManager::UnregisterShaderProgram(ProgramID id) noexcept
 
     m_shaderProgramsStorage[index].Destroy();
 
-    DeallocateProgramID(id);
+    DeallocateProgramID(ID);
 }
 
 
-ShaderProgram* ShaderManager::GetShaderProgramByID(ProgramID id) noexcept
+ShaderProgram* ShaderManager::GetShaderProgramByID(ProgramID ID) noexcept
 {
-    return IsValidProgramID(id) ? &m_shaderProgramsStorage[id] : nullptr;
+    return IsValidProgram(ID) ? &m_shaderProgramsStorage[ID.Value()] : nullptr;
 }
 
 
-bool ShaderManager::IsValidProgramID(ProgramID id) const noexcept
+bool ShaderManager::IsValidProgram(ProgramID ID) const noexcept
 {
-    return id < m_nextAllocatedID && m_shaderProgramsStorage[id].IsValid();
+    return ID < m_nextAllocatedID && m_shaderProgramsStorage[ID.Value()].IsValid();
 }
 
 
@@ -479,7 +479,7 @@ void ShaderManager::Terminate() noexcept
 
     m_programIDFreeList.clear();
 
-    m_nextAllocatedID = 0;
+    m_nextAllocatedID = ProgramID(0);
 
     m_isInitialized = false;
 }
@@ -495,7 +495,7 @@ ProgramID ShaderManager::AllocateProgramID() noexcept
 {
     if (m_programIDFreeList.empty()) {
         ProgramID programID = m_nextAllocatedID;
-        ++m_nextAllocatedID;
+        m_nextAllocatedID = ProgramID(m_nextAllocatedID.Value() + 1);
 
         return programID;
     }

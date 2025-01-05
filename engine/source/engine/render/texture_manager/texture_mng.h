@@ -1,6 +1,7 @@
 #pragma once
 
 #include "utils/data_structures/strid.h"
+#include "utils/data_structures/base_id.h"
 
 #include "core.h"
 
@@ -147,9 +148,7 @@ private:
 };
 
 
-using TextureID = uint64_t;
-
-inline constexpr TextureID TEXTURE_ID_INVALID = UINT64_MAX;
+using TextureID = BaseID;
 
 
 class TextureManager
@@ -177,7 +176,7 @@ public:
 
     TextureSamplerState* GetSampler(uint32_t samplerIdx) noexcept;
 
-    bool IsValidTextureID(TextureID ID) const noexcept;
+    bool IsValidTexture(TextureID ID) const noexcept;
     bool IsValidSamplerIdx(uint32_t samplerIdx) const noexcept;
     
 private:
@@ -206,7 +205,7 @@ private:
 
     std::deque<TextureID> m_textureIDFreeList;
 
-    TextureID m_nextAllocatedID = 0;
+    TextureID m_nextAllocatedID = TextureID{0};
 
     bool m_isInitialized = false;
 };

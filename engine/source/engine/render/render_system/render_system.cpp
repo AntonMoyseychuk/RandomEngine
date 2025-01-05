@@ -165,7 +165,7 @@ void RenderSystem::RunColorPass() noexcept
         gBufferPassProgramCreateInfo.stageCreateInfosCount = _countof(pGBufferStages);
 
         ProgramID gBufferPassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gBufferPassProgramCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(gBufferPassProgramID), "Failed to register GBUFFER shader program");
+        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgram(gBufferPassProgramID), "Failed to register GBUFFER shader program");
 
         pGBufferProgram = ShaderManager::GetInstance().GetShaderProgramByID(gBufferPassProgramID);
 
@@ -191,7 +191,7 @@ void RenderSystem::RunColorPass() noexcept
         gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
 
         ProgramID gMergePassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gMergePassProgramCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgramID(gMergePassProgramID), "Failed to register MERGE shader program");
+        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgram(gMergePassProgramID), "Failed to register MERGE shader program");
 
         pMergeProgram = ShaderManager::GetInstance().GetShaderProgramByID(gMergePassProgramID);
 
@@ -236,7 +236,7 @@ void RenderSystem::RunColorPass() noexcept
         texCreateInfo.inputData.pData = pTexData;
 
         TextureID textureID = TextureManager::GetInstance().AllocateTexture2D("TEST_TEXTURE", texCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(TextureManager::GetInstance().IsValidTextureID(textureID), "Failed to register texture");
+        ENG_ASSERT_GRAPHICS_API(TextureManager::GetInstance().IsValidTexture(textureID), "Failed to register texture");
 
         pTestTexture = TextureManager::GetInstance().GetTextureByID(textureID);
         pTestTextureSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
