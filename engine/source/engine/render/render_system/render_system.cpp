@@ -258,8 +258,8 @@ void RenderSystem::RunColorPass() noexcept
     glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
 
     {
-        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
         rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
+        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
 
         pGBufferProgram->Bind();
 
@@ -273,8 +273,8 @@ void RenderSystem::RunColorPass() noexcept
     }
 
     {
-        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
         rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
+        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
         
         pMergeProgram->Bind();
 

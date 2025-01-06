@@ -181,6 +181,17 @@ bool FrameBuffer::IsValid() const noexcept
 }
 
 
+uint64_t FrameBuffer::Hash() const noexcept
+{
+    ds::HashBuilder builder;
+
+    builder.AddValue(m_ID);
+    builder.AddValue(m_renderID);
+
+    return builder.Value();
+}
+
+
 ds::StrID FrameBuffer::GetName() const noexcept
 {
 #if defined(ENG_DEBUG)
@@ -386,7 +397,7 @@ bool FrameBuffer::CheckCompleteStatus() const noexcept
 
 RenderTargetManager &RenderTargetManager::GetInstance() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(engIsRenderTargetManagerInitialized(), "Render target manager is not initialized");
+    ENG_ASSERT(engIsRenderTargetManagerInitialized(), "Render target manager is not initialized");
     return *s_pRenderTargetMng;
 }
 
@@ -664,24 +675,30 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 }
 
 
+uint64_t amHash(const FrameBuffer& frameBuffer) noexcept
+{
+    return frameBuffer.Hash();
+}
+
+
 bool engInitRenderTargetManager() noexcept
 {
     if (engIsRenderTargetManagerInitialized()) {
-        ENG_LOG_GRAPHICS_API_WARN("Render target manager is already initialized!");
+        ENG_LOG_WARN("Render target manager is already initialized!");
         return true;
     }
 
-    ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before render target manager!");
+    ENG_ASSERT(engIsTextureManagerInitialized(), "Texture manager must be initialized before render target manager!");
 
     s_pRenderTargetMng = std::unique_ptr<RenderTargetManager>(new RenderTargetManager);
 
     if (!s_pRenderTargetMng) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for render target manager");
+        ENG_ASSERT_FAIL("Failed to allocate memory for render target manager");
         return false;
     }
 
     if (!s_pRenderTargetMng->Init()) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialized render target manager");
+        ENG_ASSERT_FAIL("Failed to initialized render target manager");
         return false;
     }
 
