@@ -54,6 +54,7 @@ static void ClearFrameBufferInternal(uint32_t renderID, uint32_t colorAttachment
 
     if (depthOpt) {
         ClearFrameBufferDepthInternal(renderID, *depthOpt);
+        return;
     }
 
     if (stencilOpt) {
@@ -151,8 +152,21 @@ void FrameBuffer::ClearDepthStencil(float depth, int32_t stencil) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(IsValid(), "Frame buffer is invalid");
     
-    if (HasDepthAttachment() && HasStencilAttachment()) {
+    const bool hasDepthAttachment = HasDepthAttachment();
+    const bool hasStencilAttachment = HasStencilAttachment();
+
+    if (hasDepthAttachment && hasStencilAttachment) {
         ClearFrameBufferDepthStencilInternal(m_renderID, depth, stencil);
+        return;
+    }
+
+    if (hasDepthAttachment) {
+        ClearFrameBufferDepthInternal(m_renderID, depth);
+        return;
+    }
+
+    if (hasStencilAttachment) {
+        ClearFrameBufferDepthInternal(m_renderID, stencil);
     }
 }
 
