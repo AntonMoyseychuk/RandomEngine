@@ -12,6 +12,7 @@ enum class ShaderResourceType : uint32_t
     TYPE_DOUBLE,
 
     TYPE_SAMPLER_2D,
+    TYPE_CONST_BUFFER,
 };
 
 

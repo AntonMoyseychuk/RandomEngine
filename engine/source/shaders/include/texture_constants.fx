@@ -1,7 +1,7 @@
 #ifndef TEXTURE_INCL_H
 #define TEXTURE_INCL_H
 
-#include <reflection.fx>
+#include <system.fx>
 
 
 DECLARE_CONSTANT(uint, COMMON_MAX_TEXTURES_COUNT, 4096);

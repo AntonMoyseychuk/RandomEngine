@@ -6,7 +6,7 @@
 
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
-#include "engine/auto/auto_texture_incl.h"
+#include "engine/auto/auto_texture_constants.h"
 #include "engine/auto/auto_registers_common.h"
 
 

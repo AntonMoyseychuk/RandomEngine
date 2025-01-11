@@ -14,7 +14,7 @@
 
 #include "engine/render/platform/OpenGL/opengl_driver.h"
 
-#include "engine/auto/auto_texture_incl.h"
+#include "engine/auto/auto_texture_constants.h"
 #include "engine/auto/auto_registers_common.h"
 
 
@@ -114,6 +114,7 @@ void RenderSystem::RunColorPass() noexcept
     static TextureSamplerState* pTestTextureSampler = nullptr;
 
     static uint32_t vao = 0;
+    static uint32_t commonUBO = 0;
 
     static Texture* pGBufferAlbedoTex = nullptr;
     static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
@@ -252,6 +253,10 @@ void RenderSystem::RunColorPass() noexcept
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
 
+        glCreateBuffers(1, &commonUBO);
+        glNamedBufferStorage(commonUBO, sizeof(COMMON_CB), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+        glBindBufferBase(GL_UNIFORM_BUFFER, resGetResourceBinding(COMMON_CB).GetBinding(), commonUBO); 
+
         pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
         pGBufferNormalTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_NORMAL);
         pGBufferSpecTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
@@ -336,6 +341,12 @@ void RenderSystem::RunColorPass() noexcept
         isInitialized = true;
     }
 
+    const float elapsedTime = timer.GetElapsedTimeInSec();
+    const float deltaTime = timer.GetDeltaTimeInMillisec();
+
+    char title[256];
+    sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
+    window.SetTitle(title);
     
     glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
 
@@ -343,8 +354,11 @@ void RenderSystem::RunColorPass() noexcept
         pGBufferPipeline->ClearFrameBuffer();
         pGBufferPipeline->Bind();
 
-        const float elapsedTime = timer.GetElapsedTimeInSec();
-        pGBufferProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);    
+        COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(glMapNamedBuffer(commonUBO, GL_WRITE_ONLY));
+        ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");
+        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime / 4.f;
+        pCommonUBO->COMMON_DELTA_TIME = deltaTime;
+        glUnmapNamedBuffer(commonUBO);
 
         pTestTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
         pTestTextureSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
@@ -361,12 +375,6 @@ void RenderSystem::RunColorPass() noexcept
 
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
     }
-
-    const float deltaTime = timer.GetDeltaTimeInMillisec();
-
-    char title[256];
-    sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
-    window.SetTitle(title);
 }
 
 

@@ -8,7 +8,7 @@
 
 #include "utils/data_structures/hash.h"
 
-#include "engine/auto/auto_texture_incl.h"
+#include "engine/auto/auto_texture_constants.h"
 #include "engine/auto/auto_registers_common.h"
 
 

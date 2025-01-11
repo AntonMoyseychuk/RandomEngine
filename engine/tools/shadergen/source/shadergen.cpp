@@ -182,6 +182,22 @@ static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const char* pFi
 }
 
 
+static std::vector<std::cmatch> FindConstantBufferDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
+{
+    static std::regex CB_PATTERN(R"(DECLARE_CONST_BUFFER\(([^,]+), ([^,]+)\)\s*\{\s*([^{}]+)\s*\})");
+    
+    return FindPatternMatches(CB_PATTERN, pFileContent, fileSize);
+}
+
+
+static std::vector<std::cmatch> FindConstantBufferMembersDeclarationMatches(const char* pCBContent, size_t cbContentSize) noexcept
+{
+    static std::regex CB_CONTENT_PATTERN(R"(\b([a-zA-Z0-9]+)\s+([a-zA-Z0-9_]+)(?=\s*;))");
+    
+    return FindPatternMatches(CB_CONTENT_PATTERN, pCBContent, cbContentSize);
+}
+
+
 static void FillConstantDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
 {
     if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
@@ -266,6 +282,43 @@ static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileCo
 }
 
 
+static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
+{
+    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
+        return;
+    }
+
+    const std::vector<std::cmatch> constBuffDeclMatches = FindConstantBufferDeclarationMatches(pFileContent, fileSize);
+
+    for (const std::cmatch& match : constBuffDeclMatches) {
+        const std::string name = match[1].str();
+        const std::string binding = match[2].str();
+        const std::string content = match[3].str();
+
+        const std::vector<std::cmatch> constBuffContentsMatches = FindConstantBufferMembersDeclarationMatches(content.c_str(), content.size());
+
+        ss <<
+        "struct " << name << " {\n"
+        "    inline static constexpr ShaderResourceBindStruct<ShaderResourceType::TYPE_CONST_BUFFER>" << "_BINDING = { -1, " << binding << " };\n\n";
+        
+        for (const std::cmatch& memberMatch : constBuffContentsMatches) {
+            const char* pType = TranslateGLSLToEngineConstantPrimitiveType(filepath, memberMatch[1].str());
+            assert(pType);
+            
+            const std::string memberName = memberMatch[2].str();
+            
+            ss << "    " << pType << ' ' << memberName << ";\n";
+        }
+
+        ss << "};\n";
+    }
+
+    if (!constBuffDeclMatches.empty()) {
+        ss << "\n";
+    }
+}
+
+
 bool ValidateCommandLineArgs(int argc, char* argv[]) noexcept
 {
     if (argc != CMD_ARG_COUNT) {
@@ -318,6 +371,7 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     FillConstantDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillSrvVariablesDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillSrvTextureDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
+    FillConstantBufferDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
 
     ss << '\n';
     
