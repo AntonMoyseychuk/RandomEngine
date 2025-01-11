@@ -6,6 +6,7 @@
 #include "engine/render/texture_manager/texture_mng.h"
 #include "engine/render/rt_manager/rt_manager.h"
 #include "engine/render/shader_manager/shader_mng.h"
+#include "engine/render/pipeline_manager/pipeline_mng.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
@@ -100,7 +101,10 @@ void RenderSystem::RunColorPass() noexcept
     timer.Tick();
 
     Window& window = Engine::GetInstance().GetWindow();
+    TextureManager& texManager = TextureManager::GetInstance();
+    ShaderManager& shaderManager = ShaderManager::GetInstance();
     RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
+    PipelineManager& pipelineManager = PipelineManager::GetInstance();
 
     static bool isInitialized = false;
     static ShaderProgram* pGBufferProgram = nullptr;
@@ -116,6 +120,10 @@ void RenderSystem::RunColorPass() noexcept
     static Texture* pGBufferNormalTex = nullptr;
     static Texture* pGBufferSpecTex = nullptr;
     static Texture* pCommonDepthTex = nullptr;
+
+    static Pipeline* pGBufferPipeline = nullptr;
+    static Pipeline* pMergePipeline = nullptr;
+
 
     if (!isInitialized) {
         srand(time(0));
@@ -164,10 +172,10 @@ void RenderSystem::RunColorPass() noexcept
         gBufferPassProgramCreateInfo.pStageCreateInfos = pGBufferStages;
         gBufferPassProgramCreateInfo.stageCreateInfosCount = _countof(pGBufferStages);
 
-        ProgramID gBufferPassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gBufferPassProgramCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgram(gBufferPassProgramID), "Failed to register GBUFFER shader program");
+        ProgramID gBufferPassProgramID = shaderManager.RegisterShaderProgram(gBufferPassProgramCreateInfo);
+        ENG_ASSERT(shaderManager.IsValidProgram(gBufferPassProgramID), "Failed to register GBUFFER shader program");
 
-        pGBufferProgram = ShaderManager::GetInstance().GetShaderProgramByID(gBufferPassProgramID);
+        pGBufferProgram = shaderManager.GetShaderProgramByID(gBufferPassProgramID);
 
         static const char* MERGE_DEFINES[] = {
         #if defined(ENG_DEBUG)
@@ -190,10 +198,10 @@ void RenderSystem::RunColorPass() noexcept
         gMergePassProgramCreateInfo.pStageCreateInfos = pMergeStages;
         gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
 
-        ProgramID gMergePassProgramID = ShaderManager::GetInstance().RegisterShaderProgram(gMergePassProgramCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(ShaderManager::GetInstance().IsValidProgram(gMergePassProgramID), "Failed to register MERGE shader program");
+        ProgramID gMergePassProgramID = shaderManager.RegisterShaderProgram(gMergePassProgramCreateInfo);
+        ENG_ASSERT(shaderManager.IsValidProgram(gMergePassProgramID), "Failed to register MERGE shader program");
 
-        pMergeProgram = ShaderManager::GetInstance().GetShaderProgramByID(gMergePassProgramID);
+        pMergeProgram = shaderManager.GetShaderProgramByID(gMergePassProgramID);
 
 
         constexpr size_t texWidth = 256;
@@ -235,11 +243,11 @@ void RenderSystem::RunColorPass() noexcept
 
         texCreateInfo.inputData.pData = pTexData;
 
-        TextureID textureID = TextureManager::GetInstance().AllocateTexture2D("TEST_TEXTURE", texCreateInfo);
-        ENG_ASSERT_GRAPHICS_API(TextureManager::GetInstance().IsValidTexture(textureID), "Failed to register texture");
+        TextureID textureID = texManager.AllocateTexture2D("TEST_TEXTURE", texCreateInfo);
+        ENG_ASSERT(texManager.IsValidTexture(textureID), "Failed to register texture");
 
-        pTestTexture = TextureManager::GetInstance().GetTextureByID(textureID);
-        pTestTextureSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
+        pTestTexture = texManager.GetTextureByID(textureID);
+        pTestTextureSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
         
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
@@ -249,7 +257,81 @@ void RenderSystem::RunColorPass() noexcept
         pGBufferSpecTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
         pCommonDepthTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_COMMON_DEPTH);
 
-        pGBufferAlbedoSampler = TextureManager::GetInstance().GetSampler(resGetTexResourceSamplerIdx(GBUFFER_ALBEDO_TEX));
+        pGBufferAlbedoSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_ALBEDO_TEX));
+
+
+        PipelineInputAssemblyStateCreateInfo gBufferInputAssemblyState = {};
+        gBufferInputAssemblyState.topology = PrimitiveTopology::TOPOLOGY_TRIANGLES;
+
+        PipelineRasterizationStateCreateInfo gBufferRasterizationState = {};
+        gBufferRasterizationState.cullMode = CullMode::CULL_MODE_BACK;
+        gBufferRasterizationState.depthBiasEnable = false;
+        gBufferRasterizationState.frontFace = FrontFace::FRONT_FACE_COUNTER_CLOCKWISE;
+        gBufferRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
+
+        PipelineDepthStencilStateCreateInfo gBufferDepthStencilState = {};
+        gBufferDepthStencilState.depthTestEnable = false;
+        gBufferDepthStencilState.stencilTestEnable = false;
+
+        PipelineColorBlendStateCreateInfo gBufferColorBlendState = {};
+
+        PipelineFrameBufferClearValues gBufferFrameBufferClearValues = {};
+        const PipelineFrameBufferColorAttachmentClearColor pGBufferColorAttachmentClearColors[] = {
+            { 1.f, 1.f, 0.f, 0.f },
+            { 1.f, 1.f, 0.f, 0.f },
+            { 1.f, 1.f, 0.f, 0.f }
+        };
+        gBufferFrameBufferClearValues.pColorAttachmentClearColors = pGBufferColorAttachmentClearColors;
+        gBufferFrameBufferClearValues.colorAttachmentsCount = _countof(pGBufferColorAttachmentClearColors);
+
+        PipelineCreateInfo gBufferPipelineCreateInfo = {};
+        gBufferPipelineCreateInfo.pInputAssemblyState = &gBufferInputAssemblyState;
+        gBufferPipelineCreateInfo.pRasterizationState = &gBufferRasterizationState;
+        gBufferPipelineCreateInfo.pDepthStencilState = &gBufferDepthStencilState;
+        gBufferPipelineCreateInfo.pColorBlendState = &gBufferColorBlendState;
+        gBufferPipelineCreateInfo.pFrameBufferClearValues = &gBufferFrameBufferClearValues;
+        gBufferPipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
+        gBufferPipelineCreateInfo.pShaderProgram = pGBufferProgram;
+
+        PipelineID gBufferPipelineID = pipelineManager.RegisterPipeline(gBufferPipelineCreateInfo);
+        ENG_ASSERT(pipelineManager.IsValidPipeline(gBufferPipelineID), "Failed to register GBUFFER pipeline");
+        pGBufferPipeline = pipelineManager.GetPipeline(gBufferPipelineID);
+
+
+        PipelineInputAssemblyStateCreateInfo mergeInputAssemblyState = {};
+        mergeInputAssemblyState.topology = PrimitiveTopology::TOPOLOGY_TRIANGLES;
+
+        PipelineRasterizationStateCreateInfo mergeRasterizationState = {};
+        mergeRasterizationState.cullMode = CullMode::CULL_MODE_BACK;
+        mergeRasterizationState.depthBiasEnable = false;
+        mergeRasterizationState.frontFace = FrontFace::FRONT_FACE_COUNTER_CLOCKWISE;
+        mergeRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
+
+        PipelineDepthStencilStateCreateInfo mergeDepthStencilState = {};
+        mergeDepthStencilState.depthTestEnable = false;
+        mergeDepthStencilState.stencilTestEnable = false;
+
+        PipelineColorBlendStateCreateInfo mergeColorBlendState = {};
+
+        PipelineFrameBufferClearValues mergeFrameBufferClearValues = {};
+        const PipelineFrameBufferColorAttachmentClearColor pMergeColorAttachmentClearColors[] = {
+            { 0.f, 0.f, 0.f, 0.f }
+        };
+        mergeFrameBufferClearValues.pColorAttachmentClearColors = pMergeColorAttachmentClearColors;
+        mergeFrameBufferClearValues.colorAttachmentsCount = _countof(pMergeColorAttachmentClearColors);
+
+        PipelineCreateInfo mergePipelineCreateInfo = {};
+        mergePipelineCreateInfo.pInputAssemblyState = &mergeInputAssemblyState;
+        mergePipelineCreateInfo.pRasterizationState = &mergeRasterizationState;
+        mergePipelineCreateInfo.pDepthStencilState = &mergeDepthStencilState;
+        mergePipelineCreateInfo.pColorBlendState = &mergeColorBlendState;
+        mergePipelineCreateInfo.pFrameBufferClearValues = &mergeFrameBufferClearValues;
+        mergePipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
+        mergePipelineCreateInfo.pShaderProgram = pMergeProgram;
+
+        PipelineID mergePipelineID = pipelineManager.RegisterPipeline(mergePipelineCreateInfo);
+        ENG_ASSERT(pipelineManager.IsValidPipeline(mergePipelineID), "Failed to register merge pipeline");
+        pMergePipeline = pipelineManager.GetPipeline(mergePipelineID);
 
         isInitialized = true;
     }
@@ -258,10 +340,8 @@ void RenderSystem::RunColorPass() noexcept
     glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
 
     {
-        rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
-        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
-
-        pGBufferProgram->Bind();
+        pGBufferPipeline->ClearFrameBuffer();
+        pGBufferPipeline->Bind();
 
         const float elapsedTime = timer.GetElapsedTimeInSec();
         pGBufferProgram->SetLocalSrvFloat(resGetResourceBinding(COMMON_ELAPSED_TIME), elapsedTime / 2.f);    
@@ -273,10 +353,8 @@ void RenderSystem::RunColorPass() noexcept
     }
 
     {
-        rtManager.ClearFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT, 1.f, 1.f, 0.f, 1.f, 0.f, 0);
-        rtManager.BindFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
-        
-        pMergeProgram->Bind();
+        pMergePipeline->ClearFrameBuffer();
+        pMergePipeline->Bind();
 
         pGBufferAlbedoTex->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
         pGBufferAlbedoSampler->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
@@ -331,6 +409,10 @@ bool RenderSystem::Init() noexcept
         return false;
     }
 
+    if (!engInitPipelineManager()) {
+        return false;
+    }
+
     m_isInitialized = true;
 
     return true;
@@ -339,11 +421,12 @@ bool RenderSystem::Init() noexcept
     
 void RenderSystem::Terminate() noexcept
 {
-    m_isInitialized = false;
-
+    engTerminatePipelineManager();
     engTerminateRenderTargetManager();
     engTerminateTextureManager();
     engTerminateShaderManager();
+
+    m_isInitialized = false;
 }
 
 

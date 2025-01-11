@@ -419,6 +419,17 @@ Texture *RenderTargetManager::GetRTTexture(RTTextureID texID) noexcept
 }
 
 
+FrameBuffer *RenderTargetManager::GetFrameBuffer(RTFrameBufferID framebufferID) noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID && framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT, 
+        "Invalid RT frame buffer ID");
+    
+    FrameBuffer* pRTFrameBuffer = &m_frameBufferStorage[static_cast<size_t>(framebufferID)];
+
+    return pRTFrameBuffer->IsValid() ? pRTFrameBuffer : nullptr;
+}
+
+
 void RenderTargetManager::BindFrameBuffer(RTFrameBufferID framebufferID) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 

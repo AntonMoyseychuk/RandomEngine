@@ -138,6 +138,7 @@ public:
     RenderTargetManager& operator=(const RenderTargetManager& other) = delete;
 
     Texture* GetRTTexture(RTTextureID texID) noexcept;
+    FrameBuffer* GetFrameBuffer(RTFrameBufferID framebufferID) noexcept;
     void BindFrameBuffer(RTFrameBufferID framebufferID) noexcept;
 
     void ClearFrameBuffer(RTFrameBufferID framebufferID, float r, float g, float b, float a, float depth, int32_t stencil) noexcept;
