@@ -5,6 +5,7 @@
 #define DECLARE_CONSTANT(TYPE, NAME, VALUE) \
     const TYPE NAME = VALUE
 
+
 #define DECLARE_SRV_VARIABLE(TYPE, NAME, LOCATION, DEF_VALUE) \
     layout(location = LOCATION) uniform TYPE NAME = DEF_VALUE
 
@@ -13,7 +14,7 @@
     layout(binding = BINDING) uniform TYPE NAME
 
 
-#define DECLARE_CONST_BUFFER(NAME, BINDING) \
+#define DECLARE_CBV(NAME, BINDING) \
     layout(std140, binding = BINDING) uniform NAME
 
 #endif

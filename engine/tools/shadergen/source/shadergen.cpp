@@ -184,7 +184,7 @@ static std::vector<std::cmatch> FindSrvTextureDeclarationMatches(const char* pFi
 
 static std::vector<std::cmatch> FindConstantBufferDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
 {
-    static std::regex CB_PATTERN(R"(DECLARE_CONST_BUFFER\(([^,]+), ([^,]+)\)\s*\{\s*([^{}]+)\s*\})");
+    static std::regex CB_PATTERN(R"(DECLARE_CBV\(([^,]+), ([^,]+)\)\s*\{\s*([^{}]+)\s*\})");
     
     return FindPatternMatches(CB_PATTERN, pFileContent, fileSize);
 }
