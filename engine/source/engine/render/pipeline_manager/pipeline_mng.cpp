@@ -4,7 +4,7 @@
 #include "utils/debug/assertion.h"
 #include "utils/data_structures/hash.h"
 
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "render/platform/OpenGL/opengl_driver.h"
 
 
 static constexpr size_t ENG_MAX_PIPELINES_COUNT = 8192; // TODO: make it configurable

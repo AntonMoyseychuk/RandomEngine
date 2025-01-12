@@ -4,10 +4,10 @@
 #include "utils/debug/assertion.h"
 #include "utils/data_structures/hash.h"
 
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "render/platform/OpenGL/opengl_driver.h"
 
-#include "engine/auto/auto_texture_constants.h"
-#include "engine/auto/auto_registers_common.h"
+#include "auto/auto_texture_constants.h"
+#include "auto/auto_registers_common.h"
 
 
 struct TextureSamplerStateCreateInfo

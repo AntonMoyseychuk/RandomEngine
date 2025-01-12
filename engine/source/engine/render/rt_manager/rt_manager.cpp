@@ -1,15 +1,15 @@
 #include "pch.h"
 #include "rt_manager.h"
 
-#include "engine/event_system/event_dispatcher.h"
+#include "event_system/event_dispatcher.h"
 #include "engine/engine.h"
 
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "render/platform/OpenGL/opengl_driver.h"
 
 #include "utils/data_structures/hash.h"
 
-#include "engine/auto/auto_texture_constants.h"
-#include "engine/auto/auto_registers_common.h"
+#include "auto/auto_texture_constants.h"
+#include "auto/auto_registers_common.h"
 
 
 static std::unique_ptr<RenderTargetManager> s_pRenderTargetMng = nullptr;

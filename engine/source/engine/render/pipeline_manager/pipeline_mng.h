@@ -1,7 +1,7 @@
 #pragma once
 
-#include "engine/render/rt_manager/rt_manager.h"
-#include "engine/render/shader_manager/shader_mng.h"
+#include "render/rt_manager/rt_manager.h"
+#include "render/shader_manager/shader_mng.h"
 
 #include "utils/data_structures/strid.h"
 #include "utils/data_structures/base_id.h"

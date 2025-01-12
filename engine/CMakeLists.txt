@@ -98,6 +98,7 @@ target_include_directories(engine
     PUBLIC ${ENGINE_INCLUDE_DIR}
 
     PRIVATE ${ENGINE_SOURCE_DIR}
+    PRIVATE ${ENGINE_SOURCE_DIR}/engine
 
     PRIVATE ${GLFW_INCLUDE_DIRS}
     PRIVATE ${GLAD_INCLUDE_DIRS}

@@ -6,7 +6,7 @@
 
 #include "utils/debug/assertion.h"
 
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "render/platform/OpenGL/opengl_driver.h"
 
 
 static constexpr size_t ENG_MAX_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it configurable

@@ -3,19 +3,19 @@
 
 #include "engine/engine.h"
 
-#include "engine/render/texture_manager/texture_mng.h"
-#include "engine/render/rt_manager/rt_manager.h"
-#include "engine/render/shader_manager/shader_mng.h"
-#include "engine/render/pipeline_manager/pipeline_mng.h"
+#include "render/texture_manager/texture_mng.h"
+#include "render/rt_manager/rt_manager.h"
+#include "render/shader_manager/shader_mng.h"
+#include "render/pipeline_manager/pipeline_mng.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
 #include "utils/timer/timer.h"
 
-#include "engine/render/platform/OpenGL/opengl_driver.h"
+#include "render/platform/OpenGL/opengl_driver.h"
 
-#include "engine/auto/auto_texture_constants.h"
-#include "engine/auto/auto_registers_common.h"
+#include "auto/auto_texture_constants.h"
+#include "auto/auto_registers_common.h"
 
 
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
@@ -127,8 +127,6 @@ void RenderSystem::RunColorPass() noexcept
 
 
     if (!isInitialized) {
-        srand(time(0));
-
         static constexpr const char* SHADER_INCLUDE_DIR = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
         static const char* GBUFFER_DEFINES[] = {
         #if defined(ENG_DEBUG)
@@ -249,13 +247,6 @@ void RenderSystem::RunColorPass() noexcept
 
         pTestTexture = texManager.GetTextureByID(textureID);
         pTestTextureSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
-        
-        glCreateVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
-        glCreateBuffers(1, &commonUBO);
-        glNamedBufferStorage(commonUBO, sizeof(COMMON_CB), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-        glBindBufferBase(GL_UNIFORM_BUFFER, resGetResourceBinding(COMMON_CB).GetBinding(), commonUBO); 
 
         pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
         pGBufferNormalTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_NORMAL);
@@ -337,6 +328,13 @@ void RenderSystem::RunColorPass() noexcept
         PipelineID mergePipelineID = pipelineManager.RegisterPipeline(mergePipelineCreateInfo);
         ENG_ASSERT(pipelineManager.IsValidPipeline(mergePipelineID), "Failed to register merge pipeline");
         pMergePipeline = pipelineManager.GetPipeline(mergePipelineID);
+
+        glCreateVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+
+        glCreateBuffers(1, &commonUBO);
+        glNamedBufferStorage(commonUBO, sizeof(COMMON_CB), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+        glBindBufferBase(GL_UNIFORM_BUFFER, resGetResourceBinding(COMMON_CB).GetBinding(), commonUBO);
 
         isInitialized = true;
     }

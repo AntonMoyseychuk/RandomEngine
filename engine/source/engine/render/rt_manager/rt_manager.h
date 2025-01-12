@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/render/texture_manager/texture_mng.h"
+#include "render/texture_manager/texture_mng.h"
 
 #include "core.h"
 
