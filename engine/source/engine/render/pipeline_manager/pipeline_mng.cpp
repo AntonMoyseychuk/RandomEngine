@@ -274,10 +274,10 @@ void Pipeline::Bind() noexcept
     for (uint32_t index = 0; index < m_compressedColorBlendAttachmentStates.size(); ++index) {
         const CompressedColorBlendAttachmentState& state = m_compressedColorBlendAttachmentStates[index];
         
-        const uint32_t rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
-        const uint32_t gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
-        const uint32_t bMask = state.colorWriteMask & colorMaskBBit ? GL_TRUE : GL_FALSE;
-        const uint32_t aMask = state.colorWriteMask & colorMaskABit ? GL_TRUE : GL_FALSE;
+        const GLboolean rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
+        const GLboolean gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
+        const GLboolean bMask = state.colorWriteMask & colorMaskBBit ? GL_TRUE : GL_FALSE;
+        const GLboolean aMask = state.colorWriteMask & colorMaskABit ? GL_TRUE : GL_FALSE;
 
         glColorMaski(index, rMask, gMask, bMask, aMask);
 

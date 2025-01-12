@@ -192,7 +192,7 @@ static std::vector<std::cmatch> FindConstantBufferDeclarationMatches(const char*
 
 static std::vector<std::cmatch> FindConstantBufferMembersDeclarationMatches(const char* pCBContent, size_t cbContentSize) noexcept
 {
-    static std::regex CB_CONTENT_PATTERN(R"(\b([a-zA-Z0-9]+)\s+([a-zA-Z0-9_]+)(?=\s*;))");
+    static std::regex CB_CONTENT_PATTERN(R"(\b([a-zA-Z0-9]+)\s+([a-zA-Z0-9_]+)(\[[^\]]*\])?(?=\s*;))");
     
     return FindPatternMatches(CB_CONTENT_PATTERN, pCBContent, cbContentSize);
 }
@@ -296,18 +296,25 @@ static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFi
         const std::string content = match[3].str();
 
         const std::vector<std::cmatch> constBuffContentsMatches = FindConstantBufferMembersDeclarationMatches(content.c_str(), content.size());
-
+        
         ss <<
         "struct " << name << " {\n"
         "    inline static constexpr ShaderResourceBindStruct<ShaderResourceType::TYPE_CONST_BUFFER>" << "_BINDING = { -1, " << binding << " };\n\n";
         
         for (const std::cmatch& memberMatch : constBuffContentsMatches) {
-            const char* pType = TranslateGLSLToEngineConstantPrimitiveType(filepath, memberMatch[1].str());
-            assert(pType);
+            const char* pMemberType = TranslateGLSLToEngineConstantPrimitiveType(filepath, memberMatch[1].str());
+            assert(pMemberType);
             
             const std::string memberName = memberMatch[2].str();
-            
-            ss << "    " << pType << ' ' << memberName << ";\n";
+
+            ss << "    " << pMemberType << ' ' << memberName;
+
+            const std::string memberArrayCapture = memberMatch[3].str();
+            if (!memberArrayCapture.empty()) {
+                ss << memberArrayCapture;
+            }
+
+            ss << ";\n";
         }
 
         ss << "};\n";

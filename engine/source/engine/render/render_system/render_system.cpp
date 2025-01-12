@@ -341,7 +341,7 @@ void RenderSystem::RunColorPass() noexcept
         isInitialized = true;
     }
 
-    const float elapsedTime = timer.GetElapsedTimeInSec();
+    const float elapsedTime = timer.GetElapsedTimeInMillisec();
     const float deltaTime = timer.GetDeltaTimeInMillisec();
 
     char title[256];
@@ -356,7 +356,7 @@ void RenderSystem::RunColorPass() noexcept
 
         COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(glMapNamedBuffer(commonUBO, GL_WRITE_ONLY));
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");
-        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime / 4.f;
+        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime / 4000.f;
         pCommonUBO->COMMON_DELTA_TIME = deltaTime;
         glUnmapNamedBuffer(commonUBO);
 

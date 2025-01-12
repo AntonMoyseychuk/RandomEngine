@@ -166,7 +166,7 @@ void FrameBuffer::ClearDepthStencil(float depth, int32_t stencil) noexcept
     }
 
     if (hasStencilAttachment) {
-        ClearFrameBufferDepthInternal(m_renderID, stencil);
+        ClearFrameBufferStencilInternal(m_renderID, stencil);
     }
 }
 
