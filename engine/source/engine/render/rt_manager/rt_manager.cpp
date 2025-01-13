@@ -661,8 +661,10 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 
         ds::StrID defaultFrameBufferName = "__DEFAULT_FRAMEBUFFER__";
         const size_t defaultFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
-        
-        m_frameBufferStorage[defaultFrameBufferIdx].Init(defaultFrameBufferName, defaultFrameBufferCreateInfo);
+
+        if (!m_frameBufferStorage[defaultFrameBufferIdx].Init(defaultFrameBufferName, defaultFrameBufferCreateInfo)) {
+            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", defaultFrameBufferName.CStr());
+        }
     }
 
     {

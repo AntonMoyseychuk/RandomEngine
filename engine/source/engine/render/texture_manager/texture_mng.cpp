@@ -635,13 +635,13 @@ void TextureManager::Terminate() noexcept
 TextureID TextureManager::AllocateTextureID() noexcept
 {
     if (m_textureIDFreeList.empty()) {
-        TextureID textureID = m_nextAllocatedID;
+        const TextureID textureID = m_nextAllocatedID;
         m_nextAllocatedID = TextureID(m_nextAllocatedID.Value() + 1);
 
         return textureID;
     }
 
-    TextureID textureID = m_textureIDFreeList.front();
+    const TextureID textureID = m_textureIDFreeList.front();
     m_textureIDFreeList.pop_front();
         
     return textureID;
@@ -782,19 +782,19 @@ uint64_t amHash(const Texture& texture) noexcept
 bool engInitTextureManager() noexcept
 {   
     if (engIsTextureManagerInitialized()) {
-        ENG_LOG_GRAPHICS_API_WARN("Texture manager is already initialized!");
+        ENG_LOG_WARN("Texture manager is already initialized!");
         return true;
     }
 
     g_pTextureMng = std::unique_ptr<TextureManager>(new TextureManager);
 
     if (!g_pTextureMng) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for texture manager");
+        ENG_ASSERT_FAIL("Failed to allocate memory for texture manager");
         return false;
     }
 
     if (!g_pTextureMng->Init()) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialized texture manager");
+        ENG_ASSERT_FAIL("Failed to initialized texture manager");
         return false;
     }
 

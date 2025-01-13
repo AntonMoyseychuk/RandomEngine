@@ -7,6 +7,7 @@
 #include "render/rt_manager/rt_manager.h"
 #include "render/shader_manager/shader_mng.h"
 #include "render/pipeline_manager/pipeline_mng.h"
+#include "render/mem_manager/buffer_manager.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
@@ -19,50 +20,6 @@
 
 
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
-
-
-#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
-static void GLAPIENTRY OpenGLMessageCallback(GLenum source, GLenum type, GLuint id,
-    GLenum severity, GLsizei length, const GLchar* pMessage, const void* userParam)
-{
-    const char* pSourceStr = [source]() -> const char* {
-		switch (source) {
-            case GL_DEBUG_SOURCE_API: return "API";
-            case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
-            case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
-            case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
-            case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
-            case GL_DEBUG_SOURCE_OTHER: return "OTHER";
-            default: return "UNDEFINED SOURCE";
-		}
-	}();
-
-	const char* pTypeStr = [type]() -> const char* {
-		switch (type) {
-            case GL_DEBUG_TYPE_ERROR: return "ERROR";
-            case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
-            case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
-            case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
-            case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
-            case GL_DEBUG_TYPE_MARKER: return "MARKER";
-            case GL_DEBUG_TYPE_OTHER: return "OTHER";
-            default: return "UNDEFINED TYPE";
-		}
-	}();
-
-    switch (severity) {
-    case GL_DEBUG_SEVERITY_HIGH:
-        ENG_ASSERT_GRAPHICS_API_FAIL("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
-        break;
-    case GL_DEBUG_SEVERITY_MEDIUM:
-        ENG_LOG_GRAPHICS_API_WARN("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
-        break;
-    case GL_DEBUG_SEVERITY_LOW:
-        ENG_LOG_GRAPHICS_API_INFO("[{}] ({}): {}", pSourceStr, pTypeStr, pMessage);
-        break;
-    }
-}
-#endif
 
 
 RenderSystem& RenderSystem::GetInstance() noexcept
@@ -105,6 +62,7 @@ void RenderSystem::RunColorPass() noexcept
     ShaderManager& shaderManager = ShaderManager::GetInstance();
     RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
     PipelineManager& pipelineManager = PipelineManager::GetInstance();
+    MemoryBufferManager& memBufferManager = MemoryBufferManager::GetInstance();
 
     static bool isInitialized = false;
     static ShaderProgram* pGBufferProgram = nullptr;
@@ -114,7 +72,6 @@ void RenderSystem::RunColorPass() noexcept
     static TextureSamplerState* pTestTextureSampler = nullptr;
 
     static uint32_t vao = 0;
-    static uint32_t commonUBO = 0;
 
     static Texture* pGBufferAlbedoTex = nullptr;
     static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
@@ -125,6 +82,7 @@ void RenderSystem::RunColorPass() noexcept
     static Pipeline* pGBufferPipeline = nullptr;
     static Pipeline* pMergePipeline = nullptr;
 
+    static MemoryBuffer* pCommonConstBuffer = nullptr;
 
     if (!isInitialized) {
         static constexpr const char* SHADER_INCLUDE_DIR = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
@@ -332,9 +290,19 @@ void RenderSystem::RunColorPass() noexcept
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
 
-        glCreateBuffers(1, &commonUBO);
-        glNamedBufferStorage(commonUBO, sizeof(COMMON_CB), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-        glBindBufferBase(GL_UNIFORM_BUFFER, resGetResourceBinding(COMMON_CB).GetBinding(), commonUBO);
+        MemoryBufferCreateInfo commonConstBufferCreateInfo = {};
+        commonConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
+        commonConstBufferCreateInfo.dataSize = sizeof(COMMON_CB);
+        commonConstBufferCreateInfo.elementSize = sizeof(COMMON_CB);
+        commonConstBufferCreateInfo.creationFlags = static_cast<MemoryBufferCreationFlags>(
+            BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_READABLE | BUFFER_CREATION_FLAG_WRITABLE);
+        commonConstBufferCreateInfo.pData = nullptr;
+
+        BufferID commonConstBufferID = memBufferManager.AllocateBuffer("__COMMON_CB__", commonConstBufferCreateInfo);
+        ENG_ASSERT(memBufferManager.IsValidBuffer(commonConstBufferID), "Failed to allocate common const buffer");
+        pCommonConstBuffer = memBufferManager.GetBuffer(commonConstBufferID);
+        
+        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
 
         isInitialized = true;
     }
@@ -352,11 +320,11 @@ void RenderSystem::RunColorPass() noexcept
         pGBufferPipeline->ClearFrameBuffer();
         pGBufferPipeline->Bind();
 
-        COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(glMapNamedBuffer(commonUBO, GL_WRITE_ONLY));
+        COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(pCommonConstBuffer->MapWrite());
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");
         pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime / 4000.f;
         pCommonUBO->COMMON_DELTA_TIME = deltaTime;
-        glUnmapNamedBuffer(commonUBO);
+        pCommonConstBuffer->Unmap();
 
         pTestTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
         pTestTextureSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
@@ -398,11 +366,6 @@ bool RenderSystem::Init() noexcept
         return false;
     }
 
-#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(OpenGLMessageCallback, nullptr);
-#endif
-
     if (!engInitShaderManager()) {
         return false;
     }
@@ -419,6 +382,10 @@ bool RenderSystem::Init() noexcept
         return false;
     }
 
+    if (!engInitMemoryBufferManager()) {
+        return false;
+    }
+
     m_isInitialized = true;
 
     return true;
@@ -427,6 +394,7 @@ bool RenderSystem::Init() noexcept
     
 void RenderSystem::Terminate() noexcept
 {
+    engTerminateMemoryBufferManager();
     engTerminatePipelineManager();
     engTerminateRenderTargetManager();
     engTerminateTextureManager();
