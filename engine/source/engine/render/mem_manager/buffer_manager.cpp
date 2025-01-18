@@ -172,6 +172,15 @@ ds::StrID MemoryBuffer::GetName() const noexcept
 }
 
 
+uint64_t MemoryBuffer::GetElementCount() const noexcept
+{
+    ENG_ASSERT_GRAPHICS_API(m_elementSize != 0, "Element size is 0");
+    ENG_ASSERT_GRAPHICS_API(m_size % m_elementSize == 0, "Buffer size must be multiple of element size");
+    
+    return m_size / m_elementSize;
+}
+
+
 bool MemoryBuffer::Init(ds::StrID name, const MemoryBufferCreateInfo& createInfo) noexcept
 {
     ENG_ASSERT_GRAPHICS_API(createInfo.type != MemoryBufferType::TYPE_INVALID && createInfo.type < MemoryBufferType::TYPE_COUNT,
@@ -222,7 +231,7 @@ void MemoryBuffer::Destroy() noexcept
 
 MemoryBufferManager& MemoryBufferManager::GetInstance() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(engIseMemoryBufferManagerInitialized(), "Memory buffer manager is not initialized");
+    ENG_ASSERT_GRAPHICS_API(engIsMemoryBufferManagerInitialized(), "Memory buffer manager is not initialized");
     return *g_pMemoryBufferMng;
 }
 
@@ -331,7 +340,7 @@ bool MemoryBufferManager::IsInitialized() const noexcept
 
 bool engInitMemoryBufferManager() noexcept
 {
-    if (engIseMemoryBufferManagerInitialized()) {
+    if (engIsMemoryBufferManagerInitialized()) {
         ENG_LOG_WARN("Memory buffer manager is already initialized!");
         return true;
     }
@@ -358,7 +367,7 @@ void engTerminateMemoryBufferManager() noexcept
 }
 
 
-bool engIseMemoryBufferManagerInitialized() noexcept
+bool engIsMemoryBufferManagerInitialized() noexcept
 {
     return g_pMemoryBufferMng && g_pMemoryBufferMng->IsInitialized();
 }

@@ -2,3 +2,5 @@
 .vscode
 build
 auto
+
+mesh_manager

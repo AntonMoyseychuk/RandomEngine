@@ -76,6 +76,7 @@ public:
 
     uint64_t GetSize() const noexcept { return m_size; }
     uint64_t GetElementSize() const noexcept { return m_elementSize; }
+    uint64_t GetElementCount() const noexcept;
 
     MemoryBufferType GetType() const noexcept { return m_type; }
     bool IsVertexBuffer() const noexcept { return m_type == MemoryBufferType::TYPE_VERTEX_BUFFER; }
@@ -115,7 +116,7 @@ class MemoryBufferManager
 {
     friend bool engInitMemoryBufferManager() noexcept;
     friend void engTerminateMemoryBufferManager() noexcept;
-    friend bool engIseMemoryBufferManagerInitialized() noexcept;
+    friend bool engIsMemoryBufferManagerInitialized() noexcept;
 
 public:
     static MemoryBufferManager& GetInstance() noexcept;
@@ -159,4 +160,4 @@ private:
 
 bool engInitMemoryBufferManager() noexcept;
 void engTerminateMemoryBufferManager() noexcept;
-bool engIseMemoryBufferManagerInitialized() noexcept;
+bool engIsMemoryBufferManagerInitialized() noexcept;

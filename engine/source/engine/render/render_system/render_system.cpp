@@ -8,6 +8,7 @@
 #include "render/shader_manager/shader_mng.h"
 #include "render/pipeline_manager/pipeline_mng.h"
 #include "render/mem_manager/buffer_manager.h"
+#include "render/mesh_manager/mesh_manager.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
