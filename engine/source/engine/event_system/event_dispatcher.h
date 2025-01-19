@@ -113,13 +113,13 @@ public:
 
     template <typename EventType>
     EventListenerID Subscribe(const EventListener::CallbackType& eventCallback) noexcept;
-
-    void SetListenerDebugName(const EventListenerID& listenerID, ds::StrID name) noexcept;
     
     void Unsubscribe(EventListenerID listenerID) noexcept;
 
     template<typename EventType, typename... Args>
     void Notify(Args&&... args) noexcept;
+
+    void SetListenerDebugName(const EventListenerID& listenerID, ds::StrID name) noexcept;
 
 private:
     EventDispatcher();

@@ -78,11 +78,8 @@ ds::StrID EventListener::GetDebugName(ds::StrID name) const noexcept
 
 void EventListener::Excecute(const void* pEvent) const noexcept
 {
-    if (!IsValid()) {
-        return;
-    }
-
     ENG_ASSERT(pEvent != nullptr, "pEvent is nullptr");
+    ENG_ASSERT(static_cast<bool>(m_callback), "m_callback is empty");
 
     m_callback(pEvent);
 }
@@ -105,8 +102,13 @@ void EventDispatcher::SetListenerDebugName(const EventListenerID& listenerID, ds
 
     std::vector<EventListener>& listenersCollection = listenersCollectionIt->second;
     ENG_ASSERT(listenerID.Value() < listenersCollection.size(), "listenerID value is out of range");
-    
-    listenersCollection[listenerID.Value()].SetDebugName(name);
+
+    for (EventListener& listener : listenersCollection) {
+        if (listener.GetID() == listenerID) {
+            listener.SetDebugName(name);
+            break;
+        }
+    }
 #endif
 }
 
@@ -121,7 +123,22 @@ void EventDispatcher::Unsubscribe(EventListenerID listenerID) noexcept
     std::vector<EventListener>& listenersCollection = listenersCollectionIt->second;
     ENG_ASSERT(listenerID.Value() < listenersCollection.size(), "listenerID value is out of range");
     
-    listenersCollection[listenerID.Value()].Invalidate();
+    EventListener* pTargetListener = nullptr;
+
+    for (EventListener& listener : listenersCollection) {
+        if (listener.GetID() == listenerID) {
+            pTargetListener = &listener;
+            break;
+        }
+    }
+
+    if (pTargetListener == nullptr) {
+        return;
+    }
+
+    pTargetListener->Invalidate();
+    std::swap(*pTargetListener, *listenersCollection.rbegin());
+    listenersCollection.pop_back();
 }
 
 
