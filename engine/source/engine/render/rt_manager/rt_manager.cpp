@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "rt_manager.h"
 
-#include "event_system/event_dispatcher.h"
 #include "engine/engine.h"
 
 #include "render/platform/OpenGL/opengl_driver.h"
@@ -505,16 +504,18 @@ bool RenderTargetManager::Init() noexcept
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
-    dispatcher.Subscribe(EventListener::Create<EventFramebufferResized>([this](const void* pEvent) {
-            const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
-            const uint32_t width = event.GetWidth();
-            const uint32_t height = event.GetHeight();
-
-            if (width > 0 && height > 0) {
-                OnWindowResizedEvent(width, height);
-            }
+    m_frameBufferResizeEventListenerID = dispatcher.Subscribe<EventFramebufferResized>([this](const void* pEvent) {
+        const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+        const uint32_t width = event.GetWidth();
+        const uint32_t height = event.GetHeight();
+        
+        if (width > 0 && height > 0) {
+            OnWindowResizedEvent(width, height);
         }
-    ));
+    });
+
+    ENG_ASSERT(m_frameBufferResizeEventListenerID.IsValid(), "Invalid event listener ID");
+    dispatcher.SetListenerDebugName(m_frameBufferResizeEventListenerID, "RT_MNG_FRAMEBUFF_RESIZE");
 
     glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &MAX_COLOR_ATTACHMENTS);
 
@@ -527,6 +528,10 @@ bool RenderTargetManager::Init() noexcept
 void RenderTargetManager::Terminate() noexcept
 {
     ClearFrameBuffersStorage();
+
+    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    dispatcher.Unsubscribe(m_frameBufferResizeEventListenerID);
+    m_frameBufferResizeEventListenerID.Invalidate();
 
     m_isInitialized = false;
 }

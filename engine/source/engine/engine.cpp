@@ -22,14 +22,14 @@ Engine& Engine::GetInstance() noexcept
 }
 
 
-bool Engine::Init(const char* title, uint32_t width, uint32_t height) noexcept
+bool Engine::Init(const char* title, uint32_t width, uint32_t height, bool enableVSync) noexcept
 {
     if (engIsEngineInitialized()) {
         ENG_LOG_WARN("Engine is already initialized!");
         return true;
     }
 
-    g_pEngine = std::unique_ptr<Engine>(new Engine(title, width, height));
+    g_pEngine = std::unique_ptr<Engine>(new Engine(title, width, height, enableVSync));
 
     if (!g_pEngine) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for engine");
@@ -53,8 +53,6 @@ void Engine::Terminate() noexcept
 
 Engine::~Engine()
 {
-    WindowSystem& windowSys = WindowSystem::GetInstance();
-    windowSys.DestroyWindow(WINDOW_TAG_MAIN);
     m_pMainWindow = nullptr;
 
     engTerminateRenderSystem();
@@ -128,7 +126,7 @@ Window& Engine::GetMainWindow() noexcept
 }
 
 
-Engine::Engine(const char *title, uint32_t width, uint32_t height)
+Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVSync)
 {
     engInitLogSystem();
 
@@ -142,6 +140,8 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
     mainWindowCreateInfo.pTitle = title;
     mainWindowCreateInfo.width = width;
     mainWindowCreateInfo.height = height;
+    mainWindowCreateInfo.enableVSync = enableVSync;
+
     m_pMainWindow = windowSys.CreateWindow(WINDOW_TAG_MAIN, mainWindowCreateInfo);
 
     if (!(m_pMainWindow && m_pMainWindow->IsInitialized())) {
@@ -157,7 +157,7 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
 
     m_isInitialized = true;
 
-    m_pMainWindow->ShowWindow();
+    m_pMainWindow->Show();
 }
 
 

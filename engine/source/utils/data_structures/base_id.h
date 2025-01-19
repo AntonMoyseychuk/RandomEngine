@@ -14,6 +14,7 @@ public:
     bool IsValid() const noexcept { return m_value != TEXTURE_ID_INVALID; }
     
     uint64_t Value() const noexcept { return m_value; }
+    void SetValue(uint64_t value) noexcept { m_value = value; }
 
     uint64_t Hash() const noexcept { return m_value; }
 

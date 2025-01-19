@@ -3,13 +3,13 @@
 #include "application.h"
 
 
-bool Application::Init(const char* title, uint32_t width, uint32_t height) noexcept
+bool Application::Init(const char* title, uint32_t width, uint32_t height, bool enableVSync) noexcept
 {
     if (IsInitialized()) {
         return true;
     }
 
-    if (!Engine::Init(title, width, height)) {
+    if (!Engine::Init(title, width, height, enableVSync)) {
         return false;
     }
 

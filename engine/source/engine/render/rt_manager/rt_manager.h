@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render/texture_manager/texture_mng.h"
+#include "event_system/event_dispatcher.h"
 
 #include "core.h"
 
@@ -136,6 +137,8 @@ public:
 
     RenderTargetManager(const RenderTargetManager& other) = delete;
     RenderTargetManager& operator=(const RenderTargetManager& other) = delete;
+    RenderTargetManager(RenderTargetManager&& other) noexcept = delete;
+    RenderTargetManager& operator=(RenderTargetManager&& other) noexcept = delete;
 
     Texture* GetRTTexture(RTTextureID texID) noexcept;
     FrameBuffer* GetFrameBuffer(RTFrameBufferID framebufferID) noexcept;
@@ -150,9 +153,6 @@ public:
 private:
     RenderTargetManager() = default;
 
-    RenderTargetManager(RenderTargetManager&& other) noexcept = default;
-    RenderTargetManager& operator=(RenderTargetManager&& other) noexcept = default;
-
     bool Init() noexcept;
     void Terminate() noexcept;
 
@@ -166,6 +166,8 @@ private:
 private:
     std::vector<FrameBuffer> m_frameBufferStorage;
     std::vector<Texture*> m_RTTextureStorage;
+
+    EventListenerID m_frameBufferResizeEventListenerID;
 
     bool m_isInitialized = false;
 };

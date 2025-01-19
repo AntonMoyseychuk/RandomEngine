@@ -193,6 +193,13 @@ struct CursorPositon
 };
 
 
+struct WindowSystemEventListenerDesc
+{
+    uint64_t id;
+    uint64_t typeIndexHash;
+};
+
+
 DECALRE_EMPTY_EVENT(EventCursorLeaved);
 DECALRE_EMPTY_EVENT(EventCursorEntered);
 
@@ -263,6 +270,23 @@ private:
 };
 
 
+enum class InputEventIndex : uint8_t
+{
+    IDX_CURSOR_MOVED,
+    IDX_CURSOR_LEAVED,
+    IDX_CURSOR_ENTERED,
+    IDX_MOUSE_PRESSED,
+    IDX_MOUSE_RELEASED,
+    IDX_MOUSE_HOLD,
+    IDX_MOUSE_WHEEL,
+    IDX_KEY_PRESSED,
+    IDX_KEY_RELEASED,
+    IDX_KEY_HOLD,
+
+    IDX_COUNT,
+};
+
+
 class Input
 {
     friend class Window;
@@ -290,6 +314,7 @@ private:
 
 private:
     std::array<KeyState, static_cast<size_t>(KeyboardKey::KEY_COUNT)> m_keyStates;
+    std::array<WindowSystemEventListenerDesc, static_cast<size_t>(InputEventIndex::IDX_COUNT)> m_inputListenersIDDescs;
 
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
@@ -305,21 +330,6 @@ DECALRE_EMPTY_EVENT(EventWindowSizeRestored);
 DECALRE_EMPTY_EVENT(EventWindowClosed);
 DECALRE_EMPTY_EVENT(EventWindowFocused);
 DECALRE_EMPTY_EVENT(EventWindowUnfocused);
-
-
-struct EventWindowPositionChanged
-{
-public:
-    EventWindowPositionChanged(int32_t x, int32_t y)
-        : m_xpos(x), m_ypos(y) {}
-
-    int32_t GetX() const noexcept { return m_xpos; }
-    int32_t GetY() const noexcept { return m_ypos; }
-
-private:
-    int32_t m_xpos;
-    int32_t m_ypos;
-};
 
 
 struct EventWindowResized
@@ -352,11 +362,27 @@ private:
 };
 
 
+enum class WindowEventIndex : uint8_t
+{
+    IDX_RESIZED,
+    IDX_MINIMIZED,
+    IDX_MAXIMIZED,
+    IDX_SIZE_RESTORED,
+    IDX_CLOSED,
+    IDX_FOCUSED,
+    IDX_UNFOCUSED,
+    IDX_FRAMEBUFFER_RESIZED,
+
+    IDX_COUNT,
+};
+
+
 struct WindowCreateInfo
 {
     const char* pTitle;
     uint32_t width;
     uint32_t height;
+    bool enableVSync;
 };
 
 
@@ -388,8 +414,8 @@ public:
     void PollEvents() noexcept;
     void SwapBuffers() noexcept;
 
-    void ShowWindow() noexcept;
-    void HideWindow() noexcept;
+    void Show() noexcept;
+    void Hide() noexcept;
 
     Input& GetInput() noexcept { return m_input; }
     void* GetNativeWindow() noexcept { return m_pNativeWindow; }
@@ -417,6 +443,8 @@ private:
 
 private:
     Input m_input;
+
+    std::array<WindowSystemEventListenerDesc, static_cast<size_t>(WindowEventIndex::IDX_COUNT)> m_windowEventListenersIDDescs;
 
     void* m_pNativeWindow = nullptr;
 

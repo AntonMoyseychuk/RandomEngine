@@ -11,7 +11,7 @@ class Engine
 public:
     static Engine& GetInstance() noexcept;
 
-    static bool Init(const char* title, uint32_t width, uint32_t height) noexcept;
+    static bool Init(const char* title, uint32_t width, uint32_t height, bool enableVSync) noexcept;
     static void Terminate() noexcept;
 
 public:
@@ -32,7 +32,7 @@ public:
     Window& GetMainWindow() noexcept;
     
 private:
-    Engine(const char* title, uint32_t width, uint32_t height);
+    Engine(const char* title, uint32_t width, uint32_t height, bool enableVSync);
 
     Engine(Engine&& other) noexcept = default;
     Engine& operator=(Engine&& other) noexcept = default;
