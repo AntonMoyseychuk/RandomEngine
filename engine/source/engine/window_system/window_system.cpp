@@ -1,7 +1,5 @@
 #include "pch.h"
-
-#include "engine/window_system/input.h"
-#include "engine/window_system/window.h"
+#include "engine/window_system/window_system.h"
 
 #include "engine/event_system/event_dispatcher.h"
 
@@ -10,7 +8,21 @@
 #include <GLFW/glfw3.h>
 
 
-#define ENG_CHECK_BINDED_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "[Input]: Binded window is nullptr")
+#define ENG_CHECK_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "Window is not initialized")
+
+
+static std::unique_ptr<WindowSystem> g_pWindowSys = nullptr;
+
+
+static const char* WindowTypeTagToStr(WindowTypeTag tag) noexcept
+{
+    switch(tag) {
+        case WINDOW_TAG_MAIN: return "WINDOW_TAG_MAIN";
+        default:
+            ENG_ASSERT_FAIL("Invalid window type tag value");
+            return "UNKNOWN";
+    }
+}
 
 
 static KeyboardKey GLFWKeyToCustomKey(int32_t glfwKey) noexcept
@@ -156,44 +168,14 @@ static MouseButton GLFWButtonToCustomMouseButton(int32_t glfwButton) noexcept
 }
 
 
-Input::Input(Window* pWindow)
+bool Input::Init(Window* pWindow) noexcept
 {
-    const bool isWindowBinded = BindWindow(pWindow);
-    ENG_ASSERT_WINDOW(isWindowBinded, "Window binding failed");
-}
-
-
-KeyState Input::GetKeyState(KeyboardKey key) const noexcept
-{
-    const size_t keyIndex = static_cast<size_t>(key);
-    ENG_ASSERT_WINDOW(keyIndex < static_cast<size_t>(KeyboardKey::KEY_COUNT), "Invalid key index");
-
-    return m_keyStates[keyIndex];
-}
-
-MouseButtonState Input::GetMouseButtonState(MouseButton button) const noexcept
-{
-    const size_t buttonIndex = static_cast<size_t>(button);
-    ENG_ASSERT_WINDOW(buttonIndex < static_cast<size_t>(MouseButton::BUTTON_COUNT), "Invalid mouse button index");
-
-    return m_mouseButtonStates[buttonIndex];
-}
-
-
-bool Input::BindWindow(Window* pWindow) noexcept
-{
-    if (!pWindow) {
-        ENG_LOG_WINDOW_WARN("pWindow is nullptr");
+    if (!(pWindow && pWindow->IsInitialized())) {
+        ENG_LOG_WINDOW_WARN("pWindow is invalid");
         return false;
     }
 
-    if (!pWindow->IsWindowInitialized()) {
-        ENG_LOG_WINDOW_WARN("pWindow is not initialized");
-        return false;
-    }
-
-    m_pBoundWindow = pWindow;
-
+    GLFWwindow* pNativeWindow = static_cast<GLFWwindow*>(pWindow->GetNativeWindow());
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
     dispatcher.Subscribe(
@@ -264,7 +246,7 @@ bool Input::BindWindow(Window* pWindow) noexcept
         }
     ));
 
-    glfwSetKeyCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
+    glfwSetKeyCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         
         switch (action) {
@@ -282,12 +264,12 @@ bool Input::BindWindow(Window* pWindow) noexcept
         }
     });
 
-    glfwSetCursorPosCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xpos, double ypos){
+    glfwSetCursorPosCallback(pNativeWindow, [](GLFWwindow* pWindow, double xpos, double ypos){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         dispatcher.Notify<EventCursorMoved>((float)xpos, (float)ypos);
     });
 
-    glfwSetCursorEnterCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t entered){
+    glfwSetCursorEnterCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t entered){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
         if (entered) {
@@ -298,7 +280,7 @@ bool Input::BindWindow(Window* pWindow) noexcept
     });
     
     
-    glfwSetMouseButtonCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods){
+    glfwSetMouseButtonCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         
         switch (action) {
@@ -316,12 +298,41 @@ bool Input::BindWindow(Window* pWindow) noexcept
         }
     });
 
-    glfwSetScrollCallback(m_pBoundWindow->m_pWindow, [](GLFWwindow* pWindow, double xoffset, double yoffset){
+    glfwSetScrollCallback(pNativeWindow, [](GLFWwindow* pWindow, double xoffset, double yoffset){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
         dispatcher.Notify<EventMouseWheel>((float)xoffset, (float)yoffset);
     });
 
+    m_isIntialized = true;
+
     return true;
+}
+
+
+void Input::Destroy() noexcept
+{
+    m_keyStates = {};
+    m_prevCursorPosition = {};
+    m_currCursorPosition = {};
+    m_mouseButtonStates = {};
+    m_isIntialized = false;
+}
+
+
+KeyState Input::GetKeyState(KeyboardKey key) const noexcept
+{
+    const size_t keyIndex = static_cast<size_t>(key);
+    ENG_ASSERT_WINDOW(keyIndex < static_cast<size_t>(KeyboardKey::KEY_COUNT), "Invalid key index");
+
+    return m_keyStates[keyIndex];
+}
+
+MouseButtonState Input::GetMouseButtonState(MouseButton button) const noexcept
+{
+    const size_t buttonIndex = static_cast<size_t>(button);
+    ENG_ASSERT_WINDOW(buttonIndex < static_cast<size_t>(MouseButton::BUTTON_COUNT), "Invalid mouse button index");
+
+    return m_mouseButtonStates[buttonIndex];
 }
 
 
@@ -343,4 +354,333 @@ void Input::OnMouseMoveEvent(double xpos, double ypos) noexcept
     
     m_currCursorPosition.x = static_cast<float>(xpos);
     m_currCursorPosition.y = static_cast<float>(ypos);
+}
+
+
+Window::~Window()
+{
+    Destroy();
+}
+
+
+bool Window::Init(const WindowCreateInfo& createInfo) noexcept
+{
+    ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Can't create window since window system is not initialized");
+    ENG_ASSERT_WINDOW(createInfo.pTitle != nullptr, "Window title is nullptr");
+
+    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowClosed>([this](const void* pEvent) {
+            m_state.set(STATE_CLOSED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowFocused>([this](const void* pEvent) {
+            m_state.set(STATE_FOCUSED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowUnfocused>([this](const void* pEvent) {
+            m_state.reset(STATE_FOCUSED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowMaximized>([this](const void* pEvent) {
+            m_state.set(STATE_MAXIMIZED);
+            m_state.reset(STATE_MINIMIZED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowMinimized>([this](const void* pEvent) {
+            m_state.set(STATE_MINIMIZED);
+            m_state.reset(STATE_MAXIMIZED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowSizeRestored>([this](const void* pEvent) {
+            m_state.reset(STATE_MAXIMIZED);
+            m_state.reset(STATE_MINIMIZED);
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventWindowResized>([this](const void* pEvent) {
+            const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
+            
+            m_windowWidth = event.GetWidth();
+            m_windowHeight = event.GetHeight();
+        }
+    ));
+
+    dispatcher.Subscribe(
+        EventListener::Create<EventFramebufferResized>([this](const void* pEvent) {
+            const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+            
+            m_framebufferWidth = event.GetWidth();
+            m_framebufferHeight = event.GetHeight();
+        }
+    ));
+
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#endif
+
+    m_pNativeWindow = glfwCreateWindow(createInfo.width, createInfo.height, createInfo.pTitle, nullptr, nullptr);
+    ENG_ASSERT_WINDOW(m_pNativeWindow, "Window creation failed");
+    GLFWwindow* pGLFWWindow = static_cast<GLFWwindow*>(m_pNativeWindow);
+
+    m_windowWidth = createInfo.width;
+    m_windowHeight = createInfo.height;
+
+    int32_t framebufferWidth, framebufferHeight;
+    glfwGetFramebufferSize(pGLFWWindow, &framebufferWidth, &framebufferHeight);
+    m_framebufferWidth = framebufferWidth;
+    m_framebufferHeight = framebufferHeight;
+
+    glfwSetWindowUserPointer(pGLFWWindow, this);
+
+    glfwMakeContextCurrent(pGLFWWindow);
+    glfwSwapInterval(0);
+
+    glfwSetWindowCloseCallback(pGLFWWindow, [](GLFWwindow* pWindow){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.Notify<EventWindowClosed>();
+    });
+
+    glfwSetWindowIconifyCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t iconified){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (iconified) {
+            dispatcher.Notify<EventWindowMinimized>();
+        } else {
+            dispatcher.Notify<EventWindowSizeRestored>();
+        }
+    });
+
+    glfwSetWindowMaximizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t maximized){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (maximized) {
+            dispatcher.Notify<EventWindowMaximized>();
+        } else {
+            dispatcher.Notify<EventWindowSizeRestored>();
+        }
+    });
+
+    glfwSetWindowFocusCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t focused){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        if (focused) {
+            dispatcher.Notify<EventWindowFocused>();
+        } else {
+            dispatcher.Notify<EventWindowUnfocused>();
+        }
+    });
+
+    glfwSetWindowSizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.Notify<EventWindowResized>(width, height);
+    });
+
+    glfwSetFramebufferSizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
+        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        dispatcher.Notify<EventFramebufferResized>(width, height);
+    });
+
+    m_input.Init(this);
+    ENG_ASSERT_WINDOW(m_input.IsInitialized(), "Input system initialization failed");
+
+    m_state.reset(STATE_CLOSED);
+
+    return true;
+}
+
+
+void Window::Destroy() noexcept
+{
+    m_input.Destroy();
+
+    glfwDestroyWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
+    m_pNativeWindow = nullptr;
+
+    m_windowWidth = 0;
+    m_windowHeight = 0;
+
+    m_framebufferWidth = 0;
+    m_framebufferHeight = 0;
+
+    m_state = STATE_CLOSED;
+}
+
+
+void Window::PollEvents() noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    glfwPollEvents();
+}
+
+
+void Window::SwapBuffers() noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    glfwSwapBuffers(static_cast<GLFWwindow*>(m_pNativeWindow));
+}
+
+
+void Window::ShowWindow() noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    glfwShowWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
+}
+
+
+void Window::HideWindow() noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    glfwHideWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
+}
+
+
+const char* Window::GetTitle() const noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    return glfwGetWindowTitle(static_cast<GLFWwindow*>(m_pNativeWindow));
+}
+
+
+void Window::SetTitle(const char *title) noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    glfwSetWindowTitle(static_cast<GLFWwindow*>(m_pNativeWindow), title);
+}
+
+
+bool Window::IsVisible() const noexcept
+{
+    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    return glfwGetWindowAttrib(static_cast<GLFWwindow*>(m_pNativeWindow), GLFW_VISIBLE);
+}
+
+
+WindowSystem& WindowSystem::GetInstance() noexcept
+{
+    ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Window system is not initialized");
+    return *g_pWindowSys;
+}
+
+
+WindowSystem::~WindowSystem()
+{
+    Terminate();
+}
+
+
+Window* WindowSystem::CreateWindow(WindowTypeTag tag, const WindowCreateInfo &createInfo) noexcept
+{
+    ENG_ASSERT_WINDOW(IsInitialized(), "Window system is not initialized");
+    ENG_ASSERT_WINDOW(tag < WINDOW_TAG_COUNT, "Invalid window type tag");
+
+    Window& windowSlot = m_windowsStorage[tag];
+
+    if (windowSlot.IsInitialized()) {
+        ENG_LOG_WINDOW_WARN("Window with tag {} is already created", WindowTypeTagToStr(tag));
+        return &windowSlot;
+    }
+
+    return windowSlot.Init(createInfo) ? &windowSlot : nullptr;
+}
+
+
+void WindowSystem::DestroyWindow(WindowTypeTag tag) noexcept
+{
+    ENG_ASSERT_WINDOW(IsInitialized(), "Window system is not initialized");
+    ENG_ASSERT_WINDOW(tag < WINDOW_TAG_COUNT, "Invalid window type tag");
+
+    m_windowsStorage[tag].Destroy();
+}
+
+
+Window* WindowSystem::GetWindowByTag(WindowTypeTag tag) noexcept
+{
+    ENG_ASSERT_WINDOW(IsInitialized(), "Window system is not initialized");
+    ENG_ASSERT_WINDOW(tag < WINDOW_TAG_COUNT, "Invalid window type tag");
+
+    Window& windowSlot = m_windowsStorage[tag];
+
+    return windowSlot.IsInitialized() ? &windowSlot : nullptr;
+}
+
+
+bool WindowSystem::Init() noexcept
+{
+    if (IsInitialized()) {
+        return true;
+    }
+
+#if defined(ENG_DEBUG) && defined(ENG_LOGGING_ENABLED)
+    glfwSetErrorCallback([](int errorCode, const char* description){
+        ENG_ASSERT_WINDOW_FAIL("{} (code: {})", description, errorCode);
+    });
+#endif
+
+    if (glfwInit() != GLFW_TRUE) {
+        ENG_ASSERT_WINDOW_FAIL("Window system lib initialization failed");
+        return false;
+    }
+
+    m_isInitialized = true;
+
+    return true;
+}
+
+
+void WindowSystem::Terminate() noexcept
+{
+    glfwTerminate();
+    m_isInitialized = false;
+}
+
+
+bool engInitWindowSystem() noexcept
+{
+    if (engIsWindowSystemInitialized()) {
+        ENG_LOG_WINDOW_WARN("Window system is already initialized!");
+        return true;
+    }
+
+    g_pWindowSys = std::unique_ptr<WindowSystem>(new WindowSystem);
+
+    if (!g_pWindowSys) {
+        ENG_ASSERT_FAIL("Failed to allocate memory for window system");
+        return false;
+    }
+
+    if (!g_pWindowSys->Init()) {
+        ENG_ASSERT_FAIL("Failed to initialized window system");
+        return false;
+    }
+
+    return true;
+}
+
+
+void engTerminateWindowSystem() noexcept
+{
+    g_pWindowSys = nullptr;
+}
+
+
+bool engIsWindowSystemInitialized() noexcept
+{
+    return g_pWindowSys && g_pWindowSys->IsInitialized();
 }

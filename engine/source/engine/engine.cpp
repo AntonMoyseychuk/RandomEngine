@@ -53,7 +53,9 @@ void Engine::Terminate() noexcept
 
 Engine::~Engine()
 {
-    m_pWindow = nullptr;
+    WindowSystem& windowSys = WindowSystem::GetInstance();
+    windowSys.DestroyWindow(WINDOW_TAG_MAIN);
+    m_pMainWindow = nullptr;
 
     engTerminateRenderSystem();
     engTerminateWindowSystem();    
@@ -63,9 +65,9 @@ Engine::~Engine()
 
 void Engine::Update() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
     
-    m_pWindow->PollEvents();
+    m_pMainWindow->PollEvents();
 }
 
 
@@ -79,21 +81,21 @@ void Engine::BeginFrame() noexcept
 
 void Engine::EndFrame() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
     ENG_CHECK_REND_SYS_INITIALIZATION();
 
     RenderSystem::GetInstance().EndFrame();
 
-    m_pWindow->SwapBuffers();
+    m_pMainWindow->SwapBuffers();
 }
 
 
 void Engine::RenderFrame() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pWindow);
+    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
     ENG_CHECK_REND_SYS_INITIALIZATION();
 
-    if (m_pWindow->IsMinimized()) {
+    if (m_pMainWindow->IsMinimized()) {
         return;
     }
 
@@ -119,10 +121,10 @@ bool Engine::IsInitialized() const noexcept
 }
 
 
-Window &Engine::GetWindow() noexcept
+Window& Engine::GetMainWindow() noexcept
 {
-    ENG_ASSERT(m_pWindow && m_pWindow->IsInitialized(), "Invalid nullptr or is not initialized");
-    return *m_pWindow;
+    ENG_ASSERT(engIsWindowSystemInitialized(), "Window system is not initialized");
+    return *m_pMainWindow;
 }
 
 
@@ -134,9 +136,15 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
         return;
     }
 
-    m_pWindow = std::make_unique<Window>(title, width, height);
+    WindowSystem& windowSys = WindowSystem::GetInstance();
 
-    if (!(m_pWindow && m_pWindow->IsInitialized())) {
+    WindowCreateInfo mainWindowCreateInfo = {};
+    mainWindowCreateInfo.pTitle = title;
+    mainWindowCreateInfo.width = width;
+    mainWindowCreateInfo.height = height;
+    m_pMainWindow = windowSys.CreateWindow(WINDOW_TAG_MAIN, mainWindowCreateInfo);
+
+    if (!(m_pMainWindow && m_pMainWindow->IsInitialized())) {
         return;
     }
 
@@ -145,11 +153,11 @@ Engine::Engine(const char *title, uint32_t width, uint32_t height)
     }
 
     // Notify all subscribed systems to resized their resources
-    EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pWindow->GetFramebufferWidth(), m_pWindow->GetFramebufferHeight());
+    EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pMainWindow->GetFramebufferWidth(), m_pMainWindow->GetFramebufferHeight());
 
     m_isInitialized = true;
 
-    m_pWindow->ShowWindow();
+    m_pMainWindow->ShowWindow();
 }
 
 

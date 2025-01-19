@@ -58,7 +58,7 @@ void RenderSystem::RunColorPass() noexcept
     static Timer timer;
     timer.Tick();
 
-    Window& window = Engine::GetInstance().GetWindow();
+    Window& window = *WindowSystem::GetInstance().GetWindowByTag(WINDOW_TAG_MAIN);
     TextureManager& texManager = TextureManager::GetInstance();
     ShaderManager& shaderManager = ShaderManager::GetInstance();
     RenderTargetManager& rtManager = RenderTargetManager::GetInstance();

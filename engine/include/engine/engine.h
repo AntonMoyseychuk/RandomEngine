@@ -1,6 +1,6 @@
 #pragma once
 
-#include "window_system/window.h"
+#include "window_system/window_system.h"
 
 #include <memory>
 #include <cstdint>
@@ -29,7 +29,7 @@ public:
 
     bool IsInitialized() const noexcept;
 
-    Window& GetWindow() noexcept;
+    Window& GetMainWindow() noexcept;
     
 private:
     Engine(const char* title, uint32_t width, uint32_t height);
@@ -38,8 +38,7 @@ private:
     Engine& operator=(Engine&& other) noexcept = default;
 
 private:
-    std::unique_ptr<Window> m_pWindow = nullptr;
-
+    Window* m_pMainWindow = nullptr;
     bool m_isInitialized = false;
 };
 
