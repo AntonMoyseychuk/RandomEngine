@@ -163,6 +163,8 @@ public:
 public:
     TextureManager(const TextureManager& other) = delete;
     TextureManager& operator=(const TextureManager& other) = delete;
+    TextureManager(TextureManager&& other) noexcept = delete;
+    TextureManager& operator=(TextureManager&& other) noexcept = delete;
 
     ~TextureManager();
 
@@ -181,9 +183,6 @@ public:
     
 private:
     TextureManager() = default;
-
-    TextureManager(TextureManager&& other) noexcept = default;
-    TextureManager& operator=(TextureManager&& other) noexcept = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;

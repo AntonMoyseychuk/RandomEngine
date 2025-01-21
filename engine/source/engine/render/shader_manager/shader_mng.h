@@ -106,6 +106,8 @@ public:
 public:
     ShaderManager(const ShaderManager& other) = delete;
     ShaderManager& operator=(const ShaderManager& other) = delete;
+    ShaderManager(ShaderManager&& other) noexcept = delete;
+    ShaderManager& operator=(ShaderManager&& other) noexcept = delete;
 
     ~ShaderManager();
 
@@ -118,9 +120,6 @@ public:
 
 private:
     ShaderManager() = default;
-
-    ShaderManager(ShaderManager&& other) noexcept = default;
-    ShaderManager& operator=(ShaderManager&& other) noexcept = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;

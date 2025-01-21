@@ -124,6 +124,8 @@ public:
 public:
     MemoryBufferManager(const MemoryBufferManager& other) = delete;
     MemoryBufferManager& operator=(const MemoryBufferManager& other) = delete;
+    MemoryBufferManager(MemoryBufferManager&& other) noexcept = delete;
+    MemoryBufferManager& operator=(MemoryBufferManager&& other) noexcept = delete;
 
     ~MemoryBufferManager();
 
@@ -136,9 +138,6 @@ public:
 
 private:
     MemoryBufferManager() = default;
-
-    MemoryBufferManager(MemoryBufferManager&& other) noexcept = default;
-    MemoryBufferManager& operator=(MemoryBufferManager&& other) noexcept = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;

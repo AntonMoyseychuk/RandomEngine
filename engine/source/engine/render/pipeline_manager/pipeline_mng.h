@@ -366,6 +366,11 @@ public:
     static PipelineManager& GetInstance() noexcept;
 
 public:
+    PipelineManager(const PipelineManager& other) = delete;
+    PipelineManager& operator=(const PipelineManager& other) = delete;
+    PipelineManager(PipelineManager&& other) noexcept = delete;
+    PipelineManager& operator=(PipelineManager&& other) noexcept = delete;
+
     PipelineID RegisterPipeline(const PipelineCreateInfo& createInfo) noexcept;
     void UnregisterPipeline(PipelineID ID) noexcept;
 
@@ -376,6 +381,8 @@ public:
     bool IsValidPipeline(PipelineID ID) const noexcept;
     
 private:
+    PipelineManager() = default;
+
     bool Init() noexcept;
     void Terminate() noexcept;
 

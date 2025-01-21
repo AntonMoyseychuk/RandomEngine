@@ -33,7 +33,7 @@ public:
     Event(Args&&... args)
         : m_event{std::forward<Args>(args)...} {}
 
-    const EventType& Get() const noexcept { return m_eventRef; }
+    const EventType& Get() const noexcept { return m_event; }
 
 private:
     EventType m_event;

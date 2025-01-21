@@ -15,6 +15,8 @@ public:
 public:
     RenderSystem(const RenderSystem& other) = delete;
     RenderSystem& operator=(const RenderSystem& other) = delete;
+    RenderSystem(RenderSystem&& other) noexcept = delete;
+    RenderSystem& operator=(RenderSystem&& other) noexcept = delete;
 
     ~RenderSystem();
 
@@ -28,9 +30,6 @@ public:
 
 private:
     RenderSystem() = default;
-
-    RenderSystem(RenderSystem&& other) noexcept = default;
-    RenderSystem& operator=(RenderSystem&& other) noexcept = default;
     
     bool Init() noexcept; 
     void Terminate() noexcept;
