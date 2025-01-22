@@ -34,7 +34,7 @@ static GLenum TranslateMemoryBufferTypeToGL(MemoryBufferType type) noexcept
         case MemoryBufferType::TYPE_CONSTANT_BUFFER:         return GL_UNIFORM_BUFFER;
         case MemoryBufferType::TYPE_UNORDERED_ACCESS_BUFFER: return GL_SHADER_STORAGE_BUFFER;
         default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid memory buffer type");
+            ENG_ASSERT_FAIL("Invalid memory buffer type");
             return GL_NONE;
     }
 }
@@ -48,7 +48,7 @@ static bool IsBufferIndexedBindable(MemoryBufferType type) noexcept
         case MemoryBufferType::TYPE_CONSTANT_BUFFER:         return true;
         case MemoryBufferType::TYPE_UNORDERED_ACCESS_BUFFER: return true;
         default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid memory buffer type");
+            ENG_ASSERT_FAIL("Invalid memory buffer type");
             return GL_NONE;
     }
 }
@@ -61,10 +61,10 @@ MemoryBuffer::MemoryBuffer(MemoryBuffer &&other) noexcept
 #endif
     std::swap(m_ID, other.m_ID);
     std::swap(m_size, other.m_size);
+    std::swap(m_renderID, other.m_renderID);
     std::swap(m_elementSize, other.m_elementSize);
     std::swap(m_type, other.m_type);
     std::swap(m_creationFlags, other.m_creationFlags);
-    std::swap(m_renderID, other.m_renderID);
 }
 
 
@@ -77,10 +77,10 @@ MemoryBuffer &MemoryBuffer::operator=(MemoryBuffer&& other) noexcept
 #endif
     std::swap(m_ID, other.m_ID);
     std::swap(m_size, other.m_size);
+    std::swap(m_renderID, other.m_renderID);
     std::swap(m_elementSize, other.m_elementSize);
     std::swap(m_type, other.m_type);
     std::swap(m_creationFlags, other.m_creationFlags);
-    std::swap(m_renderID, other.m_renderID);
 
     return *this;
 }
@@ -88,15 +88,15 @@ MemoryBuffer &MemoryBuffer::operator=(MemoryBuffer&& other) noexcept
 
 void MemoryBuffer::FillSubdata(size_t offset, size_t size, const void *pData) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsDynamicStorage(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_DYNAMIC_STORAGE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_DYNAMIC_STORAGE flag", m_name.CStr());
     glNamedBufferSubData(m_renderID, offset, size, pData);
 }
 
 
 void MemoryBuffer::Clear(size_t offset, size_t size, const void *pData) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
     glClearNamedBufferSubData(m_renderID, GL_R32F, offset, size, GL_RED, GL_FLOAT, pData);
 }
 
@@ -109,7 +109,7 @@ void MemoryBuffer::Clear() noexcept
 
 void MemoryBuffer::Bind() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
 
     const GLenum target = TranslateMemoryBufferTypeToGL(m_type);
     glBindBuffer(target, m_renderID);
@@ -118,8 +118,8 @@ void MemoryBuffer::Bind() noexcept
 
 void MemoryBuffer::BindIndexed(uint32_t index) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsBufferIndexedBindable(m_type), "Memory buffer \'{}\' is not indexed bindable", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsBufferIndexedBindable(m_type), "Memory buffer \'{}\' is not indexed bindable", m_name.CStr());
 
     const GLenum target = TranslateMemoryBufferTypeToGL(m_type);
     glBindBufferBase(target, index, m_renderID);
@@ -128,8 +128,8 @@ void MemoryBuffer::BindIndexed(uint32_t index) noexcept
 
 const void* MemoryBuffer::MapRead() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
     
     return glMapNamedBuffer(m_renderID, GL_READ_ONLY);
 }
@@ -137,9 +137,9 @@ const void* MemoryBuffer::MapRead() noexcept
 
 void* MemoryBuffer::MapWrite() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
+    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
     
     return glMapNamedBuffer(m_renderID, GL_WRITE_ONLY);
 }
@@ -147,10 +147,10 @@ void* MemoryBuffer::MapWrite() noexcept
 
 void* MemoryBuffer::MapReadWrite() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
+    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
+    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
 
     return glMapNamedBuffer(m_renderID, GL_READ_WRITE);
 }
@@ -158,7 +158,7 @@ void* MemoryBuffer::MapReadWrite() noexcept
 
 bool MemoryBuffer::Unmap() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
     
     return glUnmapNamedBuffer(m_renderID);
 }
@@ -182,8 +182,8 @@ ds::StrID MemoryBuffer::GetName() const noexcept
 
 uint64_t MemoryBuffer::GetElementCount() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(m_elementSize != 0, "Element size is 0");
-    ENG_ASSERT_GRAPHICS_API(m_size % m_elementSize == 0, "Buffer size must be multiple of element size");
+    ENG_ASSERT(m_elementSize != 0, "Element size is 0");
+    ENG_ASSERT(m_size % m_elementSize == 0, "Buffer size must be multiple of element size");
     
     return m_size / m_elementSize;
 }
@@ -191,16 +191,16 @@ uint64_t MemoryBuffer::GetElementCount() const noexcept
 
 bool MemoryBuffer::Create(const MemoryBufferCreateInfo& createInfo) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(m_ID.IsValid(), "Buffer ID is invalid. You must initialize only buffers which were returned by MemoryBufferManager");
-    ENG_ASSERT_GRAPHICS_API(createInfo.type != MemoryBufferType::TYPE_INVALID && createInfo.type < MemoryBufferType::TYPE_COUNT,
+    ENG_ASSERT(m_ID.IsValid(), "Buffer ID is invalid. You must initialize only buffers which were returned by MemoryBufferManager");
+    ENG_ASSERT(createInfo.type != MemoryBufferType::TYPE_INVALID && createInfo.type < MemoryBufferType::TYPE_COUNT,
         "Invalid \'{}\' buffer create info type", m_name.CStr());
 
-    ENG_ASSERT_GRAPHICS_API(createInfo.dataSize > 0, "Invalid \'{}\' buffer create info data size", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(createInfo.elementSize > 0, "Invalid \'{}\' buffer create info data element size", m_name.CStr());
-    ENG_ASSERT_GRAPHICS_API(createInfo.dataSize % createInfo.elementSize == 0, "Data size is must be multiple of element size");
+    ENG_ASSERT(createInfo.dataSize > 0, "Invalid \'{}\' buffer create info data size", m_name.CStr());
+    ENG_ASSERT(createInfo.elementSize > 0, "Invalid \'{}\' buffer create info data element size", m_name.CStr());
+    ENG_ASSERT(createInfo.dataSize % createInfo.elementSize == 0, "Data size is must be multiple of element size");
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Recreating \'{}\' buffer", m_name.CStr());
+        ENG_LOG_WARN("Recreating \'{}\' buffer", m_name.CStr());
         Destroy();
     }
 

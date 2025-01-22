@@ -8,7 +8,7 @@
 #include <deque>
 
 
-enum class MemoryBufferType : uint16_t
+enum class MemoryBufferType : uint8_t
 {
     TYPE_VERTEX_BUFFER,
     TYPE_INDEX_BUFFER,
@@ -20,7 +20,7 @@ enum class MemoryBufferType : uint16_t
 };
 
 
-enum MemoryBufferCreationFlags : uint16_t
+enum MemoryBufferCreationFlags : uint8_t
 {
     BUFFER_CREATION_FLAG_ZERO = 0x0,
     BUFFER_CREATION_FLAG_DYNAMIC_STORAGE = 0x1,
@@ -39,7 +39,7 @@ struct MemoryBufferCreateInfo
 {
     const void*               pData;
     uint64_t                  dataSize;
-    uint64_t                  elementSize;
+    uint16_t                  elementSize;
 
     MemoryBufferType          type;
     MemoryBufferCreationFlags creationFlags;
@@ -81,7 +81,7 @@ public:
 
     BufferID GetID() const noexcept { return m_ID; }
     uint64_t GetSize() const noexcept { return m_size; }
-    uint64_t GetElementSize() const noexcept { return m_elementSize; }
+    uint16_t GetElementSize() const noexcept { return m_elementSize; }
     uint64_t GetElementCount() const noexcept;
 
     MemoryBufferType GetType() const noexcept { return m_type; }
@@ -105,11 +105,13 @@ private:
 
     BufferID                  m_ID;
     uint64_t                  m_size = 0;
-    uint64_t                  m_elementSize = 0;
+    uint32_t                  m_renderID = 0;
+    uint16_t                  m_elementSize = 0;
     MemoryBufferType          m_type = MemoryBufferType::TYPE_INVALID;
     MemoryBufferCreationFlags m_creationFlags = MemoryBufferCreationFlags::BUFFER_CREATION_FLAG_ZERO;
-    uint32_t                  m_renderID = 0;
 };
+
+constexpr size_t s = sizeof(MemoryBuffer);
 
 
 class MemoryBufferManager
