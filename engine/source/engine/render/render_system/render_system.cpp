@@ -299,9 +299,10 @@ void RenderSystem::RunColorPass() noexcept
             BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_READABLE | BUFFER_CREATION_FLAG_WRITABLE);
         commonConstBufferCreateInfo.pData = nullptr;
 
-        BufferID commonConstBufferID = memBufferManager.AllocateBuffer("__COMMON_CB__", commonConstBufferCreateInfo);
-        ENG_ASSERT(memBufferManager.IsValidBuffer(commonConstBufferID), "Failed to allocate common const buffer");
-        pCommonConstBuffer = memBufferManager.GetBuffer(commonConstBufferID);
+        pCommonConstBuffer = memBufferManager.RegisterBuffer("__COMMON_CB__");
+        ENG_ASSERT(pCommonConstBuffer, "Failed to register common const buffer");
+        pCommonConstBuffer->Create(commonConstBufferCreateInfo);
+        ENG_ASSERT(pCommonConstBuffer->IsValid(), "Failed to create common const buffer");
         
         pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
 

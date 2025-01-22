@@ -32,6 +32,9 @@ enum MemoryBufferCreationFlags : uint16_t
 };
 
 
+using BufferID = BaseID;
+
+
 struct MemoryBufferCreateInfo
 {
     const void*               pData;
@@ -49,6 +52,10 @@ class MemoryBuffer
 
 public:
     MemoryBuffer() = default;
+    ~MemoryBuffer() { Destroy(); }
+
+    bool Create(const MemoryBufferCreateInfo& createInfo) noexcept;
+    void Destroy() noexcept;
 
     MemoryBuffer(const MemoryBuffer& other) = delete;
     MemoryBuffer& operator=(const MemoryBuffer& other) = delete;
@@ -68,12 +75,11 @@ public:
     void* MapReadWrite() noexcept;
     bool Unmap() const noexcept;
 
-    bool IsValidRenderID() const noexcept { return m_renderID != 0; }
-    bool IsValidType() const noexcept { return m_type != MemoryBufferType::TYPE_INVALID; }
-    bool IsValid() const noexcept { return IsValidRenderID() && IsValidType(); }
+    bool IsValid() const noexcept;
 
     ds::StrID GetName() const noexcept;
 
+    BufferID GetID() const noexcept { return m_ID; }
     uint64_t GetSize() const noexcept { return m_size; }
     uint64_t GetElementSize() const noexcept { return m_elementSize; }
     uint64_t GetElementCount() const noexcept;
@@ -93,23 +99,17 @@ public:
     bool IsCoherent() const noexcept { return m_creationFlags & BUFFER_CREATION_FLAG_COHERENT; }
 
 private:
-    bool Init(ds::StrID name, const MemoryBufferCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept;
-
-private:
 #if defined(ENG_DEBUG)
     ds::StrID m_name = "";
 #endif
 
+    BufferID                  m_ID;
     uint64_t                  m_size = 0;
     uint64_t                  m_elementSize = 0;
     MemoryBufferType          m_type = MemoryBufferType::TYPE_INVALID;
     MemoryBufferCreationFlags m_creationFlags = MemoryBufferCreationFlags::BUFFER_CREATION_FLAG_ZERO;
     uint32_t                  m_renderID = 0;
 };
-
-
-using BufferID = BaseID;
 
 
 class MemoryBufferManager
@@ -129,12 +129,8 @@ public:
 
     ~MemoryBufferManager();
 
-    BufferID AllocateBuffer(ds::StrID name, const MemoryBufferCreateInfo& createInfo) noexcept;
-    void DeallocateBuffer(BufferID ID);
-
-    MemoryBuffer* GetBuffer(BufferID ID) noexcept;
-
-    bool IsValidBuffer(BufferID ID) const noexcept;
+    MemoryBuffer* RegisterBuffer(ds::StrID name) noexcept;
+    void UnregisterBuffer(MemoryBuffer* pBuffer);
 
 private:
     MemoryBufferManager() = default;
