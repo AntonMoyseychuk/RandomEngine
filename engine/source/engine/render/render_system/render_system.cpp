@@ -125,15 +125,13 @@ void RenderSystem::RunColorPass() noexcept
         const ShaderStageCreateInfo* pGBufferStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
         ShaderProgramCreateInfo gBufferPassProgramCreateInfo = {};
-        gBufferPassProgramCreateInfo.dbgName = "Pass_GBuffer";
-
         gBufferPassProgramCreateInfo.pStageCreateInfos = pGBufferStages;
         gBufferPassProgramCreateInfo.stageCreateInfosCount = _countof(pGBufferStages);
 
-        ProgramID gBufferPassProgramID = shaderManager.RegisterShaderProgram(gBufferPassProgramCreateInfo);
-        ENG_ASSERT(shaderManager.IsValidProgram(gBufferPassProgramID), "Failed to register GBUFFER shader program");
-
-        pGBufferProgram = shaderManager.GetShaderProgramByID(gBufferPassProgramID);
+        pGBufferProgram = shaderManager.RegisterShaderProgram("Pass_GBuffer");
+        ENG_ASSERT(pGBufferProgram, "Failed to register GBUFFER shader program");
+        pGBufferProgram->Create(gBufferPassProgramCreateInfo);
+        ENG_ASSERT(pGBufferProgram, "Failed to create GBUFFER shader program");
 
         static const char* MERGE_DEFINES[] = {
         #if defined(ENG_DEBUG)
@@ -151,15 +149,13 @@ void RenderSystem::RunColorPass() noexcept
         const ShaderStageCreateInfo* pMergeStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
         ShaderProgramCreateInfo gMergePassProgramCreateInfo = {};
-        gMergePassProgramCreateInfo.dbgName = "Pass_Merge";
-
         gMergePassProgramCreateInfo.pStageCreateInfos = pMergeStages;
         gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
 
-        ProgramID gMergePassProgramID = shaderManager.RegisterShaderProgram(gMergePassProgramCreateInfo);
-        ENG_ASSERT(shaderManager.IsValidProgram(gMergePassProgramID), "Failed to register MERGE shader program");
-
-        pMergeProgram = shaderManager.GetShaderProgramByID(gMergePassProgramID);
+        pMergeProgram = shaderManager.RegisterShaderProgram("Pass_Merge");
+        ENG_ASSERT(pMergeProgram, "Failed to register MERGE shader program");
+        pMergeProgram->Create(gMergePassProgramCreateInfo);
+        ENG_ASSERT(pMergeProgram, "Failed to create MERGE shader program");
 
 
         constexpr size_t texWidth = 256;

@@ -18,7 +18,7 @@ static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
 
 static void Preprocessor_GetShaderVersionPosition(const std::string_view& sourceCode, ptrdiff_t& begin, ptrdiff_t& end) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(!sourceCode.empty(), "Source code is empty string view");
+    ENG_ASSERT(!sourceCode.empty(), "Source code is empty string view");
 
     static std::regex versionRegex("#version\\s*(\\d+) core");
 
@@ -126,24 +126,20 @@ bool ShaderStage::Init(const ShaderStageCreateInfo &createInfo) noexcept
         switch (type) {
             case ShaderStageType::VERTEX: return GL_VERTEX_SHADER;
             case ShaderStageType::PIXEL:  return GL_FRAGMENT_SHADER;
-            default:
-                ENG_ASSERT_GRAPHICS_API_FAIL("Invalid ShaderStageType value: {}", static_cast<uint32_t>(type));
-                return GL_NONE;
+            default: return GL_NONE;
         }
     }(createInfo.type);
     
-    if (shaderStageGLType == GL_NONE) {
-        return false;
-    }
+    ENG_ASSERT_GRAPHICS_API(shaderStageGLType != GL_NONE, "Invalid ShaderStageType value: {}", static_cast<uint32_t>(createInfo.type));
 
     const std::string preprocessedSourceCode = PreprocessSourceCode(createInfo);
     if (preprocessedSourceCode.empty()) {
-        ENG_LOG_GRAPHICS_API_WARN("Empty shader source code");
+        ENG_LOG_WARN("Empty shader source code");
         return false;
     }
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Recreation of shader stage: {}", m_stageID);
+        ENG_LOG_WARN("Recreation of shader stage: {}", m_stageID);
         Destroy();
     }
 
@@ -173,7 +169,7 @@ void ShaderStage::Destroy() noexcept
 
 std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& createInfo) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(createInfo.pSourceCode, "Source code is nullptr");
+    ENG_ASSERT(createInfo.pSourceCode, "Source code is nullptr");
 
     std::stringstream ss;
 
@@ -189,7 +185,7 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 
     for (size_t i = 0; i < createInfo.definesCount; ++i) {
         const char* pDefineStr = createInfo.pDefines[i];
-        ENG_ASSERT_GRAPHICS_API(pDefineStr, "pDefineStr string is nullptr");
+        ENG_ASSERT(pDefineStr, "pDefineStr string is nullptr");
             
         ss << "#define " << pDefineStr << '\n';
     }
@@ -203,7 +199,6 @@ std::string ShaderStage::PreprocessSourceCode(const ShaderStageCreateInfo& creat
 bool ShaderStage::GetCompilationStatus() const noexcept
 {
     if (!IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Checking compile status by shader stage with invalid id: {}", m_stageID);
         return false;
     }
 
@@ -230,6 +225,8 @@ ShaderProgram::ShaderProgram(ShaderProgram&& other) noexcept
 #if defined(ENG_DEBUG)
     std::swap(m_dbgName, other.m_dbgName);
 #endif
+
+    std::swap(m_ID, other.m_ID);
     std::swap(m_renderID, other.m_renderID);
 }
 
@@ -241,6 +238,8 @@ ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
 #if defined(ENG_DEBUG)
     std::swap(m_dbgName, other.m_dbgName);
 #endif
+
+    std::swap(m_ID, other.m_ID);
     std::swap(m_renderID, other.m_renderID);
 
     return *this;
@@ -249,43 +248,49 @@ ShaderProgram &ShaderProgram::operator=(ShaderProgram&& other) noexcept
 
 void ShaderProgram::Bind() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Attempt to bind invalid shader program");
+    ENG_ASSERT(IsValid(), "Attempt to bind invalid shader program");
     glUseProgram(m_renderID);
 }
 
 
 void ShaderProgram::SetLocalSrvBool(const ShaderResourceBindStruct<ShaderResourceType::TYPE_BOOL>& bind, bool value) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending boolean uniform to invalid shader program");
+    ENG_ASSERT(IsValid(), "Sending boolean uniform to invalid shader program");
     glProgramUniform1i(m_renderID, bind.GetLocation(), value);
 }
 
 
 void ShaderProgram::SetLocalSrvInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_INT> &bind, int32_t value) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending int uniform to invalid shader program");
+    ENG_ASSERT(IsValid(), "Sending int uniform to invalid shader program");
     glProgramUniform1i(m_renderID, bind.GetLocation(), value);
 }
 
 
 void ShaderProgram::SetLocalSrvUInt(const ShaderResourceBindStruct<ShaderResourceType::TYPE_UINT> &bind, uint32_t value) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending uint uniform to invalid shader program");
+    ENG_ASSERT(IsValid(), "Sending uint uniform to invalid shader program");
     glProgramUniform1ui(m_renderID, bind.GetLocation(), value);
 }
 
 
 void ShaderProgram::SetLocalSrvFloat(const ShaderResourceBindStruct<ShaderResourceType::TYPE_FLOAT> &bind, float value) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending float uniform to invalid shader program");
+    ENG_ASSERT(IsValid(), "Sending float uniform to invalid shader program");
     glProgramUniform1f(m_renderID, bind.GetLocation(), value);
 }
 
 
 void ShaderProgram::SetLocalSrvDouble(const ShaderResourceBindStruct<ShaderResourceType::TYPE_DOUBLE> &bind, double value) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(IsValid(), "Sending double uniform to invalid shader program");
+    ENG_ASSERT(IsValid(), "Sending double uniform to invalid shader program");
     glProgramUniform1d(m_renderID, bind.GetLocation(), value);
+}
+
+
+bool ShaderProgram::IsValid() const noexcept
+{
+    return m_ID.IsValid() && m_renderID != 0;
 }
 
 
@@ -293,33 +298,39 @@ uint64_t ShaderProgram::Hash() const noexcept
 {
     ds::HashBuilder builder;
 
-#if defined(ENG_DEBUG)
-    builder.AddValue(m_dbgName);
-#endif
+    builder.AddValue(m_ID);
     builder.AddValue(m_renderID);
-    
+
     return builder.Value();
 }
 
 
-bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
+ds::StrID ShaderProgram::GetName() const noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(createInfo.pStageCreateInfos && createInfo.stageCreateInfosCount > 0, "Shader program create info '{}' has invalid stages parametres", createInfo.dbgName.CStr());
+#if defined(ENG_DEBUG)
+    return m_dbgName;
+#else
+    return "";
+#endif
+}
+
+
+bool ShaderProgram::Create(const ShaderProgramCreateInfo &createInfo) noexcept
+{
+    ENG_ASSERT(m_ID.IsValid(), "Shader program ID is invalid. You must initialize only programs which were returned by ShaderManager");
+    ENG_ASSERT(createInfo.pStageCreateInfos && createInfo.stageCreateInfosCount > 0, 
+        "Shader program create info '{}' has invalid stages parametres", m_dbgName.CStr());
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Recreating '{}' shader program", m_dbgName.CStr());
+        ENG_LOG_WARN("Recreating '{}' shader program", m_dbgName.CStr());
         Destroy();
     }
-
-#if defined(ENG_DEBUG)
-    m_dbgName = createInfo.dbgName;
-#endif
 
     std::array<ShaderStage, static_cast<size_t>(ShaderStageType::COUNT)> shaderStages = {};
     for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {
         const ShaderStageCreateInfo* pStageCreateInfo = createInfo.pStageCreateInfos[i];
         
-        ENG_ASSERT_GRAPHICS_API(pStageCreateInfo, "pStageCreateInfo is nullptr");
+        ENG_ASSERT(pStageCreateInfo, "pStageCreateInfo is nullptr");
         
         if (!shaderStages[i].Init(*pStageCreateInfo)) {
             return false;
@@ -334,20 +345,20 @@ bool ShaderProgram::Init(const ShaderProgramCreateInfo &createInfo) noexcept
 
     glLinkProgram(m_renderID);
 
-    const bool linkingSuccess = GetLinkingStatus();
-    if (!linkingSuccess) {
+    if (!GetLinkingStatus()) {
         Destroy();
+        return false;
     }
 
-    return linkingSuccess;
+    return true;
 }
 
 
 void ShaderProgram::Destroy() noexcept
 {
-#if defined(ENG_DEBUG)
-    m_dbgName = "";
-#endif
+    if (!IsValid()) {
+        return;
+    }
 
     glDeleteProgram(m_renderID);
     m_renderID = 0;
@@ -356,8 +367,8 @@ void ShaderProgram::Destroy() noexcept
 
 bool ShaderProgram::GetLinkingStatus() const noexcept
 {
-    if (!IsValidRenderID()) {
-        ENG_LOG_GRAPHICS_API_ERROR("Invalid shader program '{}' id", m_dbgName.CStr());
+    if (!IsValid()) {
+        ENG_LOG_ERROR("Invalid shader program '{}' id", m_dbgName.CStr());
         return false;
     }
 
@@ -371,7 +382,7 @@ bool ShaderProgram::GetLinkingStatus() const noexcept
         GLchar infoLog[512] = { 0 };
         glGetProgramInfoLog(m_renderID, sizeof(infoLog), nullptr, infoLog);
 
-        ENG_LOG_GRAPHICS_API_ERROR("Shader program '{}' (id: {}) linking error: {}", m_dbgName.CStr(), m_renderID, infoLog);
+        ENG_LOG_ERROR("Shader program '{}' (id: {}) linking error: {}", m_dbgName.CStr(), m_renderID, infoLog);
 #endif
 
         return false;
@@ -383,7 +394,7 @@ bool ShaderProgram::GetLinkingStatus() const noexcept
 
 ShaderManager &ShaderManager::GetInstance() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(engIsShaderManagerInitialized(), "Shader manager is not initialized");
+    ENG_ASSERT(engIsShaderManagerInitialized(), "Shader manager is not initialized");
     return *g_pShaderMng;
 }
 
@@ -394,63 +405,41 @@ ShaderManager::~ShaderManager()
 }
 
 
-ProgramID ShaderManager::RegisterShaderProgram(const ShaderProgramCreateInfo &createInfo) noexcept
+ShaderProgram* ShaderManager::RegisterShaderProgram(ds::StrID dbgName) noexcept
 {
-    const uint64_t createInfoHash = amHash(createInfo);  
+    ENG_ASSERT(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
 
-    const auto idIter = m_shaderProgramCreateInfoHashToIDMap.find(createInfoHash); 
-    if (idIter != m_shaderProgramCreateInfoHashToIDMap.cend()) {
-        ENG_LOG_GRAPHICS_API_WARN("Attempt to reregister '{}' shader program", createInfo.dbgName.CStr());
-        return idIter->second;
-    }
+    const ProgramID programID = AllocateProgramID();
+    ShaderProgram* pProgram = &m_shaderProgramsStorage[programID.Value()];
 
-    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
+    ENG_ASSERT(!pProgram->IsValid(), "Valid shader program was returned during registration");
 
-    ShaderProgram program;
+#if defined(ENG_DEBUG)
+    pProgram->m_dbgName = dbgName;
+#endif
+    pProgram->m_ID = programID;
 
-    if (!program.Init(createInfo)) {
-        return ProgramID{};
-    }
-
-    ProgramID programID = AllocateProgramID();
-    const uint64_t index = programID.Value();
-    
-    m_shaderProgramCreateInfoHashToIDMap[createInfoHash] = programID;
-    m_shaderProgramIDToCreateInfoHashVector[index] = createInfoHash;
-
-    m_shaderProgramsStorage[index] = std::move(program);
-
-    return programID;
+    return pProgram;
 }
 
 
-void ShaderManager::UnregisterShaderProgram(ProgramID ID) noexcept
+void ShaderManager::UnregisterShaderProgram(ShaderProgram* pProgram) noexcept
 {
-    if (!IsValidProgram(ID)) {
+    if (!pProgram) {
         return;
     }
 
-    const uint64_t index = ID.Value();
+    if (pProgram->IsValid()) {
+        ENG_LOG_WARN("Unregistration of shader program \'{}\' while it's steel valid. Prefer to destroy shaders manually", pProgram->GetName().CStr());
+        pProgram->Destroy();
+    }
 
-    uint64_t& createInfoHash = m_shaderProgramIDToCreateInfoHashVector[index];
-    m_shaderProgramCreateInfoHashToIDMap.erase(createInfoHash);
-    createInfoHash = 0;
+    DeallocateProgramID(pProgram->m_ID);
 
-    m_shaderProgramsStorage[index].Destroy();
-
-    DeallocateProgramID(ID);
-}
-
-
-ShaderProgram* ShaderManager::GetShaderProgramByID(ProgramID ID) noexcept
-{
-    return IsValidProgram(ID) ? &m_shaderProgramsStorage[ID.Value()] : nullptr;
-}
-
-
-bool ShaderManager::IsValidProgram(ProgramID ID) const noexcept
-{
-    return ID < m_nextAllocatedID && m_shaderProgramsStorage[ID.Value()].IsValid();
+#if defined(ENG_DEBUG)
+    pProgram->m_dbgName = "";
+#endif
+    pProgram->m_ID.Invalidate();
 }
 
 
@@ -461,9 +450,6 @@ bool ShaderManager::Init() noexcept
     }
 
     m_shaderProgramsStorage.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
-    m_shaderProgramIDToCreateInfoHashVector.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
-    m_shaderProgramCreateInfoHashToIDMap.reserve(ENG_MAX_SHADER_PROGRAMS_COUNT);
-    
     m_isInitialized = true;
 
     return true;
@@ -473,10 +459,6 @@ bool ShaderManager::Init() noexcept
 void ShaderManager::Terminate() noexcept
 {
     m_shaderProgramsStorage.clear();
-    
-    m_shaderProgramIDToCreateInfoHashVector.clear();
-    m_shaderProgramCreateInfoHashToIDMap.clear();
-
     m_programIDFreeList.clear();
 
     m_nextAllocatedID = ProgramID(0);
@@ -515,39 +497,7 @@ void ShaderManager::DeallocateProgramID(ProgramID ID) noexcept
 }
 
 
-uint64_t amHash(const ShaderStageCreateInfo &stageCreateInfo) noexcept
-{
-    ds::HashBuilder builder;
-
-    builder.AddValue(stageCreateInfo.type);
-    builder.AddMemory(stageCreateInfo.pSourceCode, stageCreateInfo.codeSize);
-
-    for (size_t i = 0; i < stageCreateInfo.definesCount; ++i) {
-        const char* pDefine = stageCreateInfo.pDefines[i];
-
-        builder.AddMemory(pDefine, strlen(pDefine));
-    }
-
-    return builder.Value();
-}
-
-
-uint64_t amHash(const ShaderProgramCreateInfo &programCreateInfo) noexcept
-{
-    ds::HashBuilder builder;
-
-    for (size_t i = 0; i < programCreateInfo.stageCreateInfosCount; ++i) {
-        const ShaderStageCreateInfo& stageCreateInfo = *programCreateInfo.pStageCreateInfos[i];
-        builder.AddValue(stageCreateInfo);
-    }
-
-    builder.AddValue(programCreateInfo.dbgName);
-
-    return builder.Value();
-}
-
-
-uint64_t amHash(const ShaderProgram &program) noexcept
+uint64_t amHash(const ShaderProgram& program) noexcept
 {
     return program.Hash();
 }
@@ -556,19 +506,19 @@ uint64_t amHash(const ShaderProgram &program) noexcept
 bool engInitShaderManager() noexcept
 {
     if (engIsShaderManagerInitialized()) {
-        ENG_LOG_GRAPHICS_API_WARN("Shader manager is already initialized!");
+        ENG_LOG_WARN("Shader manager is already initialized!");
         return true;
     }
 
     g_pShaderMng = std::unique_ptr<ShaderManager>(new ShaderManager);
 
     if (!g_pShaderMng) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for shader manager");
+        ENG_ASSERT_FAIL("Failed to allocate memory for shader manager");
         return false;
     }
 
     if (!g_pShaderMng->Init()) {
-        ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialized shader manager");
+        ENG_ASSERT_FAIL("Failed to initialized shader manager");
         return false;
     }
 
