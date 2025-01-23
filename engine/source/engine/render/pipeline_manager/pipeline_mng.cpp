@@ -188,12 +188,6 @@ static void EnableOrDisableFaceCulling(CullMode mode) noexcept
 }
 
 
-Pipeline::~Pipeline()
-{
-    Destroy();
-}
-
-
 Pipeline::Pipeline(Pipeline &&other) noexcept
 {
     std::swap(m_frameBufferColorAttachmentClearColors, other.m_frameBufferColorAttachmentClearColors);
@@ -203,6 +197,7 @@ Pipeline::Pipeline(Pipeline &&other) noexcept
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
     std::swap(m_blendConstants[3], other.m_blendConstants[3]);
 
+    std::swap(m_ID, other.m_ID);
     std::swap(m_pFrameBuffer, other.m_pFrameBuffer);
     std::swap(m_pShaderProgram, other.m_pShaderProgram);
 
@@ -230,6 +225,7 @@ Pipeline &Pipeline::operator=(Pipeline &&other) noexcept
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
     std::swap(m_blendConstants[3], other.m_blendConstants[3]);
 
+    std::swap(m_ID, other.m_ID);
     std::swap(m_pFrameBuffer, other.m_pFrameBuffer);
     std::swap(m_pShaderProgram, other.m_pShaderProgram);
 
@@ -407,6 +403,7 @@ uint64_t Pipeline::Hash() const noexcept
     builder.AddValue(m_blendConstants[2]);
     builder.AddValue(m_blendConstants[3]);
 
+    builder.AddValue(m_ID);
     builder.AddValue(*m_pFrameBuffer);
     builder.AddValue(*m_pShaderProgram);
 
@@ -430,7 +427,7 @@ uint64_t Pipeline::Hash() const noexcept
 
 bool Pipeline::IsValid() const noexcept
 {
-    return m_pFrameBuffer && m_pFrameBuffer->IsValid() && m_pShaderProgram && m_pShaderProgram->IsValid();
+    return m_ID.IsValid() && m_pFrameBuffer && m_pFrameBuffer->IsValid() && m_pShaderProgram && m_pShaderProgram->IsValid();
 }
 
 
@@ -448,8 +445,10 @@ const ShaderProgram& Pipeline::GetShaderProgram() noexcept
 }
 
 
-bool Pipeline::Init(const PipelineCreateInfo &createInfo) noexcept
+bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(m_ID.IsValid(), "Pipeline ID is invalid. You must initialize only pipelines which were returned by PipelineManager");
+
     ENG_ASSERT(createInfo.pInputAssemblyState,     "pInputAssemblyState is nullptr");
     ENG_ASSERT(createInfo.pRasterizationState,     "pRasterizationState is nullptr");
     ENG_ASSERT(createInfo.pDepthStencilState,      "pDepthStencilState is nullptr");
@@ -521,7 +520,7 @@ bool Pipeline::Init(const PipelineCreateInfo &createInfo) noexcept
         CompressedColorBlendAttachmentState& compressedState = m_compressedColorBlendAttachmentStates[i];
         const PipelineColorBlendAttachmentState& state = colorBlendState.pAttachmentStates[i];
 
-        ENG_ASSERT_GRAPHICS_API(state.attachmentIndex < powl(2, BITS_PER_COLOR_ATTACHMENT_INDEX), "Attachment index is greate than maximum value");
+        ENG_ASSERT(state.attachmentIndex < powl(2, BITS_PER_COLOR_ATTACHMENT_INDEX), "Attachment index is greate than maximum value");
 
         compressedState.attachmentIndex = state.attachmentIndex;
 
@@ -560,6 +559,10 @@ bool Pipeline::Init(const PipelineCreateInfo &createInfo) noexcept
 
 void Pipeline::Destroy()
 {
+    if (!IsValid()) {
+        return;
+    }
+
     m_frameBufferColorAttachmentClearColors.clear();
     m_compressedColorBlendAttachmentStates.clear();
     m_blendConstants[0] = 0.f;
@@ -590,52 +593,35 @@ PipelineManager& PipelineManager::GetInstance() noexcept
 }
 
 
-PipelineID PipelineManager::RegisterPipeline(const PipelineCreateInfo &createInfo) noexcept
+Pipeline* PipelineManager::RegisterPipeline() noexcept
 {
     ENG_ASSERT(m_nextAllocatedID.Value() < m_pipelineStorage.size() - 1, "Pipeline storage overflow");
 
-    Pipeline pipeline;
-
-    if (!pipeline.Init(createInfo)) {
-        return PipelineID{};
-    }
-
     const PipelineID pipelineID = AllocatePipelineID();
-    const uint64_t index = pipelineID.Value();
-    
-    m_pipelineStorage[index] = std::move(pipeline);
+    Pipeline* pPipeline = &m_pipelineStorage[pipelineID.Value()];
 
-    return pipelineID;
+    ENG_ASSERT(!pPipeline->IsValid(), "Valid graphics pipeline was returned during registration");
+
+    pPipeline->m_ID = pipelineID;
+
+    return pPipeline;
 }
 
 
-void PipelineManager::UnregisterPipeline(PipelineID ID) noexcept
+void PipelineManager::UnregisterPipeline(Pipeline* pPipeline) noexcept
 {
-    if (!IsValidPipeline(ID)) {
+    if (!pPipeline) {
         return;
     }
 
-    m_pipelineStorage[ID.Value()].Destroy();
-    DeallocatePipelineID(ID);
-}
+    if (pPipeline->IsValid()) {
+        ENG_LOG_WARN("Unregistration of pipeline \'{}\' while it's steel valid. Prefer to destroy buffers manually", pPipeline->m_ID.Value());
+        pPipeline->Destroy();
+    }
 
+    DeallocatePipelineID(pPipeline->m_ID);
 
-Pipeline* PipelineManager::GetPipeline(PipelineID ID) noexcept
-{
-    return IsValidPipeline(ID) ? &m_pipelineStorage[ID.Value()] : nullptr;
-}
-
-
-void PipelineManager::BindPipeline(PipelineID ID) noexcept
-{
-    ENG_ASSERT(IsValidPipeline(ID), "Invalid pipeline ID: {}", ID.Value());
-    m_pipelineStorage[ID.Value()].Bind();
-}
-
-
-bool PipelineManager::IsValidPipeline(PipelineID ID) const noexcept
-{
-    return ID < m_nextAllocatedID && m_pipelineStorage[ID.Value()].IsValid();
+    pPipeline->m_ID.Invalidate();
 }
 
 

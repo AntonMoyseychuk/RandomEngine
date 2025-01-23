@@ -250,19 +250,25 @@ struct PipelineCreateInfo
 };
 
 
+using PipelineID = BaseID;
+
+
 class Pipeline
 {
     friend class PipelineManager;
 
 public:
     Pipeline() = default;
-    ~Pipeline();
+    ~Pipeline() { Destroy(); }
 
     Pipeline(const Pipeline& other) = delete;
     Pipeline& operator=(const Pipeline& other) = delete;
 
     Pipeline(Pipeline&& other) noexcept;
     Pipeline& operator=(Pipeline&& other) noexcept;
+
+    bool Create(const PipelineCreateInfo& createInfo) noexcept;
+    void Destroy();
 
     void ClearFrameBuffer() noexcept;
     void Bind() noexcept;
@@ -273,10 +279,6 @@ public:
 
     const FrameBuffer& GetFrameBuffer() noexcept;
     const ShaderProgram& GetShaderProgram() noexcept;
-
-private:
-    bool Init(const PipelineCreateInfo& createInfo) noexcept;
-    void Destroy();
 
 private:
     static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_INDEX = 5;
@@ -311,6 +313,8 @@ private:
     std::vector<CompressedColorBlendAttachmentState> m_compressedColorBlendAttachmentStates;
 
     float m_blendConstants[4] = { 0.f };
+
+    PipelineID m_ID;
 
     FrameBuffer* m_pFrameBuffer = nullptr;
     ShaderProgram* m_pShaderProgram = nullptr;
@@ -353,9 +357,6 @@ private:
 };
 
 
-using PipelineID = BaseID;
-
-
 class PipelineManager
 {
     friend bool engInitPipelineManager() noexcept;
@@ -371,14 +372,8 @@ public:
     PipelineManager(PipelineManager&& other) noexcept = delete;
     PipelineManager& operator=(PipelineManager&& other) noexcept = delete;
 
-    PipelineID RegisterPipeline(const PipelineCreateInfo& createInfo) noexcept;
-    void UnregisterPipeline(PipelineID ID) noexcept;
-
-    Pipeline* GetPipeline(PipelineID ID) noexcept;
-
-    void BindPipeline(PipelineID ID) noexcept;
-
-    bool IsValidPipeline(PipelineID ID) const noexcept;
+    Pipeline* RegisterPipeline() noexcept;
+    void UnregisterPipeline(Pipeline* pPipeline) noexcept;
     
 private:
     PipelineManager() = default;
@@ -392,11 +387,6 @@ private:
     bool IsInitialized() const noexcept { return m_isInitialized; }
 
 private:
-    struct PipelineIDHasher
-    {
-        uint64_t operator()(PipelineID pipelineID) const noexcept { return pipelineID.Value(); }
-    };
-
     std::vector<Pipeline> m_pipelineStorage;
 
     std::deque<PipelineID> m_pipelineIDFreeList;

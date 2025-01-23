@@ -246,9 +246,10 @@ void RenderSystem::RunColorPass() noexcept
         gBufferPipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
         gBufferPipelineCreateInfo.pShaderProgram = pGBufferProgram;
 
-        PipelineID gBufferPipelineID = pipelineManager.RegisterPipeline(gBufferPipelineCreateInfo);
-        ENG_ASSERT(pipelineManager.IsValidPipeline(gBufferPipelineID), "Failed to register GBUFFER pipeline");
-        pGBufferPipeline = pipelineManager.GetPipeline(gBufferPipelineID);
+        pGBufferPipeline = pipelineManager.RegisterPipeline();
+        ENG_ASSERT(pGBufferPipeline, "Failed to register GBUFFER pipeline");
+        pGBufferPipeline->Create(gBufferPipelineCreateInfo);
+        ENG_ASSERT(pGBufferPipeline->IsValid(), "Failed to create GBUFFER pipeline");
 
 
         PipelineInputAssemblyStateCreateInfo mergeInputAssemblyState = {};
@@ -282,9 +283,11 @@ void RenderSystem::RunColorPass() noexcept
         mergePipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
         mergePipelineCreateInfo.pShaderProgram = pMergeProgram;
 
-        PipelineID mergePipelineID = pipelineManager.RegisterPipeline(mergePipelineCreateInfo);
-        ENG_ASSERT(pipelineManager.IsValidPipeline(mergePipelineID), "Failed to register merge pipeline");
-        pMergePipeline = pipelineManager.GetPipeline(mergePipelineID);
+        pMergePipeline = pipelineManager.RegisterPipeline();
+        ENG_ASSERT(pMergePipeline, "Failed to register MERGE pipeline");
+        pMergePipeline->Create(mergePipelineCreateInfo);
+        ENG_ASSERT(pMergePipeline->IsValid(), "Failed to create MERGE pipeline");
+        
 
         glCreateVertexArrays(1, &vao);
         glBindVertexArray(vao);
