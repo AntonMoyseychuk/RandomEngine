@@ -115,10 +115,10 @@ void TextureSamplerState::Bind(uint32_t unit) noexcept
 
 bool TextureSamplerState::Init(const void* pCreateInfo, ds::StrID dbgName) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(pCreateInfo != nullptr, "pCreateInfo is nullptr");
+    ENG_ASSERT(pCreateInfo != nullptr, "pCreateInfo is nullptr");
 
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Recreating of \'{}\' sampler by \'{}\'", m_dbgName.CStr(), dbgName.CStr());
+        ENG_LOG_WARN("Recreating of \'{}\' sampler by \'{}\'", m_dbgName.CStr(), dbgName.CStr());
         Destroy();
     }
 
@@ -150,7 +150,7 @@ void TextureSamplerState::Destroy() noexcept
 }
 
 
-TextureFormat ConvertShaderTexResourceFormat(uint32_t resFormat) noexcept
+static TextureFormat ConvertShaderTexResourceFormat(uint32_t resFormat) noexcept
 {
     switch(resFormat) {
         case TEXTURE_FORMAT_R8: return TextureFormat::FORMAT_R8;
@@ -206,9 +206,7 @@ TextureFormat ConvertShaderTexResourceFormat(uint32_t resFormat) noexcept
         case TEXTURE_FORMAT_STENCIL16: return TextureFormat::FORMAT_STENCIL16;
         case TEXTURE_FORMAT_DEPTH24_STENCIL8: return TextureFormat::FORMAT_DEPTH24_STENCIL8;
         case TEXTURE_FORMAT_DEPTH32_STENCIL8: return TextureFormat::FORMAT_DEPTH32_STENCIL8;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid reflected texture format \'{}\'", resFormat);
-            return TextureFormat::FORMAT_INVALID;
+        default: return TextureFormat::FORMAT_INVALID;
     }
 }
 
@@ -269,9 +267,7 @@ static GLenum GetTextureInternalGLFormat(TextureFormat format) noexcept
         case TextureFormat::FORMAT_STENCIL16: return GL_STENCIL_INDEX16;
         case TextureFormat::FORMAT_DEPTH24_STENCIL8: return GL_DEPTH24_STENCIL8;
         case TextureFormat::FORMAT_DEPTH32_STENCIL8: return GL_DEPTH32F_STENCIL8;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid texture format: {}", static_cast<uint32_t>(format));
-            return GL_NONE;
+        default: return GL_NONE;
     };
 }
 
@@ -286,9 +282,7 @@ static GLenum GetTextureInputDataGLFormat(TextureInputDataFormat format) noexcep
         case TextureInputDataFormat::INPUT_FORMAT_RGBA: return GL_RGBA;
         case TextureInputDataFormat::INPUT_FORMAT_DEPTH: return GL_DEPTH_COMPONENT;
         case TextureInputDataFormat::INPUT_FORMAT_STENCIL: return GL_STENCIL_INDEX;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid texture input data format: {}", static_cast<uint32_t>(format));
-            return GL_NONE;
+        default: return GL_NONE;
     };
 }
 
@@ -303,9 +297,7 @@ static GLenum GetTextureInputDataGLType(TextureInputDataType type) noexcept
         case TextureInputDataType::INPUT_TYPE_UNSIGNED_INT: return GL_UNSIGNED_INT;
         case TextureInputDataType::INPUT_TYPE_INT: return GL_INT;
         case TextureInputDataType::INPUT_TYPE_FLOAT: return GL_FLOAT;
-        default:
-            ENG_ASSERT_GRAPHICS_API_FAIL("Invalid texture input data type: {}", static_cast<uint32_t>(type));
-            return GL_NONE;
+        default: return GL_NONE;
     };
 }
 
@@ -313,6 +305,7 @@ static GLenum GetTextureInputDataGLType(TextureInputDataType type) noexcept
 Texture::Texture(Texture &&other) noexcept
 {
     std::swap(m_name, other.m_name);
+    std::swap(m_ID, other.m_ID);
     std::swap(m_type, other.m_type);
     std::swap(m_levelsCount, other.m_levelsCount);
     std::swap(m_width, other.m_width);
@@ -327,6 +320,7 @@ Texture& Texture::operator=(Texture &&other) noexcept
     Destroy();
 
     std::swap(m_name, other.m_name);
+    std::swap(m_ID, other.m_ID);
     std::swap(m_type, other.m_type);
     std::swap(m_levelsCount, other.m_levelsCount);
     std::swap(m_width, other.m_width);
@@ -347,7 +341,7 @@ void Texture::Bind(uint32_t unit) noexcept
 
 bool Texture::IsValid() const noexcept
 {
-    return m_renderID != 0;
+    return m_ID.IsValid() && m_renderID != 0;
 }
 
 
@@ -426,24 +420,13 @@ uint64_t Texture::Hash() const noexcept
 }
 
 
-bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept
+bool Texture::Create(const Texture2DCreateInfo &createInfo) noexcept
 {
-    const TextureFormat convertedFormat = ConvertShaderTexResourceFormat(createInfo.format);
-    if (convertedFormat == TextureFormat::FORMAT_INVALID) {
-        return false;
-    }
-
-    const GLenum internalFormat = GetTextureInternalGLFormat(convertedFormat);
-    if (internalFormat == GL_NONE) {
-        return false;
-    }
-
     if (IsValid()) {
-        ENG_LOG_GRAPHICS_API_WARN("Reinitializing of texture \'{}\' (id: {})", m_name.CStr(), m_renderID);
+        ENG_LOG_WARN("Reinitializing of texture \'{}\' (id: {})", m_name.CStr(), m_renderID);
         Destroy();
     }
 
-    m_name = name;
     m_type = GL_TEXTURE_2D;
     m_levelsCount = 1 + createInfo.mipmapsCount;
     m_width = createInfo.width;
@@ -451,6 +434,12 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
     m_depth = 1;
 
     glCreateTextures(m_type, 1, &m_renderID);
+
+    const TextureFormat convertedFormat = ConvertShaderTexResourceFormat(createInfo.format);
+    ENG_ASSERT(convertedFormat != TextureFormat::FORMAT_INVALID, "Invalid reflected texture \'{}\' format: \'{}\'", m_name.CStr(), createInfo.format);
+
+    const GLenum internalFormat = GetTextureInternalGLFormat(convertedFormat);
+    ENG_ASSERT("Invalid texture \'{}\' format", m_name.CStr());
 
     glTextureStorage2D(m_renderID, m_levelsCount, internalFormat, m_width, m_height);
     
@@ -461,16 +450,10 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
     }
 
     const GLenum inputDataFormat = GetTextureInputDataGLFormat(createInfo.inputData.format);
-    if (inputDataFormat == GL_NONE) {
-        Destroy();
-        return false;
-    }
+    ENG_ASSERT(inputDataFormat != GL_NONE, "Invalid texture input data format: {}", static_cast<uint32_t>(createInfo.inputData.format));
 
     const GLenum inputDataType = GetTextureInputDataGLType(createInfo.inputData.dataType);
-    if (inputDataType == GL_NONE) {
-        Destroy();
-        return false;
-    }
+    ENG_ASSERT(inputDataType != GL_NONE, "Invalid texture input data type: {}", static_cast<uint32_t>(createInfo.inputData.dataType));
 
     glTextureSubImage2D(m_renderID, 0, 0, 0, m_width, m_height, inputDataFormat, inputDataType, pData);
 
@@ -484,9 +467,12 @@ bool Texture::Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexce
 
 void Texture::Destroy() noexcept
 {
+    if (!IsValid()) {
+        return;
+    }
+
     glDeleteTextures(1, &m_renderID);
 
-    m_name = "";
     m_type = 0;
     m_levelsCount = 0;
     m_width = 0;
@@ -498,7 +484,7 @@ void Texture::Destroy() noexcept
 
 TextureManager& TextureManager::GetInstance() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager is not initialized");
+    ENG_ASSERT(engIsTextureManagerInitialized(), "Texture manager is not initialized");
     return *g_pTextureMng;
 }
 
@@ -509,83 +495,73 @@ TextureManager::~TextureManager()
 }
 
 
-TextureID TextureManager::AllocateTexture2D(ds::StrID name, const Texture2DCreateInfo &createInfo) noexcept
+Texture* TextureManager::RegisterTexture2D(ds::StrID name) noexcept
 {
-    if (GetTextureByName(name) != nullptr) {
-        ENG_LOG_GRAPHICS_API_WARN("Reallocating \'{}\' texture", name.CStr());
-        DeallocateTexture(name);
+    Texture* pCachedTex = GetTextureByName(name);
+    if (pCachedTex != nullptr) {
+        return pCachedTex;
     }
 
-    ENG_ASSERT_GRAPHICS_API(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
+    ENG_ASSERT(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
 
-    Texture texture;
-
-    if (!texture.Init(name, createInfo)) {
-        return TextureID{};
-    }
-
-    TextureID textureID = AllocateTextureID();
+    const TextureID textureID = AllocateTextureID();
     const uint64_t index = textureID.Value();
-    
-    m_textureIDToNameVector[index] = name;
-    m_textureNameToIDMap[name] = textureID;
-    m_texturesStorage[index] = std::move(texture);
 
-    return textureID;
+    Texture* pTex = &m_texturesStorage[index];
+
+    ENG_ASSERT(!pTex->IsValid(), "Valid texture was returned during registration");
+
+    pTex->m_name = name;
+    pTex->m_ID = textureID;
+
+    m_textureStorageIndexToNameVector[index] = name;
+    m_textureNameToStorageIndexMap[name] = index;
+
+    return pTex;
 }
 
 
-Texture *TextureManager::GetTextureByID(TextureID ID) noexcept
+Texture* TextureManager::GetTextureByName(ds::StrID name) noexcept
 {
-    return IsValidTexture(ID) ? &m_texturesStorage[ID.Value()] : nullptr;
+    const auto indexIt = m_textureNameToStorageIndexMap.find(name);
+    return indexIt != m_textureNameToStorageIndexMap.cend() ? &m_texturesStorage[indexIt->second] : nullptr;
 }
 
 
-Texture *TextureManager::GetTextureByName(ds::StrID name) noexcept
+void TextureManager::UnregisterTexture(ds::StrID name) noexcept
 {
-    const auto idIt = m_textureNameToIDMap.find(name);
-    return idIt != m_textureNameToIDMap.cend() ? GetTextureByID(idIt->second) : nullptr;
+    Texture* pTex = GetTextureByName(name);
+
+    UnregisterTexture(pTex);
 }
 
 
-void TextureManager::DeallocateTexture(ds::StrID name)
+void TextureManager::UnregisterTexture(Texture* pTex) noexcept
 {
-    const auto textureIdIt = m_textureNameToIDMap.find(name);
-    if (textureIdIt == m_textureNameToIDMap.cend()) {
+    if (!pTex) {
         return;
     }
 
-    DeallocateTexture(textureIdIt->second);
-}
-
-
-void TextureManager::DeallocateTexture(TextureID ID)
-{
-    if (!IsValidTexture(ID)) {
-        return;
+    if (pTex->IsValid()) {
+        ENG_LOG_WARN("Unregistration of texture \'{}\' while it's steel valid. Prefer to destroy textures manually", pTex->GetName().CStr());
+        pTex->Destroy();
     }
 
-    const uint64_t index = ID.Value();
+    DeallocateTextureID(pTex->m_ID);
 
-    ds::StrID& texName = m_textureIDToNameVector[index];
-    m_textureNameToIDMap.erase(texName);
-    texName = "";
+    const uint64_t index = pTex->m_ID.Value();
 
-    m_texturesStorage[index].Destroy();
+    m_textureStorageIndexToNameVector[index] = "__EMPTY__";
+    m_textureNameToStorageIndexMap[pTex->m_name] = UINT64_MAX;
 
-    DeallocateTextureID(ID);
+    pTex->m_name = "";
+    pTex->m_ID.Invalidate();
 }
 
 
 TextureSamplerState *TextureManager::GetSampler(uint32_t samplerIdx) noexcept
 {
     return IsValidSamplerIdx(samplerIdx) ? &m_textureSamplersStorage[samplerIdx] : nullptr;
-}
-
-
-bool TextureManager::IsValidTexture(TextureID ID) const noexcept
-{
-    return ID < m_nextAllocatedID && m_texturesStorage[ID.Value()].IsValid();
 }
 
 
@@ -602,8 +578,8 @@ bool TextureManager::Init() noexcept
     }
 
     m_texturesStorage.resize(COMMON_MAX_TEXTURES_COUNT);
-    m_textureIDToNameVector.resize(COMMON_MAX_TEXTURES_COUNT);
-    m_textureNameToIDMap.reserve(COMMON_MAX_TEXTURES_COUNT);
+    m_textureStorageIndexToNameVector.resize(COMMON_MAX_TEXTURES_COUNT, "__EMPTY__");
+    m_textureNameToStorageIndexMap.reserve(COMMON_MAX_TEXTURES_COUNT);
 
     InitializeSamplers();
 
@@ -619,8 +595,8 @@ void TextureManager::Terminate() noexcept
 {
     m_texturesStorage.clear();
 
-    m_textureIDToNameVector.clear();
-    m_textureNameToIDMap.clear();
+    m_textureStorageIndexToNameVector.clear();
+    m_textureNameToStorageIndexMap.clear();
 
     m_textureIDFreeList.clear();
 
@@ -754,7 +730,7 @@ void TextureManager::InitializeSamplers() noexcept
         const TextureSamplerStateCreateInfo* pCreateInfo = &samplerStateCreateInfos[samplerIdx];
 
         ENG_MAYBE_UNUSED bool samplerIniitalized = m_textureSamplersStorage[samplerIdx].Init(pCreateInfo, samplerDbgNames[samplerIdx]);
-        ENG_ASSERT_GRAPHICS_API(samplerIniitalized, "Sampler \'{}\' initialization failed", samplerDbgNames[samplerIdx].CStr());
+        ENG_ASSERT(samplerIniitalized, "Sampler \'{}\' initialization failed", samplerDbgNames[samplerIdx].CStr());
     }
 }
 

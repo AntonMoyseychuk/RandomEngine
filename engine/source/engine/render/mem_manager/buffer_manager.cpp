@@ -166,7 +166,7 @@ bool MemoryBuffer::Unmap() const noexcept
 
 bool MemoryBuffer::IsValid() const noexcept
 {
-    return m_type != MemoryBufferType::TYPE_INVALID && m_renderID != 0;
+    return m_ID.IsValid() && m_type != MemoryBufferType::TYPE_INVALID && m_renderID != 0;
 }
 
 
@@ -254,7 +254,7 @@ MemoryBuffer* MemoryBufferManager::RegisterBuffer(ds::StrID name) noexcept
     const BufferID bufferID = AllocateBufferID();
     MemoryBuffer* pBuffer = &m_buffersStorage[bufferID.Value()];
 
-    ENG_ASSERT(!pBuffer->IsValid(), "Valid buffer was returned during registration. WTF");
+    ENG_ASSERT(!pBuffer->IsValid(), "Valid buffer was returned during registration");
 
 #if defined(ENG_DEBUG)
     pBuffer->m_name = name;
@@ -267,9 +267,11 @@ MemoryBuffer* MemoryBufferManager::RegisterBuffer(ds::StrID name) noexcept
 
 void MemoryBufferManager::UnregisterBuffer(MemoryBuffer* pBuffer)
 {
-    const bool isBufferValid = pBuffer && pBuffer->IsValid();
-    
-    if (isBufferValid) {
+    if (!pBuffer) {
+        return;
+    }
+
+    if (pBuffer->IsValid()) {
         ENG_LOG_WARN("Unregistration of buffer \'{}\' while it's steel valid. Prefer to destroy buffers manually", pBuffer->GetName().CStr());
         pBuffer->Destroy();
     }

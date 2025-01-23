@@ -92,19 +92,25 @@ struct Texture2DCreateInfo
 };
 
 
+using TextureID = BaseID;
+
+
 class Texture
 {
     friend class TextureManager;
 
 public:
-    Texture(const Texture& other) = delete;
-    Texture& operator=(const Texture& other) = delete;
-
     Texture() = default;
     ~Texture() { Destroy(); }
 
+    Texture(const Texture& other) = delete;
+    Texture& operator=(const Texture& other) = delete;
+
     Texture(Texture&& other) noexcept;
     Texture& operator=(Texture&& other) noexcept;
+
+    bool Create(const Texture2DCreateInfo& createInfo) noexcept;
+    void Destroy() noexcept;
 
     void Bind(uint32_t unit) noexcept;
 
@@ -124,6 +130,7 @@ public:
     uint64_t Hash() const noexcept;
 
     ds::StrID GetName() const noexcept { return m_name; }
+    TextureID GetID() const noexcept { return m_ID; }
     uint32_t GetLevelsCount() const noexcept { return m_levelsCount; }
     uint32_t GetWidth() const noexcept { return m_width; }
     uint32_t GetHeight() const noexcept { return m_height; }
@@ -131,11 +138,8 @@ public:
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
-    bool Init(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept;
-
-private:
     ds::StrID m_name = "";
+    TextureID m_ID;
     
     uint32_t m_type = 0;
     uint32_t m_levelsCount = 0;
@@ -146,9 +150,6 @@ private:
 
     uint32_t m_renderID = 0;
 };
-
-
-using TextureID = BaseID;
 
 
 class TextureManager
@@ -168,17 +169,14 @@ public:
 
     ~TextureManager();
 
-    TextureID AllocateTexture2D(ds::StrID name, const Texture2DCreateInfo& createInfo) noexcept;
-
-    Texture* GetTextureByID(TextureID ID) noexcept;
+    Texture* RegisterTexture2D(ds::StrID name) noexcept;
     Texture* GetTextureByName(ds::StrID name) noexcept;
     
-    void DeallocateTexture(ds::StrID name);
-    void DeallocateTexture(TextureID ID);
+    void UnregisterTexture(ds::StrID name) noexcept;
+    void UnregisterTexture(Texture* pTex) noexcept;
 
     TextureSamplerState* GetSampler(uint32_t samplerIdx) noexcept;
 
-    bool IsValidTexture(TextureID ID) const noexcept;
     bool IsValidSamplerIdx(uint32_t samplerIdx) const noexcept;
     
 private:
@@ -199,8 +197,8 @@ private:
     std::vector<TextureSamplerState> m_textureSamplersStorage;
     std::vector<Texture> m_texturesStorage;
 
-    std::vector<ds::StrID> m_textureIDToNameVector;
-    std::unordered_map<ds::StrID, TextureID> m_textureNameToIDMap;
+    std::vector<ds::StrID> m_textureStorageIndexToNameVector;
+    std::unordered_map<ds::StrID, uint64_t> m_textureNameToStorageIndexMap;
 
     std::deque<TextureID> m_textureIDFreeList;
 

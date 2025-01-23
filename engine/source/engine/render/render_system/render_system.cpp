@@ -201,10 +201,12 @@ void RenderSystem::RunColorPass() noexcept
 
         texCreateInfo.inputData.pData = pTexData;
 
-        TextureID textureID = texManager.AllocateTexture2D("TEST_TEXTURE", texCreateInfo);
-        ENG_ASSERT(texManager.IsValidTexture(textureID), "Failed to register texture");
+        ds::StrID testTexName = "TEST_TEXTURE";
+        pTestTexture = texManager.RegisterTexture2D(testTexName);
+        ENG_ASSERT(pTestTexture, "Failed to register texture: {}", testTexName.CStr());
+        pTestTexture->Create(texCreateInfo);
+        ENG_ASSERT(pTestTexture->IsValid(), "Failed to create texture: {}", testTexName.CStr());
 
-        pTestTexture = texManager.GetTextureByID(textureID);
         pTestTextureSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
 
         pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_ALBEDO);

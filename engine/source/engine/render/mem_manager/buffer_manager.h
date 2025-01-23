@@ -54,14 +54,14 @@ public:
     MemoryBuffer() = default;
     ~MemoryBuffer() { Destroy(); }
 
-    bool Create(const MemoryBufferCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept;
-
     MemoryBuffer(const MemoryBuffer& other) = delete;
     MemoryBuffer& operator=(const MemoryBuffer& other) = delete;
     
     MemoryBuffer(MemoryBuffer&& other) noexcept;
     MemoryBuffer& operator=(MemoryBuffer&& other) noexcept;
+
+    bool Create(const MemoryBufferCreateInfo& createInfo) noexcept;
+    void Destroy() noexcept;
 
     void FillSubdata(size_t offset, size_t size, const void* pData) noexcept;
     void Clear(size_t offset, size_t size, const void* pData) noexcept;

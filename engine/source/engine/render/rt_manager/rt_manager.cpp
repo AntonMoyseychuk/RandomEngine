@@ -542,7 +542,8 @@ void RenderTargetManager::ClearFrameBuffersStorage() noexcept
     TextureManager& texManager = TextureManager::GetInstance();
 
     for (Texture* pTex : m_RTTextureStorage) {
-        texManager.DeallocateTexture(pTex->GetName());
+        pTex->Destroy();
+        texManager.UnregisterTexture(pTex);
     }
     m_RTTextureStorage.clear();
 
@@ -578,9 +579,10 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferAlbedoTextureCreateInfo.inputData = {};
         
         ds::StrID gbufferAlbedoTexName = "__GBUFFER_ALBEDO__";
-        TextureID gbufferAlbedoTexID = texManager.AllocateTexture2D(gbufferAlbedoTexName, gbufferAlbedoTextureCreateInfo);
-        Texture* pGbufferAlbedoTex = texManager.GetTextureByID(gbufferAlbedoTexID);
-        ENG_ASSERT_GRAPHICS_API(pGbufferAlbedoTex, "Failed to allocate \'{}\' texture", gbufferAlbedoTexName.CStr());
+        Texture* pGbufferAlbedoTex = texManager.RegisterTexture2D(gbufferAlbedoTexName);
+        ENG_ASSERT(pGbufferAlbedoTex, "Failed to register texture: {}", gbufferAlbedoTexName.CStr());
+        pGbufferAlbedoTex->Create(gbufferAlbedoTextureCreateInfo);
+        ENG_ASSERT(pGbufferAlbedoTex->IsValid(), "Failed to create texture: {}", gbufferAlbedoTexName.CStr());
         
         const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
         m_RTTextureStorage[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
@@ -601,10 +603,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferNormalTextureCreateInfo.inputData = {};
 
         ds::StrID gbufferNormalTexName = "__GBUFFER_NORMAL__";
-        TextureID gbufferNormalTexID = texManager.AllocateTexture2D(gbufferNormalTexName, gbufferNormalTextureCreateInfo);
-        Texture* pGbufferNormalTex = texManager.GetTextureByID(gbufferNormalTexID);
-        ENG_ASSERT_GRAPHICS_API(pGbufferNormalTex, "Failed to allocate \'{}\' texture", gbufferNormalTexName.CStr());
-        
+        Texture* pGbufferNormalTex = texManager.RegisterTexture2D(gbufferNormalTexName);
+        ENG_ASSERT(pGbufferNormalTex, "Failed to register texture: {}", gbufferNormalTexName.CStr());
+        pGbufferNormalTex->Create(gbufferNormalTextureCreateInfo);
+        ENG_ASSERT(pGbufferNormalTex->IsValid(), "Failed to create texture: {}", gbufferNormalTexName.CStr());
+
         const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_NORMAL);
         m_RTTextureStorage[gbufferNormalTexIdx] = pGbufferNormalTex;
 
@@ -624,10 +627,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferSpecularTextureCreateInfo.inputData = {};
 
         ds::StrID gbufferSpecularTexName = "__GBUFFER_SPECULAR__";
-        TextureID gbufferSpecularTexID = texManager.AllocateTexture2D(gbufferSpecularTexName, gbufferSpecularTextureCreateInfo);
-        Texture* pGbufferSpecTex = texManager.GetTextureByID(gbufferSpecularTexID);
-        ENG_ASSERT_GRAPHICS_API(pGbufferSpecTex, "Failed to allocate \'{}\' texture", gbufferSpecularTexName.CStr());
-        
+        Texture* pGbufferSpecTex = texManager.RegisterTexture2D(gbufferSpecularTexName);
+        ENG_ASSERT(pGbufferSpecTex, "Failed to register texture: {}", gbufferSpecularTexName.CStr());
+        pGbufferSpecTex->Create(gbufferSpecularTextureCreateInfo);
+        ENG_ASSERT(pGbufferSpecTex->IsValid(), "Failed to create texture: {}", gbufferSpecularTexName.CStr());
+
         const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
         m_RTTextureStorage[gbufferSpecTexIdx] = pGbufferSpecTex;
 
@@ -647,10 +651,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         commonDepthTextureCreateInfo.inputData = {};
 
         ds::StrID commonDepthTexName = "__COMMON_DEPTH__";
-        TextureID commonDepthTexID = texManager.AllocateTexture2D(commonDepthTexName, commonDepthTextureCreateInfo);
-        Texture* pCommonDepthTex = texManager.GetTextureByID(commonDepthTexID);
-        ENG_ASSERT_GRAPHICS_API(pCommonDepthTex, "Failed to allocate \'{}\' texture", commonDepthTexName.CStr());
-        
+        Texture* pCommonDepthTex = texManager.RegisterTexture2D(commonDepthTexName);
+        ENG_ASSERT(pCommonDepthTex, "Failed to register texture: {}", commonDepthTexName.CStr());
+        pCommonDepthTex->Create(commonDepthTextureCreateInfo);
+        ENG_ASSERT(pCommonDepthTex->IsValid(), "Failed to create texture: {}", commonDepthTexName.CStr());
+
         const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_COMMON_DEPTH);
         m_RTTextureStorage[commonDepthTexIdx] = pCommonDepthTex;
 
