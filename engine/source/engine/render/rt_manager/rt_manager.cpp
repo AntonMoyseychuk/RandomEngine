@@ -284,7 +284,6 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& creat
             case FrameBufferAttachmentType::TYPE_DEPTH_STENCIL_ATTACHMENT:
                 return GL_DEPTH_STENCIL_ATTACHMENT;
             default:
-                ENG_ASSERT_GRAPHICS_API_FAIL("Invalid frame buffer attachment type");
                 return GL_NONE;
         }
     };
@@ -313,10 +312,7 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& creat
     #endif
 
         const GLenum attachmentGLType = GetFrameBufferAttachmentGLType(attachment);
-        if (attachmentGLType == GL_NONE) {
-            Destroy();
-            return false;
-        }
+        ENG_ASSERT(attachmentGLType != GL_NONE, "Invalid frame buffer attachment type");
 
         if (attachment.type == FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT) {
             ++m_attachmentsState.colorAttachmentsCount;

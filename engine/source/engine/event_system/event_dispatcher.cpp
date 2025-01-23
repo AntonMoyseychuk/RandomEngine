@@ -66,7 +66,7 @@ void EventListener::SetDebugName(ds::StrID name) noexcept
 }
 
 
-ds::StrID EventListener::GetDebugName(ds::StrID name) const noexcept
+ds::StrID EventListener::GetDebugName() const noexcept
 {
 #if defined(ENG_DEBUG)
     return m_dbgName;

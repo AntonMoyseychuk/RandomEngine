@@ -81,7 +81,7 @@ public:
     EventListener(EventListenerID ID, const CallbackType& callback);
 
     void SetDebugName(ds::StrID name) noexcept;
-    ds::StrID GetDebugName(ds::StrID name) const noexcept;
+    ds::StrID GetDebugName() const noexcept;
 
     const EventListenerID& GetID() const noexcept { return m_ID; }
     bool IsValid() const noexcept { return m_ID.IsValid() && m_callback; }
