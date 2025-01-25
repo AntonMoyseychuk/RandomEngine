@@ -40,7 +40,7 @@ struct ShaderProgramCreateInfo
 };
 
 
-using ProgramID = BaseID;
+using ProgramID = BaseID<uint32_t>;
 
 
 class ShaderProgram
@@ -88,8 +88,8 @@ private:
     ds::StrID m_dbgName = "";
 #endif
 
-    ProgramID m_ID;
     uint32_t m_renderID = 0;
+    ProgramID m_ID;
 };
 
 

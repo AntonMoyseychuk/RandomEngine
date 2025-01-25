@@ -197,9 +197,12 @@ Pipeline::Pipeline(Pipeline &&other) noexcept
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
     std::swap(m_blendConstants[3], other.m_blendConstants[3]);
 
-    std::swap(m_ID, other.m_ID);
     std::swap(m_pFrameBuffer, other.m_pFrameBuffer);
     std::swap(m_pShaderProgram, other.m_pShaderProgram);
+
+    std::swap(m_compressedGlobalState, other.m_compressedGlobalState);
+
+    std::swap(m_ID, other.m_ID);
 
     std::swap(m_depthBiasConstantFactor, other.m_depthBiasConstantFactor);
     std::swap(m_depthBiasClamp, other.m_depthBiasClamp);
@@ -209,8 +212,6 @@ Pipeline::Pipeline(Pipeline &&other) noexcept
     std::swap(m_stencilClearValue, other.m_stencilClearValue);
     std::swap(m_stencilFrontMask, other.m_stencilFrontMask);
     std::swap(m_stencilBackMask, other.m_stencilBackMask);
-
-    std::swap(m_compressedGlobalState, other.m_compressedGlobalState);
 }
 
 
@@ -225,9 +226,12 @@ Pipeline &Pipeline::operator=(Pipeline &&other) noexcept
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
     std::swap(m_blendConstants[3], other.m_blendConstants[3]);
 
-    std::swap(m_ID, other.m_ID);
     std::swap(m_pFrameBuffer, other.m_pFrameBuffer);
     std::swap(m_pShaderProgram, other.m_pShaderProgram);
+
+    std::swap(m_compressedGlobalState, other.m_compressedGlobalState);
+
+    std::swap(m_ID, other.m_ID);
 
     std::swap(m_depthBiasConstantFactor, other.m_depthBiasConstantFactor);
     std::swap(m_depthBiasClamp, other.m_depthBiasClamp);
@@ -237,8 +241,6 @@ Pipeline &Pipeline::operator=(Pipeline &&other) noexcept
     std::swap(m_stencilClearValue, other.m_stencilClearValue);
     std::swap(m_stencilFrontMask, other.m_stencilFrontMask);
     std::swap(m_stencilBackMask, other.m_stencilBackMask);
-
-    std::swap(m_compressedGlobalState, other.m_compressedGlobalState);
 
     return *this;
 }
@@ -573,6 +575,10 @@ void Pipeline::Destroy()
     m_pFrameBuffer = nullptr;
     m_pShaderProgram = nullptr;
 
+    memset(&m_compressedGlobalState, 0, sizeof(m_compressedGlobalState));
+
+    m_ID.Invalidate();
+
     m_depthBiasConstantFactor = 0.f;
     m_depthBiasClamp = 0.f;
     m_depthBiasSlopeFactor = 0.f;
@@ -581,8 +587,6 @@ void Pipeline::Destroy()
     m_stencilClearValue = 0;
     m_stencilFrontMask = 0;
     m_stencilBackMask = 0;
-
-    memset(&m_compressedGlobalState, 0, sizeof(m_compressedGlobalState));
 }
 
 

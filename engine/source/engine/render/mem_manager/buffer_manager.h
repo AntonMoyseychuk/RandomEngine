@@ -32,9 +32,6 @@ enum MemoryBufferCreationFlags : uint8_t
 };
 
 
-using BufferID = BaseID;
-
-
 struct MemoryBufferCreateInfo
 {
     const void*               pData;
@@ -44,6 +41,9 @@ struct MemoryBufferCreateInfo
     MemoryBufferType          type;
     MemoryBufferCreationFlags creationFlags;
 };
+
+
+using BufferID = BaseID<uint32_t>;
 
 
 class MemoryBuffer
@@ -79,8 +79,8 @@ public:
 
     ds::StrID GetName() const noexcept;
 
-    BufferID GetID() const noexcept { return m_ID; }
     uint64_t GetSize() const noexcept { return m_size; }
+    BufferID GetID() const noexcept { return m_ID; }
     uint16_t GetElementSize() const noexcept { return m_elementSize; }
     uint64_t GetElementCount() const noexcept;
 
@@ -103,15 +103,13 @@ private:
     ds::StrID m_name = "";
 #endif
 
-    BufferID                  m_ID;
     uint64_t                  m_size = 0;
     uint32_t                  m_renderID = 0;
+    BufferID                  m_ID;
     uint16_t                  m_elementSize = 0;
     MemoryBufferType          m_type = MemoryBufferType::TYPE_INVALID;
     MemoryBufferCreationFlags m_creationFlags = MemoryBufferCreationFlags::BUFFER_CREATION_FLAG_ZERO;
 };
-
-constexpr size_t s = sizeof(MemoryBuffer);
 
 
 class MemoryBufferManager

@@ -10,13 +10,13 @@ EventListenerID::EventListenerID(std::type_index eventTypeIndex)
 {}
 
 
-EventListenerID::EventListenerID(uint64_t ID, std::type_index eventTypeIndex)
+EventListenerID::EventListenerID(EventListenerID::InternalType ID, std::type_index eventTypeIndex)
     : BaseID(ID), m_eventTypeIndexHash(eventTypeIndex.hash_code())
 {
 }
 
 
-EventListenerID::EventListenerID(uint64_t ID, uint64_t eventTypeIndexHash)
+EventListenerID::EventListenerID(EventListenerID::InternalType ID, uint64_t eventTypeIndexHash)
     : BaseID(ID), m_eventTypeIndexHash(eventTypeIndexHash)
 {
 }

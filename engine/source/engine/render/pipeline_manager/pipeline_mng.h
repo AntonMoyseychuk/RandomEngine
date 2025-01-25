@@ -250,7 +250,7 @@ struct PipelineCreateInfo
 };
 
 
-using PipelineID = BaseID;
+using PipelineID = BaseID<uint32_t>;
 
 
 class Pipeline
@@ -314,8 +314,6 @@ private:
 
     float m_blendConstants[4] = { 0.f };
 
-    PipelineID m_ID;
-
     FrameBuffer* m_pFrameBuffer = nullptr;
     ShaderProgram* m_pShaderProgram = nullptr;
 
@@ -343,6 +341,8 @@ private:
     } m_compressedGlobalState;
 
     static_assert(sizeof(CompressedGlobalState) == sizeof(uint64_t));
+
+    PipelineID m_ID;
 
     float m_depthBiasConstantFactor = 0.f;
     float m_depthBiasClamp = 0.f;

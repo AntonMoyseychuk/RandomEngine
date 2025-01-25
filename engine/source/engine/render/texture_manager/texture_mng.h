@@ -92,7 +92,7 @@ struct Texture2DCreateInfo
 };
 
 
-using TextureID = BaseID;
+using TextureID = BaseID<uint32_t>;
 
 
 class Texture
@@ -139,7 +139,6 @@ public:
 
 private:
     ds::StrID m_name = "";
-    TextureID m_ID;
     
     uint32_t m_type = 0;
     uint32_t m_levelsCount = 0;
@@ -149,6 +148,7 @@ private:
     uint32_t m_depth = 0;
 
     uint32_t m_renderID = 0;
+    TextureID m_ID;
 };
 
 

@@ -40,29 +40,31 @@ private:
 };
 
 
-class EventListenerID : public BaseID
+class EventListenerID : public BaseID<uint64_t>
 {
     friend class EventDispatcher;
+
+    using BaseType = BaseID<InternalType>;
 
 public:
     EventListenerID() = default;
     explicit EventListenerID(std::type_index eventTypeIndex);
-    EventListenerID(uint64_t ID, std::type_index eventTypeIndex);
-    EventListenerID(uint64_t ID, uint64_t eventTypeIndexHash);
+    EventListenerID(InternalType ID, std::type_index eventTypeIndex);
+    EventListenerID(InternalType ID, uint64_t eventTypeIndexHash);
     
     uint64_t TypeIndexHash() const noexcept { return m_eventTypeIndexHash; }
 
     void Invalidate() noexcept;
-    bool IsValid() const noexcept { return BaseID::IsValid() && m_eventTypeIndexHash != UINT64_MAX; }
+    bool IsValid() const noexcept { return BaseType::IsValid() && m_eventTypeIndexHash != UINT64_MAX; }
 
     uint64_t Hash() const noexcept;
 
-    bool operator==(const EventListenerID& other) const noexcept { return BaseID::operator==(other) && m_eventTypeIndexHash == other.m_eventTypeIndexHash; }
-    bool operator!=(const EventListenerID& other) const noexcept { return BaseID::operator!=(other) && m_eventTypeIndexHash != other.m_eventTypeIndexHash; }
-    bool operator>(const EventListenerID& other) const noexcept { return BaseID::operator>(other) && m_eventTypeIndexHash > other.m_eventTypeIndexHash; }
-    bool operator<(const EventListenerID& other) const noexcept { return BaseID::operator<(other) && m_eventTypeIndexHash < other.m_eventTypeIndexHash; }
-    bool operator<=(const EventListenerID& other) const noexcept { return BaseID::operator<=(other) && m_eventTypeIndexHash <= other.m_eventTypeIndexHash; }
-    bool operator>=(const EventListenerID& other) const noexcept { return BaseID::operator>=(other) && m_eventTypeIndexHash >= other.m_eventTypeIndexHash; }
+    bool operator==(const EventListenerID& other) const noexcept { return BaseType::operator==(other) && m_eventTypeIndexHash == other.m_eventTypeIndexHash; }
+    bool operator!=(const EventListenerID& other) const noexcept { return BaseType::operator!=(other) && m_eventTypeIndexHash != other.m_eventTypeIndexHash; }
+    bool operator>(const EventListenerID& other) const noexcept { return BaseType::operator>(other) && m_eventTypeIndexHash > other.m_eventTypeIndexHash; }
+    bool operator<(const EventListenerID& other) const noexcept { return BaseType::operator<(other) && m_eventTypeIndexHash < other.m_eventTypeIndexHash; }
+    bool operator<=(const EventListenerID& other) const noexcept { return BaseType::operator<=(other) && m_eventTypeIndexHash <= other.m_eventTypeIndexHash; }
+    bool operator>=(const EventListenerID& other) const noexcept { return BaseType::operator>=(other) && m_eventTypeIndexHash >= other.m_eventTypeIndexHash; }
 
 private:
     uint64_t m_eventTypeIndexHash = UINT64_MAX;

@@ -303,7 +303,7 @@ void MemoryBufferManager::Terminate() noexcept
 {
     m_buffersStorage.clear();
     m_memBufferIDFreeList.clear();
-    m_nextAllocatedID = BaseID(0);
+    m_nextAllocatedID = BufferID(0);
     m_isInitialized = false;
 }
 
