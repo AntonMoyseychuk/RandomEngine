@@ -422,6 +422,8 @@ uint64_t Texture::Hash() const noexcept
 
 bool Texture::Create(const Texture2DCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(m_ID.IsValid(), "Texture \'{}\' ID is invalid. You must initialize only textures which were returned by TextureManager", m_name.CStr());
+
     if (IsValid()) {
         ENG_LOG_WARN("Reinitializing of texture \'{}\' (id: {})", m_name.CStr(), m_renderID);
         Destroy();
@@ -552,7 +554,7 @@ void TextureManager::UnregisterTexture(Texture* pTex) noexcept
     const uint64_t index = pTex->m_ID.Value();
 
     m_textureStorageIndexToNameVector[index] = "__EMPTY__";
-    m_textureNameToStorageIndexMap[pTex->m_name] = UINT64_MAX;
+    m_textureNameToStorageIndexMap.erase(pTex->m_name);
 
     pTex->m_name = "";
     pTex->m_ID.Invalidate();

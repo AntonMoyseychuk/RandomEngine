@@ -23,9 +23,12 @@
 static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
 
 
+#define INIT_CALL(CALL, ...) if (!CALL(__VA_ARGS__)) { return false; } 
+
+
 RenderSystem& RenderSystem::GetInstance() noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(engIsRenderSystemInitialized(), "Render system is not initialized");
+    ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
     return *g_pRenderSystem;
 }
 
@@ -58,12 +61,13 @@ void RenderSystem::RunColorPass() noexcept
     static Timer timer;
     timer.Tick();
 
-    Window& window = *WindowSystem::GetInstance().GetWindowByTag(WINDOW_TAG_MAIN);
-    TextureManager& texManager = TextureManager::GetInstance();
-    ShaderManager& shaderManager = ShaderManager::GetInstance();
-    RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
-    PipelineManager& pipelineManager = PipelineManager::GetInstance();
-    MemoryBufferManager& memBufferManager = MemoryBufferManager::GetInstance();
+    static Window& window = *WindowSystem::GetInstance().GetWindowByTag(WINDOW_TAG_MAIN);
+    static TextureManager& texManager = TextureManager::GetInstance();
+    static ShaderManager& shaderManager = ShaderManager::GetInstance();
+    static RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
+    static PipelineManager& pipelineManager = PipelineManager::GetInstance();
+    static MemoryBufferManager& memBufferManager = MemoryBufferManager::GetInstance();
+    static MeshManager& meshManager = MeshManager::GetInstance();
 
     static bool isInitialized = false;
     static ShaderProgram* pGBufferProgram = nullptr;
@@ -365,29 +369,13 @@ bool RenderSystem::Init() noexcept
         return true;
     }
 
-    if (!engInitOpenGLDriver()) {
-        return false;
-    }
-
-    if (!engInitShaderManager()) {
-        return false;
-    }
-
-    if (!engInitTextureManager()) {
-        return false;
-    }
-
-    if (!engInitRenderTargetManager()) {
-        return false;
-    }
-
-    if (!engInitPipelineManager()) {
-        return false;
-    }
-
-    if (!engInitMemoryBufferManager()) {
-        return false;
-    }
+    INIT_CALL(engInitOpenGLDriver);
+    INIT_CALL(engInitShaderManager);
+    INIT_CALL(engInitTextureManager);
+    INIT_CALL(engInitRenderTargetManager);
+    INIT_CALL(engInitPipelineManager);
+    INIT_CALL(engInitMemoryBufferManager);
+    INIT_CALL(engInitMeshManager);
 
     m_isInitialized = true;
 
@@ -397,6 +385,7 @@ bool RenderSystem::Init() noexcept
     
 void RenderSystem::Terminate() noexcept
 {
+    engTerminateMeshManager();
     engTerminateMemoryBufferManager();
     engTerminatePipelineManager();
     engTerminateRenderTargetManager();

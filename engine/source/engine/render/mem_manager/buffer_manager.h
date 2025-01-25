@@ -80,6 +80,7 @@ public:
     ds::StrID GetName() const noexcept;
 
     uint64_t GetSize() const noexcept { return m_size; }
+    uint32_t GetRenderID() const noexcept { return m_renderID; }
     BufferID GetID() const noexcept { return m_ID; }
     uint16_t GetElementSize() const noexcept { return m_elementSize; }
     uint64_t GetElementCount() const noexcept;

@@ -592,7 +592,7 @@ void Pipeline::Destroy()
 
 PipelineManager& PipelineManager::GetInstance() noexcept
 {
-    ENG_ASSERT(engIsRenderPipelineInitialized(), "Pipeline manager is not initialized");
+    ENG_ASSERT(engIsRenderPipelineInitialized(), "Render pipeline manager is not initialized");
     return *s_pPipelineMng;
 }
 
