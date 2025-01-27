@@ -6,7 +6,7 @@
 #include "render/platform/OpenGL/opengl_driver.h"
 
 
-static std::unique_ptr<MemoryBufferManager> g_pMemoryBufferMng = nullptr;
+static std::unique_ptr<MemoryBufferManager> pMemoryBufferMngInst = nullptr;
 
 static constexpr size_t MAX_MEM_BUFFER_COUNT = 4096;
 
@@ -57,7 +57,7 @@ static bool IsBufferIndexedBindable(MemoryBufferType type) noexcept
 MemoryBuffer::MemoryBuffer(MemoryBuffer &&other) noexcept
 {
 #if defined(ENG_DEBUG)
-    std::swap(m_name, other.m_name);
+    std::swap(m_dbgName, other.m_dbgName);
 #endif
     std::swap(m_ID, other.m_ID);
     std::swap(m_size, other.m_size);
@@ -73,7 +73,7 @@ MemoryBuffer &MemoryBuffer::operator=(MemoryBuffer&& other) noexcept
     Destroy();
 
 #if defined(ENG_DEBUG)
-    std::swap(m_name, other.m_name);
+    std::swap(m_dbgName, other.m_dbgName);
 #endif
     std::swap(m_ID, other.m_ID);
     std::swap(m_size, other.m_size);
@@ -88,15 +88,15 @@ MemoryBuffer &MemoryBuffer::operator=(MemoryBuffer&& other) noexcept
 
 void MemoryBuffer::FillSubdata(size_t offset, size_t size, const void *pData) noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_DYNAMIC_STORAGE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_DYNAMIC_STORAGE flag", m_dbgName.CStr());
     glNamedBufferSubData(m_renderID, offset, size, pData);
 }
 
 
 void MemoryBuffer::Clear(size_t offset, size_t size, const void *pData) noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
     glClearNamedBufferSubData(m_renderID, GL_R32F, offset, size, GL_RED, GL_FLOAT, pData);
 }
 
@@ -109,7 +109,7 @@ void MemoryBuffer::Clear() noexcept
 
 void MemoryBuffer::Bind() noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
 
     const GLenum target = TranslateMemoryBufferTypeToGL(m_type);
     glBindBuffer(target, m_renderID);
@@ -118,8 +118,8 @@ void MemoryBuffer::Bind() noexcept
 
 void MemoryBuffer::BindIndexed(uint32_t index) noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT(IsBufferIndexedBindable(m_type), "Memory buffer \'{}\' is not indexed bindable", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
+    ENG_ASSERT(IsBufferIndexedBindable(m_type), "Memory buffer \'{}\' is not indexed bindable", m_dbgName.CStr());
 
     const GLenum target = TranslateMemoryBufferTypeToGL(m_type);
     glBindBufferBase(target, index, m_renderID);
@@ -128,8 +128,8 @@ void MemoryBuffer::BindIndexed(uint32_t index) noexcept
 
 const void* MemoryBuffer::MapRead() noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
+    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_dbgName.CStr());
     
     return glMapNamedBuffer(m_renderID, GL_READ_ONLY);
 }
@@ -137,9 +137,9 @@ const void* MemoryBuffer::MapRead() noexcept
 
 void* MemoryBuffer::MapWrite() noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
-    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_dbgName.CStr());
+    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_dbgName.CStr());
     
     return glMapNamedBuffer(m_renderID, GL_WRITE_ONLY);
 }
@@ -147,10 +147,10 @@ void* MemoryBuffer::MapWrite() noexcept
 
 void* MemoryBuffer::MapReadWrite() noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
-    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_name.CStr());
-    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_name.CStr());
-    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
+    ENG_ASSERT(IsDynamicStorage(), "Memory buffer \'{}\' was not created with GL_DYNAMIC_STORAGE_BIT flag", m_dbgName.CStr());
+    ENG_ASSERT(IsWritable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_WRITABLE flag", m_dbgName.CStr());
+    ENG_ASSERT(IsReadable(), "Memory buffer \'{}\' was not created with BUFFER_CREATION_FLAG_READABLE flag", m_dbgName.CStr());
 
     return glMapNamedBuffer(m_renderID, GL_READ_WRITE);
 }
@@ -158,7 +158,7 @@ void* MemoryBuffer::MapReadWrite() noexcept
 
 bool MemoryBuffer::Unmap() const noexcept
 {
-    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_name.CStr());
+    ENG_ASSERT(IsValid(), "Memory buffer \'{}\' is invalid", m_dbgName.CStr());
     
     return glUnmapNamedBuffer(m_renderID);
 }
@@ -170,10 +170,18 @@ bool MemoryBuffer::IsValid() const noexcept
 }
 
 
-ds::StrID MemoryBuffer::GetName() const noexcept
+void MemoryBuffer::SetDebugName(ds::StrID name) noexcept
 {
 #if defined(ENG_DEBUG)
-    return m_name;
+    m_dbgName = name;
+#endif
+}
+
+
+ds::StrID MemoryBuffer::GetDebugName() const noexcept
+{
+#if defined(ENG_DEBUG)
+    return m_dbgName;
 #else
     return "";
 #endif
@@ -182,8 +190,8 @@ ds::StrID MemoryBuffer::GetName() const noexcept
 
 uint64_t MemoryBuffer::GetElementCount() const noexcept
 {
-    ENG_ASSERT(m_elementSize != 0, "Element size is 0");
-    ENG_ASSERT(m_size % m_elementSize == 0, "Buffer size must be multiple of element size");
+    ENG_ASSERT(m_elementSize != 0, "Memory buffer \'{}\' element size is 0", m_dbgName.CStr());
+    ENG_ASSERT(m_size % m_elementSize == 0, "Buffer \'{}\' size must be multiple of element size", m_dbgName.CStr());
     
     return m_size / m_elementSize;
 }
@@ -193,14 +201,14 @@ bool MemoryBuffer::Create(const MemoryBufferCreateInfo& createInfo) noexcept
 {
     ENG_ASSERT(m_ID.IsValid(), "Buffer ID is invalid. You must initialize only buffers which were returned by MemoryBufferManager");
     ENG_ASSERT(createInfo.type != MemoryBufferType::TYPE_INVALID && createInfo.type < MemoryBufferType::TYPE_COUNT,
-        "Invalid \'{}\' buffer create info type", m_name.CStr());
+        "Invalid \'{}\' buffer create info type", m_dbgName.CStr());
 
-    ENG_ASSERT(createInfo.dataSize > 0, "Invalid \'{}\' buffer create info data size", m_name.CStr());
-    ENG_ASSERT(createInfo.elementSize > 0, "Invalid \'{}\' buffer create info data element size", m_name.CStr());
+    ENG_ASSERT(createInfo.dataSize > 0, "Invalid \'{}\' buffer create info data size", m_dbgName.CStr());
+    ENG_ASSERT(createInfo.elementSize > 0, "Invalid \'{}\' buffer create info data element size", m_dbgName.CStr());
     ENG_ASSERT(createInfo.dataSize % createInfo.elementSize == 0, "Data size is must be multiple of element size");
 
     if (IsValid()) {
-        ENG_LOG_WARN("Recreating \'{}\' buffer", m_name.CStr());
+        ENG_LOG_WARN("Recreating \'{}\' buffer", m_dbgName.CStr());
         Destroy();
     }
 
@@ -226,6 +234,10 @@ void MemoryBuffer::Destroy() noexcept
 
     glDeleteBuffers(1, &m_renderID);
 
+#if defined(ENG_DEBUG)
+    m_dbgName = "";
+#endif
+
     m_size = 0;
     m_elementSize = 0;
     m_type = MemoryBufferType::TYPE_INVALID;
@@ -237,7 +249,7 @@ void MemoryBuffer::Destroy() noexcept
 MemoryBufferManager& MemoryBufferManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsMemoryBufferManagerInitialized(), "Memory buffer manager is not initialized");
-    return *g_pMemoryBufferMng;
+    return *pMemoryBufferMngInst;
 }
 
 
@@ -247,18 +259,13 @@ MemoryBufferManager::~MemoryBufferManager()
 }
 
 
-MemoryBuffer* MemoryBufferManager::RegisterBuffer(ds::StrID name) noexcept
+MemoryBuffer* MemoryBufferManager::RegisterBuffer() noexcept
 {
-    ENG_ASSERT(m_nextAllocatedID.Value() < m_buffersStorage.size() - 1, "Memory buffer storage overflow");
-
     const BufferID bufferID = AllocateBufferID();
     MemoryBuffer* pBuffer = &m_buffersStorage[bufferID.Value()];
 
     ENG_ASSERT(!pBuffer->IsValid(), "Valid buffer was returned during registration");
 
-#if defined(ENG_DEBUG)
-    pBuffer->m_name = name;
-#endif
     pBuffer->m_ID = bufferID;
 
     return pBuffer;
@@ -272,15 +279,12 @@ void MemoryBufferManager::UnregisterBuffer(MemoryBuffer* pBuffer)
     }
 
     if (pBuffer->IsValid()) {
-        ENG_LOG_WARN("Unregistration of buffer \'{}\' while it's steel valid. Prefer to destroy buffers manually", pBuffer->GetName().CStr());
+        ENG_LOG_WARN("Unregistration of buffer \'{}\' while it's steel valid. Prefer to destroy buffers manually", pBuffer->GetDebugName().CStr());
         pBuffer->Destroy();
     }
 
     DeallocateBufferID(pBuffer->m_ID);
 
-#if defined(ENG_DEBUG)
-    pBuffer->m_name = "";
-#endif
     pBuffer->m_ID.Invalidate();
 }
 
@@ -311,6 +315,8 @@ void MemoryBufferManager::Terminate() noexcept
 BufferID MemoryBufferManager::AllocateBufferID() noexcept
 {
     if (m_memBufferIDFreeList.empty()) {
+        ENG_ASSERT(m_nextAllocatedID.Value() < m_buffersStorage.size() - 1, "Memory buffer storage overflow");
+
         const BufferID bufferID = m_nextAllocatedID;
         m_nextAllocatedID = BufferID(m_nextAllocatedID.Value() + 1);
 
@@ -345,14 +351,14 @@ bool engInitMemoryBufferManager() noexcept
         return true;
     }
 
-    g_pMemoryBufferMng = std::unique_ptr<MemoryBufferManager>(new MemoryBufferManager);
+    pMemoryBufferMngInst = std::unique_ptr<MemoryBufferManager>(new MemoryBufferManager);
 
-    if (!g_pMemoryBufferMng) {
+    if (!pMemoryBufferMngInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for memory buffer manager");
         return false;
     }
 
-    if (!g_pMemoryBufferMng->Init()) {
+    if (!pMemoryBufferMngInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized memory buffer manager");
         return false;
     }
@@ -363,11 +369,11 @@ bool engInitMemoryBufferManager() noexcept
 
 void engTerminateMemoryBufferManager() noexcept
 {
-    g_pMemoryBufferMng = nullptr;
+    pMemoryBufferMngInst = nullptr;
 }
 
 
 bool engIsMemoryBufferManagerInitialized() noexcept
 {
-    return g_pMemoryBufferMng && g_pMemoryBufferMng->IsInitialized();
+    return pMemoryBufferMngInst && pMemoryBufferMngInst->IsInitialized();
 }

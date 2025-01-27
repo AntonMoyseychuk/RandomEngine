@@ -20,7 +20,7 @@
 #include "auto/auto_registers_common.h"
 
 
-static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
+static std::unique_ptr<RenderSystem> pRenderSysInst = nullptr;
 
 
 #define INIT_CALL(CALL, ...) if (!CALL(__VA_ARGS__)) { return false; } 
@@ -29,7 +29,7 @@ static std::unique_ptr<RenderSystem> g_pRenderSystem = nullptr;
 RenderSystem& RenderSystem::GetInstance() noexcept
 {
     ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
-    return *g_pRenderSystem;
+    return *pRenderSysInst;
 }
 
 
@@ -67,6 +67,7 @@ void RenderSystem::RunColorPass() noexcept
     static RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
     static PipelineManager& pipelineManager = PipelineManager::GetInstance();
     static MemoryBufferManager& memBufferManager = MemoryBufferManager::GetInstance();
+    static MeshDataManager& meshDataManager = MeshDataManager::GetInstance();
     static MeshManager& meshManager = MeshManager::GetInstance();
 
     static bool isInitialized = false;
@@ -76,7 +77,7 @@ void RenderSystem::RunColorPass() noexcept
     static Texture* pTestTexture = nullptr;
     static TextureSamplerState* pTestTextureSampler = nullptr;
 
-    static uint32_t vao = 0;
+    static MeshObj* pCubeMeshObj = nullptr;
 
     static Texture* pGBufferAlbedoTex = nullptr;
     static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
@@ -90,6 +91,8 @@ void RenderSystem::RunColorPass() noexcept
     static MemoryBuffer* pCommonConstBuffer = nullptr;
 
     if (!isInitialized) {
+        srand(time(0));
+
         static constexpr const char* SHADER_INCLUDE_DIR = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
         static const char* GBUFFER_DEFINES[] = {
         #if defined(ENG_DEBUG)
@@ -132,10 +135,11 @@ void RenderSystem::RunColorPass() noexcept
         gBufferPassProgramCreateInfo.pStageCreateInfos = pGBufferStages;
         gBufferPassProgramCreateInfo.stageCreateInfosCount = _countof(pGBufferStages);
 
-        pGBufferProgram = shaderManager.RegisterShaderProgram("Pass_GBuffer");
+        pGBufferProgram = shaderManager.RegisterShaderProgram();
         ENG_ASSERT(pGBufferProgram, "Failed to register GBUFFER shader program");
         pGBufferProgram->Create(gBufferPassProgramCreateInfo);
         ENG_ASSERT(pGBufferProgram, "Failed to create GBUFFER shader program");
+        pGBufferProgram->SetDebugName("Pass_GBuffer");
 
         static const char* MERGE_DEFINES[] = {
         #if defined(ENG_DEBUG)
@@ -156,10 +160,11 @@ void RenderSystem::RunColorPass() noexcept
         gMergePassProgramCreateInfo.pStageCreateInfos = pMergeStages;
         gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
 
-        pMergeProgram = shaderManager.RegisterShaderProgram("Pass_Merge");
+        pMergeProgram = shaderManager.RegisterShaderProgram();
         ENG_ASSERT(pMergeProgram, "Failed to register MERGE shader program");
         pMergeProgram->Create(gMergePassProgramCreateInfo);
         ENG_ASSERT(pMergeProgram, "Failed to create MERGE shader program");
+        pMergeProgram->SetDebugName("Pass_Merge");
 
 
         constexpr size_t texWidth = 256;
@@ -227,7 +232,9 @@ void RenderSystem::RunColorPass() noexcept
         gBufferRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
 
         PipelineDepthStencilStateCreateInfo gBufferDepthStencilState = {};
-        gBufferDepthStencilState.depthTestEnable = false;
+        gBufferDepthStencilState.depthTestEnable = true;
+        gBufferDepthStencilState.depthWriteEnable = true;
+        gBufferDepthStencilState.depthCompareFunc = CompareFunc::FUNC_LEQUAL;
         gBufferDepthStencilState.stencilTestEnable = false;
 
         PipelineColorBlendStateCreateInfo gBufferColorBlendState = {};
@@ -291,10 +298,92 @@ void RenderSystem::RunColorPass() noexcept
         ENG_ASSERT(pMergePipeline, "Failed to register MERGE pipeline");
         pMergePipeline->Create(mergePipelineCreateInfo);
         ENG_ASSERT(pMergePipeline->IsValid(), "Failed to create MERGE pipeline");
-        
 
-        glCreateVertexArrays(1, &vao);
-        glBindVertexArray(vao);
+
+        const MeshVertexAttribDesc pVertexAttribDescs[] = {
+            MeshVertexAttribDesc {  0 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 0, 3, false },
+            MeshVertexAttribDesc {  3 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 1, 4, false },
+            MeshVertexAttribDesc {  7 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 2, 3, false },
+            MeshVertexAttribDesc { 10 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 3, 2, false },
+        };
+
+        MeshVertexLayoutCreateInfo cubeVertexLayoutCreateInfo = {};
+        cubeVertexLayoutCreateInfo.pVertexAttribDescs = pVertexAttribDescs;
+        cubeVertexLayoutCreateInfo.vertexAttribDescsCount = _countof(pVertexAttribDescs);
+
+        MeshVertexLayout* pCubeVertexLayout = meshDataManager.RegisterVertexLayout(cubeVertexLayoutCreateInfo);
+        ENG_ASSERT(pCubeVertexLayout && pCubeVertexLayout->IsValid(), "Failed to register cube mesh vertex layout");
+
+        MeshGPUBufferData* pCubeBufferData = meshDataManager.RegisterGPUBufferData("cube");
+        ENG_ASSERT(pCubeBufferData, "Failed to register cube mesh GPU data");
+
+        constexpr float CUBE_HALF_SIZE = 0.5f;
+
+        const float pCubeRawVertexData[] = {
+            // position                                     //color             // normal      // UV
+            // Front face
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 1.f, 0.f,
+
+            // Back face
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 1.f, 0.f,
+
+            // Left face
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 1.f, 0.f,
+
+            // Right face
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 1.f, 0.f,
+
+            // Top face
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 0.f,
+
+            // Bottom face
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 0.f,
+        };
+
+        const uint8_t cubeIndices[] = {
+            0, 2, 1, 0, 3, 2,
+            4, 6, 5, 4, 7, 6,
+            8, 10, 9, 8, 11, 10,
+            12, 14, 13, 12, 15, 14,
+            16, 18, 17, 16, 19, 18,
+            20, 22, 21, 20, 23, 22
+        };
+
+        MeshGPUBufferDataCreateInfo cubeGPUDataCreateInfo = {};
+        cubeGPUDataCreateInfo.pVertexData = pCubeRawVertexData;
+        cubeGPUDataCreateInfo.vertexDataSize = sizeof(pCubeRawVertexData);
+        cubeGPUDataCreateInfo.vertexSize = sizeof(pCubeRawVertexData) / 24;
+        cubeGPUDataCreateInfo.pIndexData = cubeIndices;
+        cubeGPUDataCreateInfo.indexDataSize = sizeof(cubeIndices);
+        cubeGPUDataCreateInfo.indexSize = sizeof(cubeIndices[0]);
+
+        pCubeBufferData->Create(cubeGPUDataCreateInfo);
+
+        pCubeMeshObj = meshManager.RegisterMeshObj("cube");
+        ENG_ASSERT(pCubeMeshObj, "Failed to register cube mesh object");
+        pCubeMeshObj->Create(pCubeVertexLayout, pCubeBufferData);
+        ENG_ASSERT(pCubeMeshObj->IsValid(), "Failed to create cube mesh object");
+
+        pCubeMeshObj->Bind();
+
 
         MemoryBufferCreateInfo commonConstBufferCreateInfo = {};
         commonConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
@@ -304,10 +393,11 @@ void RenderSystem::RunColorPass() noexcept
             BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_READABLE | BUFFER_CREATION_FLAG_WRITABLE);
         commonConstBufferCreateInfo.pData = nullptr;
 
-        pCommonConstBuffer = memBufferManager.RegisterBuffer("__COMMON_CB__");
+        pCommonConstBuffer = memBufferManager.RegisterBuffer();
         ENG_ASSERT(pCommonConstBuffer, "Failed to register common const buffer");
         pCommonConstBuffer->Create(commonConstBufferCreateInfo);
         ENG_ASSERT(pCommonConstBuffer->IsValid(), "Failed to create common const buffer");
+        pCommonConstBuffer->SetDebugName("__COMMON_CB__");
         
         pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
 
@@ -336,7 +426,7 @@ void RenderSystem::RunColorPass() noexcept
         pTestTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
         pTestTextureSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
 
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
+        glDrawElementsInstanced(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE, 0, 1);
     }
 
     {
@@ -414,13 +504,13 @@ bool engInitRenderSystem() noexcept
         return false;
     }
 
-    g_pRenderSystem = std::unique_ptr<RenderSystem>(new RenderSystem);
-    if (!g_pRenderSystem) {
+    pRenderSysInst = std::unique_ptr<RenderSystem>(new RenderSystem);
+    if (!pRenderSysInst) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Failed to create render system");
         return false;
     }
 
-    if (!g_pRenderSystem->Init()) {
+    if (!pRenderSysInst->Init()) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialized render system");
         return false;
     }
@@ -431,11 +521,11 @@ bool engInitRenderSystem() noexcept
 
 void engTerminateRenderSystem() noexcept
 {
-    g_pRenderSystem = nullptr;
+    pRenderSysInst = nullptr;
 }
 
 
 bool engIsRenderSystemInitialized() noexcept
 {
-    return g_pRenderSystem && g_pRenderSystem->IsInitialized();
+    return pRenderSysInst && pRenderSysInst->IsInitialized();
 }

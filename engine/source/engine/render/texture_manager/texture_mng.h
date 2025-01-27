@@ -31,12 +31,12 @@ public:
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
-    bool Init(const void* pCreateInfo, ds::StrID dbgName = "") noexcept;
+    bool Init(const void* pCreateInfo, ds::StrID dbgName) noexcept;
     void Destroy() noexcept;
 
 private:
 #if defined(ENG_DEBUG)
-    ds::StrID m_dbgName = "";
+    ds::StrID m_dbgName = "_INVALID_";
 #endif
 
     uint32_t m_renderID = 0;
@@ -138,7 +138,7 @@ public:
     uint32_t GetRenderID() const noexcept { return m_renderID; }
 
 private:
-    ds::StrID m_name = "";
+    ds::StrID m_name = "_INVALID_";
     
     uint32_t m_type = 0;
     uint32_t m_levelsCount = 0;
@@ -197,7 +197,6 @@ private:
     std::vector<TextureSamplerState> m_textureSamplersStorage;
     std::vector<Texture> m_texturesStorage;
 
-    std::vector<ds::StrID> m_textureStorageIndexToNameVector;
     std::unordered_map<ds::StrID, uint64_t> m_textureNameToStorageIndexMap;
 
     std::deque<TextureID> m_textureIDFreeList;

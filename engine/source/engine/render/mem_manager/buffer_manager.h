@@ -77,7 +77,9 @@ public:
 
     bool IsValid() const noexcept;
 
-    ds::StrID GetName() const noexcept;
+    void SetDebugName(ds::StrID name) noexcept;
+
+    ds::StrID GetDebugName() const noexcept;
 
     uint64_t GetSize() const noexcept { return m_size; }
     uint32_t GetRenderID() const noexcept { return m_renderID; }
@@ -101,7 +103,7 @@ public:
 
 private:
 #if defined(ENG_DEBUG)
-    ds::StrID m_name = "";
+    ds::StrID m_dbgName = "";
 #endif
 
     uint64_t                  m_size = 0;
@@ -130,7 +132,7 @@ public:
 
     ~MemoryBufferManager();
 
-    MemoryBuffer* RegisterBuffer(ds::StrID name) noexcept;
+    MemoryBuffer* RegisterBuffer() noexcept;
     void UnregisterBuffer(MemoryBuffer* pBuffer);
 
 private:

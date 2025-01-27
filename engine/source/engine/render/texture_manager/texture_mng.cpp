@@ -82,7 +82,7 @@ enum class TextureFormat
 };
 
 
-static std::unique_ptr<TextureManager> g_pTextureMng = nullptr;
+static std::unique_ptr<TextureManager> pTextureMngInst = nullptr;
 
 
 TextureSamplerState::TextureSamplerState(TextureSamplerState &&other) noexcept
@@ -142,7 +142,7 @@ bool TextureSamplerState::Init(const void* pCreateInfo, ds::StrID dbgName) noexc
 void TextureSamplerState::Destroy() noexcept
 {
 #if defined(ENG_DEBUG)
-    m_dbgName = "";
+    m_dbgName = "_INVALID_";
 #endif
 
     glDeleteSamplers(1, &m_renderID);
@@ -487,7 +487,7 @@ void Texture::Destroy() noexcept
 TextureManager& TextureManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsTextureManagerInitialized(), "Texture manager is not initialized");
-    return *g_pTextureMng;
+    return *pTextureMngInst;
 }
 
 
@@ -504,8 +504,6 @@ Texture* TextureManager::RegisterTexture2D(ds::StrID name) noexcept
         return pCachedTex;
     }
 
-    ENG_ASSERT(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
-
     const TextureID textureID = AllocateTextureID();
     const uint64_t index = textureID.Value();
 
@@ -516,7 +514,6 @@ Texture* TextureManager::RegisterTexture2D(ds::StrID name) noexcept
     pTex->m_name = name;
     pTex->m_ID = textureID;
 
-    m_textureStorageIndexToNameVector[index] = name;
     m_textureNameToStorageIndexMap[name] = index;
 
     return pTex;
@@ -551,12 +548,9 @@ void TextureManager::UnregisterTexture(Texture* pTex) noexcept
 
     DeallocateTextureID(pTex->m_ID);
 
-    const uint64_t index = pTex->m_ID.Value();
-
-    m_textureStorageIndexToNameVector[index] = "__EMPTY__";
     m_textureNameToStorageIndexMap.erase(pTex->m_name);
 
-    pTex->m_name = "";
+    pTex->m_name = "_INVALID_";
     pTex->m_ID.Invalidate();
 }
 
@@ -580,7 +574,6 @@ bool TextureManager::Init() noexcept
     }
 
     m_texturesStorage.resize(COMMON_MAX_TEXTURES_COUNT);
-    m_textureStorageIndexToNameVector.resize(COMMON_MAX_TEXTURES_COUNT, "__EMPTY__");
     m_textureNameToStorageIndexMap.reserve(COMMON_MAX_TEXTURES_COUNT);
 
     InitializeSamplers();
@@ -597,7 +590,6 @@ void TextureManager::Terminate() noexcept
 {
     m_texturesStorage.clear();
 
-    m_textureStorageIndexToNameVector.clear();
     m_textureNameToStorageIndexMap.clear();
 
     m_textureIDFreeList.clear();
@@ -613,6 +605,8 @@ void TextureManager::Terminate() noexcept
 TextureID TextureManager::AllocateTextureID() noexcept
 {
     if (m_textureIDFreeList.empty()) {
+        ENG_ASSERT(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
+
         const TextureID textureID = m_nextAllocatedID;
         m_nextAllocatedID = TextureID(m_nextAllocatedID.Value() + 1);
 
@@ -764,14 +758,14 @@ bool engInitTextureManager() noexcept
         return true;
     }
 
-    g_pTextureMng = std::unique_ptr<TextureManager>(new TextureManager);
+    pTextureMngInst = std::unique_ptr<TextureManager>(new TextureManager);
 
-    if (!g_pTextureMng) {
+    if (!pTextureMngInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for texture manager");
         return false;
     }
 
-    if (!g_pTextureMng->Init()) {
+    if (!pTextureMngInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized texture manager");
         return false;
     }
@@ -782,11 +776,11 @@ bool engInitTextureManager() noexcept
 
 void engTerminateTextureManager() noexcept
 {
-    g_pTextureMng = nullptr;
+    pTextureMngInst = nullptr;
 }
 
 
 bool engIsTextureManagerInitialized() noexcept
 {
-    return g_pTextureMng && g_pTextureMng->IsInitialized();
+    return pTextureMngInst && pTextureMngInst->IsInitialized();
 }

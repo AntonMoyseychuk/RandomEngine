@@ -85,8 +85,6 @@ public:
     bool HasDepthAttachment() const noexcept { return GetDepthAttachmentCount() > 0; }
     bool HasStencilAttachment() const noexcept { return GetStencilAttachmentCount() > 0; }
 
-    uint64_t Hash() const noexcept;
-
     ds::StrID GetName() const noexcept;
     
     uint32_t GetColorAttachmentsCount() const noexcept { return m_attachmentsState.colorAttachmentsCount; }
@@ -96,6 +94,8 @@ public:
     
     RTFrameBufferID GetID() const noexcept { return m_ID; }
     uint32_t GetRenderID() const noexcept { return m_renderID; }
+
+    uint64_t Hash() const noexcept;
 
 private:
     bool Init(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept;

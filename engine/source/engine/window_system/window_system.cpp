@@ -11,7 +11,7 @@
 #define ENG_CHECK_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "Window is not initialized")
 
 
-static std::unique_ptr<WindowSystem> g_pWindowSys = nullptr;
+static std::unique_ptr<WindowSystem> pWindowSysInst = nullptr;
 
 
 static const char* WindowTypeTagToStr(WindowTypeTag tag) noexcept
@@ -716,7 +716,7 @@ bool Window::IsVisible() const noexcept
 WindowSystem& WindowSystem::GetInstance() noexcept
 {
     ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Window system is not initialized");
-    return *g_pWindowSys;
+    return *pWindowSysInst;
 }
 
 
@@ -803,14 +803,14 @@ bool engInitWindowSystem() noexcept
         return true;
     }
 
-    g_pWindowSys = std::unique_ptr<WindowSystem>(new WindowSystem);
+    pWindowSysInst = std::unique_ptr<WindowSystem>(new WindowSystem);
 
-    if (!g_pWindowSys) {
+    if (!pWindowSysInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for window system");
         return false;
     }
 
-    if (!g_pWindowSys->Init()) {
+    if (!pWindowSysInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized window system");
         return false;
     }
@@ -821,11 +821,11 @@ bool engInitWindowSystem() noexcept
 
 void engTerminateWindowSystem() noexcept
 {
-    g_pWindowSys = nullptr;
+    pWindowSysInst = nullptr;
 }
 
 
 bool engIsWindowSystemInitialized() noexcept
 {
-    return g_pWindowSys && g_pWindowSys->IsInitialized();
+    return pWindowSysInst && pWindowSysInst->IsInitialized();
 }

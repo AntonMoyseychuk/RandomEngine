@@ -12,13 +12,13 @@
 #define ENG_CHECK_REND_SYS_INITIALIZATION()      ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
 
 
-static std::unique_ptr<Engine> g_pEngine = nullptr;
+static std::unique_ptr<Engine> pEngineInst = nullptr;
 
 
 Engine& Engine::GetInstance() noexcept
 {
     ENG_ASSERT_GRAPHICS_API(engIsEngineInitialized(), "Engine is not initialized");
-    return *g_pEngine;
+    return *pEngineInst;
 }
 
 
@@ -29,14 +29,14 @@ bool Engine::Init(const char* title, uint32_t width, uint32_t height, bool enabl
         return true;
     }
 
-    g_pEngine = std::unique_ptr<Engine>(new Engine(title, width, height, enableVSync));
+    pEngineInst = std::unique_ptr<Engine>(new Engine(title, width, height, enableVSync));
 
-    if (!g_pEngine) {
+    if (!pEngineInst) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Failed to allocate memory for engine");
         return false;
     }
 
-    if (!g_pEngine->IsInitialized()) {
+    if (!pEngineInst->IsInitialized()) {
         ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize engine");
         return false;
     }
@@ -47,7 +47,7 @@ bool Engine::Init(const char* title, uint32_t width, uint32_t height, bool enabl
 
 void Engine::Terminate() noexcept
 {
-    g_pEngine = nullptr;
+    pEngineInst = nullptr;
 }
 
 
@@ -163,5 +163,5 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
 
 bool engIsEngineInitialized() noexcept
 {
-    return g_pEngine && g_pEngine->IsInitialized();
+    return pEngineInst && pEngineInst->IsInitialized();
 }

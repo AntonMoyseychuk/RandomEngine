@@ -13,7 +13,7 @@ static constexpr size_t ENG_MAX_SHADER_PROGRAMS_COUNT = 4096; // TODO: make it c
 static constexpr size_t ENG_MAX_SHADER_INCLUDE_DEPTH = 128;   // TODO: make it configurable
 
 
-static std::unique_ptr<ShaderManager> g_pShaderMng = nullptr;
+static std::unique_ptr<ShaderManager> pShaderMngInst = nullptr;
 
 
 static void Preprocessor_GetShaderVersionPosition(const std::string_view& sourceCode, ptrdiff_t& begin, ptrdiff_t& end) noexcept
@@ -294,6 +294,14 @@ bool ShaderProgram::IsValid() const noexcept
 }
 
 
+void ShaderProgram::SetDebugName(ds::StrID name) noexcept
+{
+#if defined(ENG_DEBUG)
+    m_dbgName = name;
+#endif
+}
+
+
 uint64_t ShaderProgram::Hash() const noexcept
 {
     ds::HashBuilder builder;
@@ -305,7 +313,7 @@ uint64_t ShaderProgram::Hash() const noexcept
 }
 
 
-ds::StrID ShaderProgram::GetName() const noexcept
+ds::StrID ShaderProgram::GetDebugName() const noexcept
 {
 #if defined(ENG_DEBUG)
     return m_dbgName;
@@ -360,6 +368,10 @@ void ShaderProgram::Destroy() noexcept
         return;
     }
 
+#if defined(ENG_DEBUG)
+    m_dbgName = "_INVALID_";
+#endif
+
     glDeleteProgram(m_renderID);
     m_renderID = 0;
 }
@@ -395,7 +407,7 @@ bool ShaderProgram::GetLinkingStatus() const noexcept
 ShaderManager &ShaderManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsShaderManagerInitialized(), "Shader manager is not initialized");
-    return *g_pShaderMng;
+    return *pShaderMngInst;
 }
 
 
@@ -405,18 +417,13 @@ ShaderManager::~ShaderManager()
 }
 
 
-ShaderProgram* ShaderManager::RegisterShaderProgram(ds::StrID dbgName) noexcept
+ShaderProgram* ShaderManager::RegisterShaderProgram() noexcept
 {
-    ENG_ASSERT(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
-
     const ProgramID programID = AllocateProgramID();
     ShaderProgram* pProgram = &m_shaderProgramsStorage[programID.Value()];
 
     ENG_ASSERT(!pProgram->IsValid(), "Valid shader program was returned during registration");
 
-#if defined(ENG_DEBUG)
-    pProgram->m_dbgName = dbgName;
-#endif
     pProgram->m_ID = programID;
 
     return pProgram;
@@ -430,15 +437,12 @@ void ShaderManager::UnregisterShaderProgram(ShaderProgram* pProgram) noexcept
     }
 
     if (pProgram->IsValid()) {
-        ENG_LOG_WARN("Unregistration of shader program \'{}\' while it's steel valid. Prefer to destroy shaders manually", pProgram->GetName().CStr());
+        ENG_LOG_WARN("Unregistration of shader program \'{}\' while it's steel valid. Prefer to destroy shaders manually", pProgram->GetDebugName().CStr());
         pProgram->Destroy();
     }
 
     DeallocateProgramID(pProgram->m_ID);
 
-#if defined(ENG_DEBUG)
-    pProgram->m_dbgName = "";
-#endif
     pProgram->m_ID.Invalidate();
 }
 
@@ -476,6 +480,8 @@ bool ShaderManager::IsInitialized() const noexcept
 ProgramID ShaderManager::AllocateProgramID() noexcept
 {
     if (m_programIDFreeList.empty()) {
+        ENG_ASSERT(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
+
         ProgramID programID = m_nextAllocatedID;
         m_nextAllocatedID = ProgramID(m_nextAllocatedID.Value() + 1);
 
@@ -510,14 +516,14 @@ bool engInitShaderManager() noexcept
         return true;
     }
 
-    g_pShaderMng = std::unique_ptr<ShaderManager>(new ShaderManager);
+    pShaderMngInst = std::unique_ptr<ShaderManager>(new ShaderManager);
 
-    if (!g_pShaderMng) {
+    if (!pShaderMngInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for shader manager");
         return false;
     }
 
-    if (!g_pShaderMng->Init()) {
+    if (!pShaderMngInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized shader manager");
         return false;
     }
@@ -528,11 +534,11 @@ bool engInitShaderManager() noexcept
 
 void engTerminateShaderManager() noexcept
 {
-    g_pShaderMng = nullptr;
+    pShaderMngInst = nullptr;
 }
 
 
 bool engIsShaderManagerInitialized() noexcept
 {
-    return g_pShaderMng && g_pShaderMng->IsInitialized();
+    return pShaderMngInst && pShaderMngInst->IsInitialized();
 }

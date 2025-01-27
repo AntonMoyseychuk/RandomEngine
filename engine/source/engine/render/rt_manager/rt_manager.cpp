@@ -11,7 +11,7 @@
 #include "auto/auto_registers_common.h"
 
 
-static std::unique_ptr<RenderTargetManager> s_pRenderTargetMng = nullptr;
+static std::unique_ptr<RenderTargetManager> pRenderTargetMngInst = nullptr;
 
 static int32_t MAX_COLOR_ATTACHMENTS = 0;
 
@@ -393,7 +393,7 @@ bool FrameBuffer::CheckCompleteStatus() const noexcept
 RenderTargetManager &RenderTargetManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsRenderTargetManagerInitialized(), "Render target manager is not initialized");
-    return *s_pRenderTargetMng;
+    return *pRenderTargetMngInst;
 }
 
 
@@ -709,14 +709,14 @@ bool engInitRenderTargetManager() noexcept
 
     ENG_ASSERT(engIsTextureManagerInitialized(), "Texture manager must be initialized before render target manager!");
 
-    s_pRenderTargetMng = std::unique_ptr<RenderTargetManager>(new RenderTargetManager);
+    pRenderTargetMngInst = std::unique_ptr<RenderTargetManager>(new RenderTargetManager);
 
-    if (!s_pRenderTargetMng) {
+    if (!pRenderTargetMngInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for render target manager");
         return false;
     }
 
-    if (!s_pRenderTargetMng->Init()) {
+    if (!pRenderTargetMngInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized render target manager");
         return false;
     }
@@ -727,11 +727,11 @@ bool engInitRenderTargetManager() noexcept
 
 void engTerminateRenderTargetManager() noexcept
 {
-    s_pRenderTargetMng = nullptr;
+    pRenderTargetMngInst = nullptr;
 }
 
 
 bool engIsRenderTargetManagerInitialized() noexcept
 {
-    return s_pRenderTargetMng && s_pRenderTargetMng->IsInitialized();
+    return pRenderTargetMngInst && pRenderTargetMngInst->IsInitialized();
 }

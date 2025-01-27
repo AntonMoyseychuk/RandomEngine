@@ -9,7 +9,7 @@
 
 static constexpr size_t ENG_MAX_PIPELINES_COUNT = 8192; // TODO: make it configurable
 
-static std::unique_ptr<PipelineManager> s_pPipelineMng = nullptr;
+static std::unique_ptr<PipelineManager> pPipelineMngInst = nullptr;
 
 
 static constexpr GLenum CompressedBlendFactorToGLEnum(uint32_t compressedBlendFactor) noexcept
@@ -593,14 +593,12 @@ void Pipeline::Destroy()
 PipelineManager& PipelineManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsRenderPipelineInitialized(), "Render pipeline manager is not initialized");
-    return *s_pPipelineMng;
+    return *pPipelineMngInst;
 }
 
 
 Pipeline* PipelineManager::RegisterPipeline() noexcept
 {
-    ENG_ASSERT(m_nextAllocatedID.Value() < m_pipelineStorage.size() - 1, "Pipeline storage overflow");
-
     const PipelineID pipelineID = AllocatePipelineID();
     Pipeline* pPipeline = &m_pipelineStorage[pipelineID.Value()];
 
@@ -656,6 +654,8 @@ void PipelineManager::Terminate() noexcept
 PipelineID PipelineManager::AllocatePipelineID() noexcept
 {
     if (m_pipelineIDFreeList.empty()) {
+        ENG_ASSERT(m_nextAllocatedID.Value() < m_pipelineStorage.size() - 1, "Pipeline storage overflow");
+
         const PipelineID pipelineID = m_nextAllocatedID;
         m_nextAllocatedID = PipelineID(m_nextAllocatedID.Value() + 1);
 
@@ -693,14 +693,14 @@ bool engInitPipelineManager() noexcept
     ENG_ASSERT(engIsRenderTargetManagerInitialized(), "Render target manager must be initialized before pipeline target manager!");
     ENG_ASSERT(engIsShaderManagerInitialized(), "Shader manager must be initialized before pipeline target manager!");
 
-    s_pPipelineMng = std::unique_ptr<PipelineManager>(new PipelineManager);
+    pPipelineMngInst = std::unique_ptr<PipelineManager>(new PipelineManager);
 
-    if (!s_pPipelineMng) {
+    if (!pPipelineMngInst) {
         ENG_ASSERT_FAIL("Failed to allocate memory for pipeline manager");
         return false;
     }
 
-    if (!s_pPipelineMng->Init()) {
+    if (!pPipelineMngInst->Init()) {
         ENG_ASSERT_FAIL("Failed to initialized pipeline manager");
         return false;
     }
@@ -711,11 +711,11 @@ bool engInitPipelineManager() noexcept
 
 void engTerminatePipelineManager() noexcept
 {
-    s_pPipelineMng = nullptr;
+    pPipelineMngInst = nullptr;
 }
 
 
 bool engIsRenderPipelineInitialized() noexcept
 {
-    return s_pPipelineMng && s_pPipelineMng->IsInitialized();
+    return pPipelineMngInst && pPipelineMngInst->IsInitialized();
 }

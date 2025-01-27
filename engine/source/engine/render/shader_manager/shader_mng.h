@@ -75,17 +75,19 @@ public:
 
     bool IsValid() const noexcept;
 
-    uint64_t Hash() const noexcept;
+    void SetDebugName(ds::StrID name) noexcept;
     
-    ds::StrID GetName() const noexcept;
+    ds::StrID GetDebugName() const noexcept;
     uint32_t GetRenderID() const noexcept { return m_renderID; }
+    
+    uint64_t Hash() const noexcept;
 
 private:
     bool GetLinkingStatus() const noexcept;
 
 private:
 #if defined(ENG_DEBUG)
-    ds::StrID m_dbgName = "";
+    ds::StrID m_dbgName = "_INVALID_";
 #endif
 
     uint32_t m_renderID = 0;
@@ -110,7 +112,7 @@ public:
 
     ~ShaderManager();
 
-    ShaderProgram* RegisterShaderProgram(ds::StrID dbgName) noexcept;
+    ShaderProgram* RegisterShaderProgram() noexcept;
     void UnregisterShaderProgram(ShaderProgram* pProgram) noexcept;
     
 private:
