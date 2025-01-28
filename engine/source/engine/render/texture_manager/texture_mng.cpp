@@ -422,12 +422,8 @@ uint64_t Texture::Hash() const noexcept
 
 bool Texture::Create(const Texture2DCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid texture: {}", m_name.CStr());
     ENG_ASSERT(m_ID.IsValid(), "Texture \'{}\' ID is invalid. You must initialize only textures which were returned by TextureManager", m_name.CStr());
-
-    if (IsValid()) {
-        ENG_LOG_WARN("Reinitializing of texture \'{}\' (id: {})", m_name.CStr(), m_renderID);
-        Destroy();
-    }
 
     m_type = GL_TEXTURE_2D;
     m_levelsCount = 1 + createInfo.mipmapsCount;
@@ -499,10 +495,7 @@ TextureManager::~TextureManager()
 
 Texture* TextureManager::RegisterTexture2D(ds::StrID name) noexcept
 {
-    Texture* pCachedTex = GetTextureByName(name);
-    if (pCachedTex != nullptr) {
-        return pCachedTex;
-    }
+    ENG_ASSERT(GetTextureByName(name) == nullptr, "Attempt to register already registered 2D texture: {}", name.CStr());
 
     const TextureID textureID = AllocateTextureID();
     const uint64_t index = textureID.Value();

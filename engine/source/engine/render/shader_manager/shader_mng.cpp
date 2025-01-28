@@ -325,14 +325,11 @@ ds::StrID ShaderProgram::GetDebugName() const noexcept
 
 bool ShaderProgram::Create(const ShaderProgramCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid shader program: {}", m_dbgName.CStr());
     ENG_ASSERT(m_ID.IsValid(), "Shader program ID is invalid. You must initialize only programs which were returned by ShaderManager");
+    
     ENG_ASSERT(createInfo.pStageCreateInfos && createInfo.stageCreateInfosCount > 0, 
         "Shader program create info '{}' has invalid stages parametres", m_dbgName.CStr());
-
-    if (IsValid()) {
-        ENG_LOG_WARN("Recreating '{}' shader program", m_dbgName.CStr());
-        Destroy();
-    }
 
     std::array<ShaderStage, static_cast<size_t>(ShaderStageType::COUNT)> shaderStages = {};
     for (size_t i = 0; i < createInfo.stageCreateInfosCount; ++i) {

@@ -123,6 +123,9 @@ MeshVertexLayout::~MeshVertexLayout()
 
 void MeshVertexLayout::Create(const MeshVertexLayoutCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid mesh vertex layout (ID: {})", m_ID.Value());
+    ENG_ASSERT(m_ID.IsValid(), "Mesh vertex layout ID is invalid. You must initialize only layouts which were returned by MeshDataManager");
+
     ENG_ASSERT(createInfo.pVertexAttribDescs, "pVertexAttribDescs is nullptr");
     ENG_ASSERT(createInfo.vertexAttribDescsCount >= 1 && createInfo.vertexAttribDescsCount <= MAX_VERTEX_ATTRIBS_COUNT, 
         "vertexAttribDescsCount must be at least 1 and less or equal {}", MAX_VERTEX_ATTRIBS_COUNT);
@@ -198,7 +201,9 @@ bool MeshGPUBufferData::IsValid() const noexcept
 
 bool MeshGPUBufferData::Create(const MeshGPUBufferDataCreateInfo& createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid mesh GPU buffer data: {}", m_name.CStr());
     ENG_ASSERT(m_ID.IsValid(), "Mesh ID is invalid. You must initialize only mesh objects which were returned by MeshGPUBufferData");
+
     ENG_ASSERT(createInfo.pVertexData, "Mesh GPU buffer data \'{}\' createInfo.pVertexData is nullptr", m_name.CStr());
     ENG_ASSERT(createInfo.vertexDataSize > 0, "Mesh GPU buffer data \'{}\' createInfo.vertexDataSize is zero", m_name.CStr());
     ENG_ASSERT(createInfo.vertexSize > 0, "Mesh GPU buffer data \'{}\' createInfo.vertexSize is zero", m_name.CStr());
@@ -284,10 +289,7 @@ MeshVertexLayout* MeshDataManager::RegisterVertexLayout(const MeshVertexLayoutCr
 {
     const uint64_t createInfoHash = amHash(createInfo);
 
-    MeshVertexLayout* pCachedLayout = FindVertexLayoutByHash(createInfoHash);
-    if (pCachedLayout) {
-        return pCachedLayout;
-    }
+    ENG_ASSERT(FindVertexLayoutByHash(createInfoHash) == nullptr, "Attempt to register already registred vertex layout");
 
     ENG_ASSERT(m_nextAllocatedVertLayoutID.Value() < m_vertexLayoutStorage.size() - 1, "Vertex buffer layout storage overflow");
 
@@ -327,10 +329,7 @@ void MeshDataManager::UnregisterVertexLayout(MeshVertexLayout* pLayout) noexcept
 
 MeshGPUBufferData* MeshDataManager::RegisterGPUBufferData(ds::StrID name) noexcept
 {
-    MeshGPUBufferData* pCachedData = GetGPUBufferDataByName(name);
-    if (pCachedData != nullptr) {
-        return pCachedData;
-    }
+    ENG_ASSERT(GetGPUBufferDataByName(name) == nullptr, "Attempt to register already registred mesh GPU buffer data: {}", name.CStr());
 
     const MeshGPUBufferDataID dataID = AllocateGPUBufferDataID();
     const uint64_t index = dataID.Value();
@@ -550,7 +549,7 @@ MeshObj& MeshObj::operator=(MeshObj&& other) noexcept
 
 bool MeshObj::Create(MeshVertexLayout* pLayoutDesc, MeshGPUBufferData* pMeshData) noexcept
 {
-    ENG_ASSERT(!IsValid(), "Mesh object \'{}\' is already valid", m_name.CStr());
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid mesh object: {}", m_name.CStr());
     ENG_ASSERT(m_ID.IsValid(), "Mesh object \'{}\' ID is invalid. You must initialize only mesh objects which were returned by MeshManager", m_name.CStr());
 
     ENG_ASSERT(pLayoutDesc && pLayoutDesc->IsValid(), "Mesh object \'{}\' invalid GPU buffer data", m_name.CStr());
@@ -641,10 +640,7 @@ MeshManager::~MeshManager()
 
 MeshObj* MeshManager::RegisterMeshObj(ds::StrID name) noexcept
 {
-    MeshObj* pCachedMeshObj = GetMeshObjByName(name);
-    if (pCachedMeshObj != nullptr) {
-        return pCachedMeshObj;
-    }
+    ENG_ASSERT(GetMeshObjByName(name) == nullptr, "Attempt to create already valid mesh object: {}", name.CStr());
 
     ENG_ASSERT(m_nextAllocatedID.Value() < m_meshObjStorage.size() - 1, "Mesh objects storage overflow");
 

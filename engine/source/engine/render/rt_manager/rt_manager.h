@@ -43,18 +43,17 @@ enum class FrameBufferAttachmentType : uint32_t
 
 struct FrameBufferAttachment
 {
-    Texture* pTexure = nullptr;
-    FrameBufferAttachmentType type = FrameBufferAttachmentType::TYPE_INVALID;
-    
-    uint32_t index = UINT32_MAX; // Ignores if type is not TYPE_COLOR_ATTACHMENT
+    Texture*                  pTexure;
+    FrameBufferAttachmentType type;
+    uint32_t                  index; // Ignores if type is not TYPE_COLOR_ATTACHMENT
 };
 
 
 struct FramebufferCreateInfo
 {
-    const FrameBufferAttachment* pAttachments = nullptr;
-    uint32_t attachmentsCount = 0;
-    RTFrameBufferID ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
+    const FrameBufferAttachment* pAttachments;
+    uint32_t                     attachmentsCount;
+    RTFrameBufferID              ID;
 };
 
 
@@ -85,7 +84,8 @@ public:
     bool HasDepthAttachment() const noexcept { return GetDepthAttachmentCount() > 0; }
     bool HasStencilAttachment() const noexcept { return GetStencilAttachmentCount() > 0; }
 
-    ds::StrID GetName() const noexcept;
+    void SetDebugName(ds::StrID name) noexcept;
+    ds::StrID GetDebugName() const noexcept;
     
     uint32_t GetColorAttachmentsCount() const noexcept { return m_attachmentsState.colorAttachmentsCount; }
     uint32_t GetDepthAttachmentCount() const noexcept { return m_attachmentsState.depthAttachmentsCount; }
@@ -98,17 +98,19 @@ public:
     uint64_t Hash() const noexcept;
 
 private:
-    bool Init(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept;
+    bool Create(const FramebufferCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
 
-    bool Recreate(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept;
+    bool Recreate(const FramebufferCreateInfo& createInfo) noexcept;
 
     bool CheckCompleteStatus() const noexcept;
+
+    bool IsValidID() const noexcept;
 
 private:
 #if defined(ENG_DEBUG)
     std::vector<FrameBufferAttachment> m_attachments;
-    ds::StrID m_dbgName = "";
+    ds::StrID m_dbgName = "_INVALID_";
 #endif
 
     struct AttachmentsState

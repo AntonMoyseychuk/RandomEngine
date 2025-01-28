@@ -78,7 +78,6 @@ public:
     bool IsValid() const noexcept;
 
     void SetDebugName(ds::StrID name) noexcept;
-
     ds::StrID GetDebugName() const noexcept;
 
     uint64_t GetSize() const noexcept { return m_size; }

@@ -199,6 +199,8 @@ uint64_t MemoryBuffer::GetElementCount() const noexcept
 
 bool MemoryBuffer::Create(const MemoryBufferCreateInfo& createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid memory buffer: {}", m_dbgName.CStr());
+
     ENG_ASSERT(m_ID.IsValid(), "Buffer ID is invalid. You must initialize only buffers which were returned by MemoryBufferManager");
     ENG_ASSERT(createInfo.type != MemoryBufferType::TYPE_INVALID && createInfo.type < MemoryBufferType::TYPE_COUNT,
         "Invalid \'{}\' buffer create info type", m_dbgName.CStr());
@@ -206,11 +208,6 @@ bool MemoryBuffer::Create(const MemoryBufferCreateInfo& createInfo) noexcept
     ENG_ASSERT(createInfo.dataSize > 0, "Invalid \'{}\' buffer create info data size", m_dbgName.CStr());
     ENG_ASSERT(createInfo.elementSize > 0, "Invalid \'{}\' buffer create info data element size", m_dbgName.CStr());
     ENG_ASSERT(createInfo.dataSize % createInfo.elementSize == 0, "Data size is must be multiple of element size");
-
-    if (IsValid()) {
-        ENG_LOG_WARN("Recreating \'{}\' buffer", m_dbgName.CStr());
-        Destroy();
-    }
 
     glCreateBuffers(1, &m_renderID);
 

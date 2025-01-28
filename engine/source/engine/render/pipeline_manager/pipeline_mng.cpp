@@ -449,6 +449,7 @@ const ShaderProgram& Pipeline::GetShaderProgram() noexcept
 
 bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
 {
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid pipeline (ID: {})", m_ID.Value());
     ENG_ASSERT(m_ID.IsValid(), "Pipeline ID is invalid. You must initialize only pipelines which were returned by PipelineManager");
 
     ENG_ASSERT(createInfo.pInputAssemblyState,     "pInputAssemblyState is nullptr");
@@ -469,11 +470,6 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     if (createInfo.pFrameBufferClearValues->colorAttachmentsCount > 0) {
         ENG_ASSERT(createInfo.pFrameBufferClearValues->pColorAttachmentClearColors, 
             "pColorAttachmentClearColors is nullptr but colorAttachmentsCount is greater than 0");
-    }
-
-    if (IsValid()) {
-        ENG_LOG_WARN("Recreating pipeline");
-        Destroy();
     }
 
     const PipelineFrameBufferClearValues& frameBufferClearValues = *createInfo.pFrameBufferClearValues;

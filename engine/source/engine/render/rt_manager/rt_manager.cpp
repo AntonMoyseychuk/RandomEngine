@@ -16,6 +16,12 @@ static std::unique_ptr<RenderTargetManager> pRenderTargetMngInst = nullptr;
 static int32_t MAX_COLOR_ATTACHMENTS = 0;
 
 
+static bool IsValidRenderTargetFrameBufferID(RTFrameBufferID ID) noexcept
+{
+    return ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT;
+}
+
+
 static void ClearFrameBufferColorInternal(uint32_t renderID, uint32_t index, const float* pColor) noexcept
 {
     glClearNamedFramebufferfv(renderID, GL_COLOR, index, pColor);
@@ -176,7 +182,7 @@ bool FrameBuffer::IsValid() const noexcept
         return true;
     }
 
-    return m_renderID != 0 && m_ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && m_ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
+    return m_renderID != 0 && IsValidID();
 }
 
 
@@ -191,7 +197,15 @@ uint64_t FrameBuffer::Hash() const noexcept
 }
 
 
-ds::StrID FrameBuffer::GetName() const noexcept
+void FrameBuffer::SetDebugName(ds::StrID name) noexcept
+{
+#if defined(ENG_DEBUG)
+    m_dbgName = name;
+#endif
+}
+
+
+ds::StrID FrameBuffer::GetDebugName() const noexcept
 {
 #if defined(ENG_DEBUG)
     return m_dbgName;
@@ -201,19 +215,11 @@ ds::StrID FrameBuffer::GetName() const noexcept
 }
 
 
-bool FrameBuffer::Init(ds::StrID dbgName, const FramebufferCreateInfo &createInfo) noexcept
+bool FrameBuffer::Create(const FramebufferCreateInfo &createInfo) noexcept
 {
-#if defined(ENG_DEBUG)
-    if (IsValid()) {
-        if (m_dbgName != dbgName) {
-            ENG_LOG_GRAPHICS_API_WARN("Reinitializing of \'{}\' framebuffer to \'{}\'", m_dbgName.CStr(), dbgName.CStr());
-        } else {
-            ENG_LOG_GRAPHICS_API_WARN("Reinitializing of \'{}\' framebuffer", m_dbgName.CStr());
-        }
-    }
-#endif
-
-    return Recreate(dbgName, createInfo);
+    ENG_ASSERT(!IsValid(), "Attempt to create already valid frame buffer: {}", m_dbgName.CStr());
+    
+    return Recreate(createInfo);
 }
 
 
@@ -223,7 +229,7 @@ void FrameBuffer::Destroy() noexcept
 
 #if defined(ENG_DEBUG)
     m_attachments.clear();
-    m_dbgName = "";
+    m_dbgName = "_INVALID_";
 #endif
 
     m_attachmentsState.colorAttachmentsCount = 0;
@@ -235,12 +241,9 @@ void FrameBuffer::Destroy() noexcept
 }
 
 
-bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& createInfo) noexcept
+bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
 {
     if (createInfo.ID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-    #if defined(ENG_DEBUG)
-        m_dbgName = dbgName;
-    #endif
         m_attachmentsState.colorAttachmentsCount = MAX_COLOR_ATTACHMENTS;
         m_attachmentsState.depthAttachmentsCount = 1;
         m_attachmentsState.stencilAttachmentsCount = 1;
@@ -251,10 +254,9 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& creat
 
     ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before framebuffers initializing");
     
-    ENG_ASSERT_GRAPHICS_API(createInfo.ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && createInfo.ID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Framebufer ID is invalid");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(createInfo.ID), "Invalid frame buffer ID");
     ENG_ASSERT_GRAPHICS_API(createInfo.attachmentsCount > 0 && createInfo.attachmentsCount <= (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid attachments count");
-    ENG_ASSERT_GRAPHICS_API(createInfo.pAttachments, "Attachements are nullptr (\'{}\')", dbgName.CStr());
+    ENG_ASSERT_GRAPHICS_API(createInfo.pAttachments, "Attachements are nullptr (\'{}\')", m_dbgName.CStr());
 
     if (IsValid()) {
         Destroy();
@@ -295,7 +297,7 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& creat
         const uint32_t texWidth = pTex->GetWidth();
         const uint32_t texHeight = pTex->GetHeight();
 
-        ENG_ASSERT_GRAPHICS_API(pTex, "Attachment {} of \'{}\' framebuffer is nullptr", attachmentIdx, dbgName.CStr());
+        ENG_ASSERT_GRAPHICS_API(pTex, "Attachment {} of \'{}\' framebuffer is nullptr", attachmentIdx, m_dbgName.CStr());
         ENG_ASSERT_GRAPHICS_API(pTex->IsValid(), "Invalid color attachment");
         ENG_ASSERT_GRAPHICS_API(pTex->IsType2D(), "Invalid color attachment type. Only 2D textures are supported for now");
 
@@ -334,9 +336,6 @@ bool FrameBuffer::Recreate(ds::StrID dbgName, const FramebufferCreateInfo& creat
         return false;
     }
 
-#if defined(ENG_DEBUG)
-    m_dbgName = dbgName;
-#endif
     m_ID = createInfo.ID;
 
     return true;
@@ -390,6 +389,12 @@ bool FrameBuffer::CheckCompleteStatus() const noexcept
 }
 
 
+bool FrameBuffer::IsValidID() const noexcept
+{
+    return IsValidRenderTargetFrameBufferID(m_ID);
+}
+
+
 RenderTargetManager &RenderTargetManager::GetInstance() noexcept
 {
     ENG_ASSERT(engIsRenderTargetManagerInitialized(), "Render target manager is not initialized");
@@ -416,8 +421,7 @@ Texture *RenderTargetManager::GetRTTexture(RTTextureID texID) noexcept
 
 FrameBuffer *RenderTargetManager::GetFrameBuffer(RTFrameBufferID framebufferID) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID && framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT, 
-        "Invalid RT frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     FrameBuffer* pRTFrameBuffer = &m_frameBufferStorage[static_cast<size_t>(framebufferID)];
 
@@ -427,8 +431,7 @@ FrameBuffer *RenderTargetManager::GetFrameBuffer(RTFrameBufferID framebufferID) 
 
 void RenderTargetManager::BindFrameBuffer(RTFrameBufferID framebufferID) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     m_frameBufferStorage[static_cast<size_t>(framebufferID)].Bind();
 }
@@ -436,8 +439,7 @@ void RenderTargetManager::BindFrameBuffer(RTFrameBufferID framebufferID) noexcep
 
 void RenderTargetManager::ClearFrameBuffer(RTFrameBufferID framebufferID, float r, float g, float b, float a, float depth, int32_t stencil) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
@@ -448,8 +450,7 @@ void RenderTargetManager::ClearFrameBuffer(RTFrameBufferID framebufferID, float 
 
 void RenderTargetManager::ClearFrameBufferColor(RTFrameBufferID framebufferID, uint32_t index, float r, float g, float b, float a) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
@@ -460,8 +461,7 @@ void RenderTargetManager::ClearFrameBufferColor(RTFrameBufferID framebufferID, u
 
 void RenderTargetManager::ClearFrameBufferDepth(RTFrameBufferID framebufferID, float depth) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
@@ -471,8 +471,7 @@ void RenderTargetManager::ClearFrameBufferDepth(RTFrameBufferID framebufferID, f
 
 void RenderTargetManager::ClearFrameBufferStencil(RTFrameBufferID framebufferID, int32_t stencil) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
@@ -482,8 +481,7 @@ void RenderTargetManager::ClearFrameBufferStencil(RTFrameBufferID framebufferID,
 
 void RenderTargetManager::ClearFrameBufferDepthStencil(RTFrameBufferID framebufferID, float depth, int32_t stencil) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(framebufferID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT && framebufferID != RTFrameBufferID::RT_FRAMEBUFFER_INVALID, 
-        "Invalid frame buffer ID");
+    ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(framebufferID), "Invalid frame buffer ID");
     
     const size_t frameBufferIdx = static_cast<size_t>(framebufferID);
     FrameBuffer& frameBuffer = m_frameBufferStorage[frameBufferIdx];
@@ -666,11 +664,13 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         defaultFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT;
 
         ds::StrID defaultFrameBufferName = "__DEFAULT_FRAMEBUFFER__";
-        const size_t defaultFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
+        FrameBuffer& defaultFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT)];
 
-        if (!m_frameBufferStorage[defaultFrameBufferIdx].Init(defaultFrameBufferName, defaultFrameBufferCreateInfo)) {
+        if (!defaultFrameBuffer.Create(defaultFrameBufferCreateInfo)) {
             ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", defaultFrameBufferName.CStr());
         }
+
+        defaultFrameBuffer.SetDebugName(defaultFrameBufferName);
     }
 
     {
@@ -685,11 +685,13 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
 
         ds::StrID gbufferFrameBufferName = "__GBUFFER_FRAMEBUFFER__";
-        const size_t gbufferFrameBufferIdx = static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
-        
-        if (!m_frameBufferStorage[gbufferFrameBufferIdx].Init(gbufferFrameBufferName, gbufferFrameBufferCreateInfo)) {
+        FrameBuffer& gbufferFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER)];
+
+        if (!gbufferFrameBuffer.Create(gbufferFrameBufferCreateInfo)) {
             ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", gbufferFrameBufferName.CStr());
         }
+
+        gbufferFrameBuffer.SetDebugName(gbufferFrameBufferName);
     }
 }
 
