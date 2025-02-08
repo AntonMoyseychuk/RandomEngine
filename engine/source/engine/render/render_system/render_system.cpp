@@ -93,7 +93,7 @@ void RenderSystem::RunColorPass() noexcept
     if (!isInitialized) {
         srand(time(0));
 
-        static constexpr const char* SHADER_INCLUDE_DIR = "D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\include";
+        static constexpr const char* SHADER_INCLUDE_DIR = ENG_ENGINE_DIR "/source/shaders/include";
         static const char* GBUFFER_DEFINES[] = {
         #if defined(ENG_DEBUG)
             "ENV_DEBUG",
@@ -105,7 +105,7 @@ void RenderSystem::RunColorPass() noexcept
 
         vsStageCreateInfo.type = ShaderStageType::VERTEX;
 
-        const std::vector<char> vsSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\source\\base\\base.vs");
+        const std::vector<char> vsSourceCode = ReadTextFile(ENG_ENGINE_DIR "/source/shaders/source/base/base.vs");
         vsStageCreateInfo.pSourceCode = vsSourceCode.data();
         vsStageCreateInfo.codeSize = vsSourceCode.size();
 
@@ -119,7 +119,7 @@ void RenderSystem::RunColorPass() noexcept
 
         psStageCreateInfo.type = ShaderStageType::PIXEL;
 
-        const std::vector<char> psSourceCode = ReadTextFile("D:\\Studies\\Graphics\\random-graphics\\engine\\source\\shaders\\source\\base\\base.fs");
+        const std::vector<char> psSourceCode = ReadTextFile(ENG_ENGINE_DIR "/source/shaders/source/base/base.fs");
         psStageCreateInfo.pSourceCode = psSourceCode.data();
         psStageCreateInfo.codeSize = psSourceCode.size();
 

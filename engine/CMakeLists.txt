@@ -107,3 +107,9 @@ target_include_directories(engine
 target_link_directories(engine PRIVATE ${spdlog_LIBRARY_DIRS})
 
 target_link_libraries(engine PRIVATE glfw glad spdlog)
+
+
+target_compile_definitions(engine 
+    PRIVATE ENG_ENGINE_DIR="${ENGINE_DIR}"
+    
+    PRIVATE ${AM_GRAPHICS_API})
