@@ -681,8 +681,6 @@ void MeshManager::UnregisterMeshObj(MeshObj* pObj)
 
     DeallocateMeshID(pObj->m_ID);
 
-    const uint64_t index = pObj->m_ID.Value();
-
     m_meshNameToStorageIndexMap.erase(pObj->m_name);
 
     pObj->m_name = "_INVALID_";

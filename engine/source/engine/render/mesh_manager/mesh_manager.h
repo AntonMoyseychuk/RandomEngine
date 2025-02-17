@@ -209,9 +209,6 @@ private:
 };
 
 
-bool engIsMeshDataManagerInitialized() noexcept;
-
-
 using MeshID = BaseID<uint32_t>;
 
 
@@ -296,6 +293,9 @@ private:
 
     bool m_isInitialized = false;
 };
+
+
+bool engIsMeshDataManagerInitialized() noexcept;
 
 
 bool engInitMeshManager() noexcept;
