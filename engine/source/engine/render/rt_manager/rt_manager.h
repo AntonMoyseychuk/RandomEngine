@@ -1,7 +1,7 @@
 #pragma once
 
 #include "render/texture_manager/texture_mng.h"
-#include "event_system/event_dispatcher.h"
+#include "core/event_system/event_dispatcher.h"
 
 #include "core.h"
 

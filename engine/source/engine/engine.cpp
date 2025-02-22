@@ -1,7 +1,7 @@
 #include "pch.h"
 
 #include "engine/engine.h"
-#include "engine/event_system/event_dispatcher.h"
+#include "engine/core/event_system/event_dispatcher.h"
 
 #include "engine/render/render_system/render_system.h"
 
