@@ -56,8 +56,8 @@ Engine::~Engine()
 {
     m_pMainWindow = nullptr;
 
-    engTerminateCameraManager();
     engTerminateRenderSystem();
+    engTerminateCameraManager();
     engTerminateWindowSystem();    
     engTerminateLogSystem();
 }
@@ -152,16 +152,16 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
         return;
     }
 
+    if (!engInitCameraManager()) {
+        return;
+    }
+
     if (!engInitRenderSystem()) {
         return;
     }
 
     // Notify all subscribed systems to resized their resources
     EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pMainWindow->GetFramebufferWidth(), m_pMainWindow->GetFramebufferHeight());
-
-    if (!engInitCameraManager()) {
-        return;
-    }
 
     m_isInitialized = true;
 

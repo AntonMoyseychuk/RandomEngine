@@ -18,7 +18,6 @@
 
 #include "render/platform/OpenGL/opengl_driver.h"
 
-#include "auto/auto_texture_constants.h"
 #include "auto/auto_registers_common.h"
 
 
@@ -91,6 +90,7 @@ void RenderSystem::RunColorPass() noexcept
     static Pipeline* pMergePipeline = nullptr;
 
     static MemoryBuffer* pCommonConstBuffer = nullptr;
+    static MemoryBuffer* pCameraConstBuffer = nullptr;
 
     static Camera* pMainCam = nullptr;
 
@@ -405,6 +405,22 @@ void RenderSystem::RunColorPass() noexcept
         
         pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
 
+        MemoryBufferCreateInfo cameraConstBufferCreateInfo = {};
+        cameraConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
+        cameraConstBufferCreateInfo.dataSize = sizeof(COMMON_CAMERA_CB);
+        cameraConstBufferCreateInfo.elementSize = sizeof(COMMON_CAMERA_CB);
+        cameraConstBufferCreateInfo.creationFlags = static_cast<MemoryBufferCreationFlags>(
+            BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_WRITABLE);
+        cameraConstBufferCreateInfo.pData = nullptr;
+
+        pCameraConstBuffer = MemoryBufferManager::GetInstance().RegisterBuffer();
+        ENG_ASSERT(pCameraConstBuffer, "Failed to register camera const buffer");
+        pCameraConstBuffer->Create(cameraConstBufferCreateInfo);
+        ENG_ASSERT(pCameraConstBuffer->IsValid(), "Failed to create camera const buffer");
+        pCameraConstBuffer->SetDebugName("__COMMON_CAMERA_CB__");
+
+        pCameraConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CAMERA_CB).GetBinding());
+
         pMainCam = &engGetMainCamera();
 
         isInitialized = true;
@@ -419,11 +435,19 @@ void RenderSystem::RunColorPass() noexcept
     
     glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
 
+    COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
+    ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");
+
+    const glm::mat4x4& cameraViewMat = pMainCam->GetViewMatrix();
+    memcpy_s(&pCamConstBuff->COMMON_VIEW_MATRIX_00, 16 * sizeof(float), &cameraViewMat, sizeof(cameraViewMat));
+    const glm::mat4x4& cameraProjMat = pMainCam->GetProjectionMatrix();
+    memcpy_s(&pCamConstBuff->COMMON_PROJ_MATRIX_00, 16 * sizeof(float), &cameraProjMat, sizeof(cameraProjMat));
+    
+    pCameraConstBuffer->Unmap();
+
     {
         pGBufferPipeline->ClearFrameBuffer();
         pGBufferPipeline->Bind();
-
-        CameraManager::GetInstance().PrepareGPUData(*pMainCam);
 
         COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(pCommonConstBuffer->MapWrite());
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");

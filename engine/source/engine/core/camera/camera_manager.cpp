@@ -5,7 +5,6 @@
 
 #include "utils/debug/assertion.h"
 
-#include "auto/auto_texture_constants.h"
 #include "auto/auto_registers_common.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -35,7 +34,7 @@ const CameraOrthoCreateInfo& CameraCreateInfo::GetOrthoProjParams() const noexce
 
 Camera::~Camera()
 {
-    Terminate();
+    Destroy();
 }
 
 
@@ -152,6 +151,30 @@ bool Camera::Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept
 }
 
 
+void Camera::Destroy() noexcept
+{
+    m_matProjection = glm::identity<glm::mat4x4>();
+    m_matWCS = glm::identity<glm::mat4x4>();
+
+    m_rotation = glm::identity<glm::quat>();
+    m_position = glm::vec3(0.f);
+
+    m_fovDegrees = 0.f;
+    m_aspectRatio = 0.f;
+
+    m_left = 0.f;
+    m_right = 0.f;
+    m_top = 0.f;
+    m_bottom = 0.f;
+
+    m_zNear = 0.f;
+    m_zFar = 0.f;
+
+    m_flags = {};
+    m_idx = UINT16_MAX;
+}
+
+
 bool Camera::CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept
 {
     m_position = createInfo.position;
@@ -217,6 +240,39 @@ bool Camera::CreateOrthoProj(const CameraOrthoCreateInfo &createInfo) noexcept
 
 void Camera::Update(float dt) noexcept
 {
+    const Input& input = engGetMainWindow().GetInput();
+    
+    glm::vec3 offset(0.f);
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_W)) {
+        offset -= GetZDir() * dt;
+    }
+    
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_S)) {
+        offset += GetZDir() * dt;
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_D)) {
+        offset += GetXDir() * dt;
+    }
+    
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_A)) {
+        offset -= GetXDir() * dt;
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_E)) {
+        offset += GetYDir() * dt;
+    }
+    
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_Q)) {
+        offset -= GetYDir() * dt;
+    }
+
+    if (!glm::isNull(offset, glm::epsilon<float>())) {
+        m_position += glm::normalize(offset) * dt;
+        RequestRecalcViewMatrix();
+    }
+
     if (IsProjMatrixRecalcRequested()) {
         RecalcProjMatrix();
         ClearProjRecalcRequest();
@@ -246,30 +302,6 @@ void Camera::RecalcViewMatrix() noexcept
 }
 
 
-void Camera::Terminate() noexcept
-{
-    m_matProjection = glm::identity<glm::mat4x4>();
-    m_matWCS = glm::identity<glm::mat4x4>();
-
-    m_rotation = glm::identity<glm::quat>();
-    m_position = glm::vec3(0.f);
-
-    m_fovDegrees = 0.f;
-    m_aspectRatio = 0.f;
-
-    m_left = 0.f;
-    m_right = 0.f;
-    m_top = 0.f;
-    m_bottom = 0.f;
-
-    m_zNear = 0.f;
-    m_zFar = 0.f;
-
-    m_flags = {};
-    m_idx = UINT16_MAX;
-}
-
-
 CameraManager& CameraManager::GetInstance() noexcept
 {
     ASSERT_CAMERA_MNG_INIT_STATUS();
@@ -288,22 +320,6 @@ void CameraManager::Update(float dt) noexcept
     for (Camera& cam : m_cameraStorage) {
         cam.Update(dt);
     }
-}
-
-
-void CameraManager::PrepareGPUData(const Camera& cam) noexcept
-{
-    m_pConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CAMERA_CB).GetBinding());
-
-    COMMON_CAMERA_CB* pConstBuff = m_pConstBuffer->MapWrite<COMMON_CAMERA_CB>();
-    ENG_ASSERT_GRAPHICS_API(pConstBuff, "Failed to map camera const buffer");
-
-    const glm::mat4x4& cameraViewMat = cam.GetViewMatrix();
-    memcpy_s(&pConstBuff->COMMON_VIEW_MATRIX_00, 16 * sizeof(float), &cameraViewMat, sizeof(cameraViewMat));
-    const glm::mat4x4& cameraProjMat = cam.GetProjectionMatrix();
-    memcpy_s(&pConstBuff->COMMON_PROJ_MATRIX_00, 16 * sizeof(float), &cameraProjMat, sizeof(cameraProjMat));
-    
-    m_pConstBuffer->Unmap();
 }
 
 
@@ -355,7 +371,7 @@ bool CameraManager::Init() noexcept
 
     Camera& mainCam = m_cameraStorage[MAIN_CAM_IDX];
     
-    SubscribeCameraToEvent<EventFramebufferResized>(mainCam, [&mainCam](const void* pEvent) {
+    SubscribeCamera<EventFramebufferResized>(mainCam, [&mainCam](const void* pEvent) {
         const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
         const uint32_t width = event.GetWidth();
         const uint32_t height = event.GetHeight();
@@ -375,10 +391,6 @@ bool CameraManager::Init() noexcept
         }
     }, "_MAIN_CAM_FRAMEBUF_RESIZE_CALLBACK_");
 
-    if (!InitGPUData()) {
-        return false;
-    }
-
     m_isInitialized = true;
 
     return true;
@@ -387,8 +399,6 @@ bool CameraManager::Init() noexcept
 
 void CameraManager::Terminate() noexcept
 {
-    TerminateGPUData();
-
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
     for (const CameraEventListenersStorage& storage : m_cameraEventListenersStorage) {
         for (const CameraEventListenerDesc& desc : storage) {
@@ -399,41 +409,6 @@ void CameraManager::Terminate() noexcept
     m_cameraStorage.clear();
     
     m_isInitialized = false;
-}
-
-
-bool CameraManager::InitGPUData() noexcept
-{
-    if (IsInitialized()) {
-        return true;
-    }
-
-    MemoryBufferCreateInfo constBufferCreateInfo = {};
-    constBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
-    constBufferCreateInfo.dataSize = sizeof(COMMON_CAMERA_CB);
-    constBufferCreateInfo.elementSize = sizeof(COMMON_CAMERA_CB);
-    constBufferCreateInfo.creationFlags = static_cast<MemoryBufferCreationFlags>(
-        BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_WRITABLE);
-    constBufferCreateInfo.pData = nullptr;
-
-    m_pConstBuffer = MemoryBufferManager::GetInstance().RegisterBuffer();
-    ENG_ASSERT(m_pConstBuffer, "Failed to register common camera const buffer");
-    m_pConstBuffer->Create(constBufferCreateInfo);
-    ENG_ASSERT(m_pConstBuffer->IsValid(), "Failed to create common const buffer");
-    m_pConstBuffer->SetDebugName("__COMMON_CAMERA_CB__");
-
-    return true;
-}
-
-
-void CameraManager::TerminateGPUData() noexcept
-{
-    if (!IsInitialized()) {
-        return;
-    }
-
-    m_pConstBuffer->Destroy();
-    MemoryBufferManager::GetInstance().UnregisterBuffer(m_pConstBuffer);
 }
 
 

@@ -1,7 +1,7 @@
 template <typename EventType>
-inline void CameraManager::SubscribeCameraToEvent(const Camera &cam, const EventListener::CallbackType& callback, ds::StrID debugName) noexcept
+inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListener::CallbackType& callback, ds::StrID debugName) noexcept
 {
-    if (IsCameraHaveSubscription<EventType>(cam)) {
+    if (IsCameraSubscribed<EventType>(cam)) {
         return;
     }
 
@@ -26,7 +26,7 @@ inline void CameraManager::SubscribeCameraToEvent(const Camera &cam, const Event
 
 
 template <typename EventType>
-inline void CameraManager::UnsubscribeCameraFromEvent(const Camera &cam) noexcept
+inline void CameraManager::UnsubscribeCamera(const Camera &cam) noexcept
 {
     const uint32_t cameraEventListenerIndex = GetCameraEventListenerIndex<EventType>(cam);
     if (cameraEventListenerIndex >= MAX_CAM_EVENT_LISTENERS_COUNT) {
@@ -43,7 +43,7 @@ inline void CameraManager::UnsubscribeCameraFromEvent(const Camera &cam) noexcep
 
 
 template <typename EventType>
-inline bool CameraManager::IsCameraHaveSubscription(const Camera &cam) const noexcept
+inline bool CameraManager::IsCameraSubscribed(const Camera &cam) const noexcept
 {
     return GetCameraEventListenerIndex<EventType>(cam) != MAX_CAM_EVENT_LISTENERS_COUNT;
 }

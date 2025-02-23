@@ -3,8 +3,6 @@
 #include "core/event_system/event_dispatcher.h"
 #include "engine/window_system/window_system_events.h"
 
-#include "render/mem_manager/buffer_manager.h"
-
 #include "utils/data_structures/strid.h"
 
 #include <glm/glm.hpp>
@@ -99,7 +97,7 @@ public:
 
 private:
     bool Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept;
-    void Terminate() noexcept;
+    void Destroy() noexcept;
 
     bool CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept;
 
@@ -175,29 +173,25 @@ public:
     ~CameraManager();
 
     void Update(float dt) noexcept;
-    void PrepareGPUData(const Camera& cam) noexcept;
 
     Camera& GetCamera(uint32_t idx) noexcept;
 
     bool IsInitialized() const noexcept { return m_isInitialized; }
 
     template <typename EventType>
-    void SubscribeCameraToEvent(const Camera& cam, const EventListener::CallbackType& callback, ds::StrID debugName = "") noexcept;
+    void SubscribeCamera(const Camera& cam, const EventListener::CallbackType& callback, ds::StrID debugName = "") noexcept;
 
     template <typename EventType>
-    void UnsubscribeCameraFromEvent(const Camera& cam) noexcept;
+    void UnsubscribeCamera(const Camera& cam) noexcept;
 
     template <typename EventType>
-    bool IsCameraHaveSubscription(const Camera& cam) const noexcept;
+    bool IsCameraSubscribed(const Camera& cam) const noexcept;
 
 private:
     CameraManager() = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;
-
-    bool InitGPUData() noexcept;
-    void TerminateGPUData() noexcept;
 
     template <typename EventType>
     uint32_t GetCameraEventListenerIndex(const Camera& cam) const noexcept;
@@ -218,8 +212,6 @@ private:
 
     std::vector<Camera> m_cameraStorage;
     std::vector<CameraEventListenersStorage> m_cameraEventListenersStorage;
-
-    MemoryBuffer* m_pConstBuffer = nullptr;
     
     bool m_isInitialized = false;
 };

@@ -7,7 +7,6 @@
 
 #include "utils/data_structures/hash.h"
 
-#include "auto/auto_texture_constants.h"
 #include "auto/auto_registers_common.h"
 
 

@@ -176,6 +176,16 @@ public:
 
     KeyState GetKeyState(KeyboardKey key) const noexcept;
     MouseButtonState GetMouseButtonState(MouseButton button) const noexcept;
+
+    bool IsKeyPressed(KeyboardKey key) const noexcept { return GetKeyState(key) == KeyState::STATE_PRESSED; }
+    bool IsKeyReleased(KeyboardKey key) const noexcept { return GetKeyState(key) == KeyState::STATE_RELEASED; }
+    bool IsKeyHold(KeyboardKey key) const noexcept { return GetKeyState(key) == KeyState::STATE_HOLD; }
+    bool IsKeyPressedOrHold(KeyboardKey key) const noexcept { return IsKeyPressed(key) || IsKeyHold(key); }
+
+    bool IsMouseButtonPressed(MouseButton button) const noexcept { return GetMouseButtonState(button) == MouseButtonState::STATE_PRESSED; }
+    bool IsMouseButtonReleased(MouseButton button) const noexcept { return GetMouseButtonState(button) == MouseButtonState::STATE_RELEASED; }
+    bool IsMouseButtonHold(MouseButton button) const noexcept { return GetMouseButtonState(button) == MouseButtonState::STATE_HOLD; }
+    bool IsMouseButtonPressedOrHold(MouseButton button) const noexcept { return IsMouseButtonPressed(button) || IsMouseButtonHold(button); }
     
     const CursorPositon& GetCursorPosition() const noexcept { return m_currCursorPosition; }
     float GetCursorDx() const noexcept { return m_currCursorPosition.x - m_prevCursorPosition.x; }
