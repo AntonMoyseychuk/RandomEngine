@@ -1,9 +1,10 @@
 #include "pch.h"
 
 #include "engine/engine.h"
-#include "engine/core/event_system/event_dispatcher.h"
+#include "core/event_system/event_dispatcher.h"
 
-#include "engine/render/render_system/render_system.h"
+#include "render/render_system/render_system.h"
+#include "core/camera/camera_manager.h"
 
 #include "utils/debug/assertion.h"
 
@@ -56,6 +57,7 @@ Engine::~Engine()
     m_pMainWindow = nullptr;
 
     engTerminateRenderSystem();
+    engTerminateCameraManager();
     engTerminateWindowSystem();    
     engTerminateLogSystem();
 }
@@ -145,6 +147,10 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
     m_pMainWindow = windowSys.CreateWindow(WINDOW_TAG_MAIN, mainWindowCreateInfo);
 
     if (!(m_pMainWindow && m_pMainWindow->IsInitialized())) {
+        return;
+    }
+
+    if (!engInitCameraManager()) {
         return;
     }
 

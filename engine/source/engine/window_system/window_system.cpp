@@ -8,8 +8,8 @@
 #include <GLFW/glfw3.h>
 
 
-#define ENG_CHECK_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow, "Window is not initialized")
-
+#define ASSERT_WINDOW_SYSTEM_INIT_STATUS() ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Window system is not initialized")
+#define ASSERT_WINDOW_INIT_STATUS(pWindow) ENG_ASSERT_WINDOW(pWindow && pWindow->IsInitialized(), "Window is not initialized")
 
 static std::unique_ptr<WindowSystem> pWindowSysInst = nullptr;
 
@@ -189,8 +189,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_MOV");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_MOVED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_MOVED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_MOVED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_MOVED].typeIndexHash = listenerID.TypeIndexHash();
     }
     
     {
@@ -203,8 +203,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_PRESS");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_PRESSED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_PRESSED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -217,8 +217,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_RELEASE");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_RELEASED].id = listenerID.Value(); 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_RELEASED].id = listenerID.Value(); 
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -231,8 +231,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_HOLD");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_HOLD].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_HOLD].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_HOLD].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_HOLD].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -245,8 +245,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_PRESS");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_PRESSED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_PRESSED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -259,8 +259,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_RELEASE");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_RELEASED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_RELEASED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -273,8 +273,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_HOLD");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_HOLD].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_KEY_HOLD].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_HOLD].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_HOLD].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -283,8 +283,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_LEAVE");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_LEAVED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_LEAVED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_LEAVED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_LEAVED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -293,8 +293,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_ENTER");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_ENTERED].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_CURSOR_ENTERED].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_ENTERED].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_ENTERED].typeIndexHash = listenerID.TypeIndexHash();
     }
     
     {
@@ -303,8 +303,8 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_WHEEL");
 
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_WHEEL].id = listenerID.Value();
-        m_inputListenersIDDescs[(size_t)InputEventIndex::IDX_MOUSE_WHEEL].typeIndexHash = listenerID.TypeIndexHash();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_WHEEL].id = listenerID.Value();
+        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_WHEEL].typeIndexHash = listenerID.TypeIndexHash();
     }
 
 
@@ -375,7 +375,7 @@ void Input::Destroy() noexcept
 {
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
-    for (WindowSystemEventListenerDesc& desc : m_inputListenersIDDescs) {
+    for (InputEventListenerDesc& desc : m_inputListenersIDDescs) {
         dispatcher.Unsubscribe(EventListenerID(desc.id, desc.typeIndexHash));
         desc = {};
     }
@@ -434,7 +434,7 @@ Window::~Window()
 
 bool Window::Init(const WindowCreateInfo& createInfo) noexcept
 {
-    ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Can't create window since window system is not initialized");
+    ASSERT_WINDOW_SYSTEM_INIT_STATUS();
     ENG_ASSERT_WINDOW(createInfo.pTitle != nullptr, "Window title is nullptr");
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
@@ -452,8 +452,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_RESIZED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_RESIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_RESIZED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -467,8 +467,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MINIMIZED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_MINIMIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_MINIMIZED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MINIMIZED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MINIMIZED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -482,8 +482,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MAXIMIZED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_MAXIMIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_MAXIMIZED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MAXIMIZED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MAXIMIZED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -497,8 +497,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_SIZE_RESTORED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_SIZE_RESTORED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_SIZE_RESTORED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_SIZE_RESTORED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_SIZE_RESTORED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -511,8 +511,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CLOSED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_CLOSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_CLOSED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_CLOSED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_CLOSED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -525,8 +525,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_FOCUSED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_FOCUSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_FOCUSED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FOCUSED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FOCUSED].typeIndexHash = listenerID.TypeIndexHash();
     }
     
     {
@@ -539,8 +539,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_UNFOCUSED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_UNFOCUSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_UNFOCUSED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_UNFOCUSED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_UNFOCUSED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
     {
@@ -556,8 +556,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
         ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
         dispatcher.SetListenerDebugName(listenerID, "WINDOW_FRAMEBUFFER_RESIZED");
 
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[(size_t)WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].id = listenerID.Value();
+        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
     }
 
 
@@ -646,7 +646,7 @@ void Window::Destroy() noexcept
     m_input.Destroy();
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    for (WindowSystemEventListenerDesc& desc : m_windowEventListenersIDDescs) {
+    for (WindowEventListenerDesc& desc : m_windowEventListenersIDDescs) {
         dispatcher.Unsubscribe(EventListenerID(desc.id, desc.typeIndexHash));
         desc = {};
     }
@@ -666,56 +666,56 @@ void Window::Destroy() noexcept
 
 void Window::PollEvents() noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     glfwPollEvents();
 }
 
 
 void Window::SwapBuffers() noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     glfwSwapBuffers(static_cast<GLFWwindow*>(m_pNativeWindow));
 }
 
 
 void Window::Show() noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     glfwShowWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
 }
 
 
 void Window::Hide() noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     glfwHideWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
 }
 
 
 const char* Window::GetTitle() const noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     return glfwGetWindowTitle(static_cast<GLFWwindow*>(m_pNativeWindow));
 }
 
 
 void Window::SetTitle(const char *title) noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     glfwSetWindowTitle(static_cast<GLFWwindow*>(m_pNativeWindow), title);
 }
 
 
 bool Window::IsVisible() const noexcept
 {
-    ENG_CHECK_WINDOW_INIT_STATUS(m_pNativeWindow);
+    ASSERT_WINDOW_INIT_STATUS(this);
     return glfwGetWindowAttrib(static_cast<GLFWwindow*>(m_pNativeWindow), GLFW_VISIBLE);
 }
 
 
 WindowSystem& WindowSystem::GetInstance() noexcept
 {
-    ENG_ASSERT_WINDOW(engIsWindowSystemInitialized(), "Window system is not initialized");
+    ASSERT_WINDOW_SYSTEM_INIT_STATUS();
     return *pWindowSysInst;
 }
 
@@ -793,6 +793,17 @@ void WindowSystem::Terminate() noexcept
 
     glfwTerminate();
     m_isInitialized = false;
+}
+
+
+Window& engGetMainWindow() noexcept
+{
+    ASSERT_WINDOW_SYSTEM_INIT_STATUS();
+    
+    Window* pMainWindow = pWindowSysInst->GetWindowByTag(WINDOW_TAG_MAIN);
+    ASSERT_WINDOW_INIT_STATUS(pMainWindow);
+
+    return *pMainWindow;
 }
 
 

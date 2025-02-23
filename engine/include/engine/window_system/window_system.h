@@ -1,35 +1,9 @@
 #pragma once
 
-#include <cstdint>
+#include "window_system_events.h"
+
 #include <bitset>
 #include <array>
-
-
-#define DECLARE_MOUSE_BUTTON_EVENT_BODY(EventName)          \
-public:                                                     \
-    EventName(int32_t button)                               \
-        : m_button(button) {}                               \
-                                                            \
-    int32_t GetButton() const noexcept { return m_button; } \
-                                                            \
-private:                                                    \
-    int32_t m_button;
-
-
-#define DECLARE_KEYBOARD_EVENT_BODY(EventName)                  \
-public:                                                         \
-    EventName(int32_t key, int32_t scancode)                    \
-        : m_key(key), m_scancode(scancode) {}                   \
-                                                                \
-    int32_t GetKey() const noexcept { return m_key; }           \
-    int32_t GetScancode() const noexcept { return m_scancode; } \
-                                                                \
-private:                                                        \
-    int32_t m_key;                                              \
-    int32_t m_scancode;
-
-
-#define DECALRE_EMPTY_EVENT(EventName) struct EventName {}
 
 
 enum class KeyboardKey : uint8_t
@@ -193,100 +167,6 @@ struct CursorPositon
 };
 
 
-struct WindowSystemEventListenerDesc
-{
-    uint64_t id;
-    uint64_t typeIndexHash;
-};
-
-
-DECALRE_EMPTY_EVENT(EventCursorLeaved);
-DECALRE_EMPTY_EVENT(EventCursorEntered);
-
-
-struct EventMousePressed
-{
-    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMousePressed)
-};
-
-
-struct EventMouseReleased
-{
-    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMouseReleased)
-};
-
-
-struct EventMouseHold
-{
-    DECLARE_MOUSE_BUTTON_EVENT_BODY(EventMouseHold)
-};
-
-
-struct EventKeyPressed
-{
-    DECLARE_KEYBOARD_EVENT_BODY(EventKeyPressed)
-};
-
-
-struct EventKeyReleased
-{
-    DECLARE_KEYBOARD_EVENT_BODY(EventKeyReleased)
-};
-
-
-struct EventKeyHold
-{
-    DECLARE_KEYBOARD_EVENT_BODY(EventKeyHold)
-};
-
-
-struct EventCursorMoved
-{
-public:
-    EventCursorMoved(float x, float y)
-        : m_xpos(x), m_ypos(y) {}
-
-    float GetX() const noexcept { return m_xpos; }
-    float GetY() const noexcept { return m_ypos; }
-
-private:
-    float m_xpos;
-    float m_ypos;
-};
-
-
-struct EventMouseWheel
-{
-public:
-    EventMouseWheel(float xoffset, float yoffset)
-        : m_xoffset(xoffset), m_yoffset(yoffset) {}
-
-    float GetDX() const noexcept { return m_xoffset; }
-    float GetDY() const noexcept { return m_yoffset; }
-
-private:
-    float m_xoffset;
-    float m_yoffset;
-};
-
-
-enum class InputEventIndex : uint8_t
-{
-    IDX_CURSOR_MOVED,
-    IDX_CURSOR_LEAVED,
-    IDX_CURSOR_ENTERED,
-    IDX_MOUSE_PRESSED,
-    IDX_MOUSE_RELEASED,
-    IDX_MOUSE_HOLD,
-    IDX_MOUSE_WHEEL,
-    IDX_KEY_PRESSED,
-    IDX_KEY_RELEASED,
-    IDX_KEY_HOLD,
-
-    IDX_COUNT,
-};
-
-
 class Input
 {
     friend class Window;
@@ -313,67 +193,36 @@ private:
     void OnMouseMoveEvent(double xpos, double ypos) noexcept;
 
 private:
+    enum InputEventIndex
+    {
+        IDX_CURSOR_MOVED,
+        IDX_CURSOR_LEAVED,
+        IDX_CURSOR_ENTERED,
+        IDX_MOUSE_PRESSED,
+        IDX_MOUSE_RELEASED,
+        IDX_MOUSE_HOLD,
+        IDX_MOUSE_WHEEL,
+        IDX_KEY_PRESSED,
+        IDX_KEY_RELEASED,
+        IDX_KEY_HOLD,
+
+        IDX_COUNT,
+    };
+
+    struct InputEventListenerDesc
+    {
+        uint64_t id;
+        uint64_t typeIndexHash;
+    };
+
     std::array<KeyState, static_cast<size_t>(KeyboardKey::KEY_COUNT)> m_keyStates;
-    std::array<WindowSystemEventListenerDesc, static_cast<size_t>(InputEventIndex::IDX_COUNT)> m_inputListenersIDDescs;
+    std::array<InputEventListenerDesc, InputEventIndex::IDX_COUNT> m_inputListenersIDDescs;
 
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
     
     std::array<MouseButtonState, static_cast<size_t>(MouseButton::BUTTON_COUNT)> m_mouseButtonStates;
     bool m_isIntialized = false;
-};
-
-
-DECALRE_EMPTY_EVENT(EventWindowMinimized);
-DECALRE_EMPTY_EVENT(EventWindowMaximized);
-DECALRE_EMPTY_EVENT(EventWindowSizeRestored);
-DECALRE_EMPTY_EVENT(EventWindowClosed);
-DECALRE_EMPTY_EVENT(EventWindowFocused);
-DECALRE_EMPTY_EVENT(EventWindowUnfocused);
-
-
-struct EventWindowResized
-{
-public:
-    EventWindowResized(int32_t width, int32_t height)
-        : m_width(width), m_height(height) {}
-
-    int32_t GetWidth() const noexcept { return m_width; }
-    int32_t GetHeight() const noexcept { return m_height; }
-
-private:
-    int32_t m_width;
-    int32_t m_height;
-};
-
-
-struct EventFramebufferResized
-{
-public:
-    EventFramebufferResized(int32_t width, int32_t height)
-        : m_width(width), m_height(height) {}
-
-    int32_t GetWidth() const noexcept { return m_width; }
-    int32_t GetHeight() const noexcept { return m_height; }
-
-private:
-    int32_t m_width;
-    int32_t m_height;
-};
-
-
-enum class WindowEventIndex : uint8_t
-{
-    IDX_RESIZED,
-    IDX_MINIMIZED,
-    IDX_MAXIMIZED,
-    IDX_SIZE_RESTORED,
-    IDX_CLOSED,
-    IDX_FOCUSED,
-    IDX_UNFOCUSED,
-    IDX_FRAMEBUFFER_RESIZED,
-
-    IDX_COUNT,
 };
 
 
@@ -442,9 +291,29 @@ private:
     void Destroy() noexcept;
 
 private:
+    enum WindowEventIndex
+    {
+        IDX_RESIZED,
+        IDX_MINIMIZED,
+        IDX_MAXIMIZED,
+        IDX_SIZE_RESTORED,
+        IDX_CLOSED,
+        IDX_FOCUSED,
+        IDX_UNFOCUSED,
+        IDX_FRAMEBUFFER_RESIZED,
+
+        IDX_COUNT,
+    };
+
+    struct WindowEventListenerDesc
+    {
+        uint64_t id;
+        uint64_t typeIndexHash;
+    };
+
     Input m_input;
 
-    std::array<WindowSystemEventListenerDesc, static_cast<size_t>(WindowEventIndex::IDX_COUNT)> m_windowEventListenersIDDescs;
+    std::array<WindowEventListenerDesc, WindowEventIndex::IDX_COUNT> m_windowEventListenersIDDescs;
 
     void* m_pNativeWindow = nullptr;
 
@@ -499,6 +368,9 @@ private:
     std::array<Window, WINDOW_TAG_COUNT> m_windowsStorage;
     bool m_isInitialized = false;
 };
+
+
+Window& engGetMainWindow() noexcept;
 
 
 bool engInitWindowSystem() noexcept;

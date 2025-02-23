@@ -22,11 +22,8 @@ public:
     using EventType = T;
 
 public:
-    static std::type_index GetTypeID() noexcept
-    {
-        static const std::type_index ID(typeid(EventType));
-        return ID;
-    }
+    static std::type_index GetTypeID() noexcept { return TYPE_ID; }
+    static uint64_t GetTypeHash() noexcept { return TYPE_ID.hash_code(); }
 
 public:
     template <typename... Args>
@@ -34,6 +31,9 @@ public:
         : m_event{std::forward<Args>(args)...} {}
 
     const EventType& Get() const noexcept { return m_event; }
+
+private:
+    static inline const std::type_index TYPE_ID = typeid(EventType);
 
 private:
     EventType m_event;
