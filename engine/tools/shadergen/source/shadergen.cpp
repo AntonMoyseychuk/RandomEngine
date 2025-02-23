@@ -273,6 +273,7 @@ static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileCo
         "    inline static constexpr uint32_t _SAMPLER_IDX = " << samplerIdx << ";\n"
         "    inline static constexpr uint32_t _FORMAT = " << format << ";\n"
         "};\n"
+        "\n"
         "\n";
     }
 
@@ -299,8 +300,12 @@ static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFi
         
         ss <<
         "struct " << name << " {\n"
-        "    inline static constexpr ShaderResourceBindStruct<ShaderResourceType::TYPE_CONST_BUFFER>" << "_BINDING = { -1, " << binding << " };\n\n";
+        "    inline static constexpr ShaderResourceBindStruct<ShaderResourceType::TYPE_CONST_BUFFER>" << "_BINDING = { -1, " << binding << " };\n";
         
+        if (!constBuffContentsMatches.empty()) {
+            ss << '\n';
+        }
+
         for (const std::cmatch& memberMatch : constBuffContentsMatches) {
             const char* pMemberType = TranslateGLSLToEngineConstantPrimitiveType(filepath, memberMatch[1].str());
             assert(pMemberType);
@@ -317,11 +322,9 @@ static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFi
             ss << ";\n";
         }
 
-        ss << "};\n";
-    }
-
-    if (!constBuffDeclMatches.empty()) {
-        ss << "\n";
+        ss << "};\n"
+        "\n"
+        "\n";
     }
 }
 

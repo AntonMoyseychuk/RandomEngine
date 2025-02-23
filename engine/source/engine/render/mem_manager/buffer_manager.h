@@ -71,8 +71,17 @@ public:
     void BindIndexed(uint32_t index) noexcept;
 
     const void* MapRead() noexcept;
+    template <typename Type>
+    const Type* MapRead() noexcept { return static_cast<const Type*>(MapRead()); }
+
     void* MapWrite() noexcept;
+    template <typename Type>
+    Type* MapWrite() noexcept { return static_cast<Type*>(MapWrite()); }
+
     void* MapReadWrite() noexcept;
+    template <typename Type>
+    Type* MapReadWrite() noexcept { return static_cast<Type*>(MapReadWrite()); }
+
     bool Unmap() const noexcept;
 
     bool IsValid() const noexcept;

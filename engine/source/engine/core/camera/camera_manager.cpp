@@ -5,6 +5,9 @@
 
 #include "utils/debug/assertion.h"
 
+#include "auto/auto_texture_constants.h"
+#include "auto/auto_registers_common.h"
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_query.hpp>
 
@@ -43,17 +46,17 @@ const glm::mat4x4& Camera::GetViewMatrix() const noexcept
 }
 
 
-const glm::mat4x4 &Camera::GetProjectionMatrix() const noexcept
+const glm::mat4x4& Camera::GetProjectionMatrix() const noexcept
 {
     ASSERT_CAMERA_INIT_STATUS();
     return m_matProjection;
 }
 
 
-float Camera::GetFov() const noexcept
+float Camera::GetFovDegrees() const noexcept
 {
     ASSERT_CAMERA_INIT_STATUS();
-    return m_fov;
+    return m_fovDegrees;
 }
 
 
@@ -151,12 +154,10 @@ bool Camera::Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept
 
 bool Camera::CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept
 {
-    if (!glm::isNormalized(createInfo.upDirection, glm::epsilon<float>())) {
-        ENG_ASSERT_FAIL("Up vector must be normalized");
-        return false;
-    }
+    m_position = createInfo.position;
+    m_rotation = createInfo.rotation;
 
-    m_matWCS = glm::lookAt(createInfo.position, createInfo.lookAtPoint, createInfo.upDirection);
+    RecalcViewMatrix();
 
     return true;
 }
@@ -176,14 +177,14 @@ bool Camera::CreatePerspectiveProj(const CameraPerspectiveCreateInfo &createInfo
         return false;
     }
 
-    m_fov = createInfo.fov;
+    m_fovDegrees = createInfo.fovDegrees;
     m_aspectRatio = createInfo.aspectRatio;
     m_zNear = createInfo.zNear;
     m_zFar = createInfo.zFar;
 
     m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ);
 
-    RequestRecalcProjMatrix();
+    RecalcProjMatrix();
 
     return true;
 }
@@ -208,7 +209,7 @@ bool Camera::CreateOrthoProj(const CameraOrthoCreateInfo &createInfo) noexcept
 
     m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ, false);
 
-    RequestRecalcProjMatrix();
+    RecalcProjMatrix();
 
     return true;
 }
@@ -216,23 +217,32 @@ bool Camera::CreateOrthoProj(const CameraOrthoCreateInfo &createInfo) noexcept
 
 void Camera::Update(float dt) noexcept
 {
-    RecalcProj();
+    if (IsProjMatrixRecalcRequested()) {
+        RecalcProjMatrix();
+        ClearProjRecalcRequest();
+    }
+
+    if (IsViewMatrixRecalcRequested()) {
+        RecalcViewMatrix();
+        ClearViewMatrixRecalcRequest();
+    }
 }
 
 
-void Camera::RecalcProj() noexcept
+void Camera::RecalcProjMatrix() noexcept
 {
-    if (!IsProjMatrixRecalcRequested()) {
-        return;
-    }
-
     if (IsPerspectiveProj()) {
-        m_matProjection = glm::perspective(m_fov, m_aspectRatio, m_zNear, m_zFar);
+        m_matProjection = glm::perspective(glm::radians(m_fovDegrees), m_aspectRatio, m_zNear, m_zFar);
     } else if (IsOrthoProj()) {
         m_matProjection = glm::ortho(m_left, m_right, m_bottom, m_top, m_zNear, m_zFar);
-    }
+    }   
+}
 
-    m_flags.reset(CameraFlagBits::FLAG_NEED_RECALC_PROJ);
+
+void Camera::RecalcViewMatrix() noexcept
+{
+    m_matWCS = glm::mat4_cast(m_rotation);
+    m_matWCS *= glm::translate(glm::identity<glm::mat4x4>(), -m_position);
 }
 
 
@@ -241,7 +251,10 @@ void Camera::Terminate() noexcept
     m_matProjection = glm::identity<glm::mat4x4>();
     m_matWCS = glm::identity<glm::mat4x4>();
 
-    m_fov = 0.f;
+    m_rotation = glm::identity<glm::quat>();
+    m_position = glm::vec3(0.f);
+
+    m_fovDegrees = 0.f;
     m_aspectRatio = 0.f;
 
     m_left = 0.f;
@@ -278,6 +291,22 @@ void CameraManager::Update(float dt) noexcept
 }
 
 
+void CameraManager::PrepareGPUData(const Camera& cam) noexcept
+{
+    m_pConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CAMERA_CB).GetBinding());
+
+    COMMON_CAMERA_CB* pConstBuff = m_pConstBuffer->MapWrite<COMMON_CAMERA_CB>();
+    ENG_ASSERT_GRAPHICS_API(pConstBuff, "Failed to map camera const buffer");
+
+    const glm::mat4x4& cameraViewMat = cam.GetViewMatrix();
+    memcpy_s(&pConstBuff->COMMON_VIEW_MATRIX_00, 16 * sizeof(float), &cameraViewMat, sizeof(cameraViewMat));
+    const glm::mat4x4& cameraProjMat = cam.GetProjectionMatrix();
+    memcpy_s(&pConstBuff->COMMON_PROJ_MATRIX_00, 16 * sizeof(float), &cameraProjMat, sizeof(cameraProjMat));
+    
+    m_pConstBuffer->Unmap();
+}
+
+
 Camera &CameraManager::GetCamera(uint32_t idx) noexcept
 {
     ASSERT_CAMERA_MNG_INIT_STATUS();
@@ -302,15 +331,14 @@ bool CameraManager::Init() noexcept
     CameraCreateInfo mainCamCreateInfo = {};
 
     CameraViewCreateInfo mainCamViewCreateInfo = {};
-    mainCamViewCreateInfo.position = glm::vec3(0.f, 0.f, 3.f);
-    mainCamViewCreateInfo.lookAtPoint = glm::vec3(0.f);
-    mainCamViewCreateInfo.upDirection = glm::vec3(0.f, 1.f, 0.f);
+    mainCamViewCreateInfo.position = glm::vec3(0.f, 0.f, 2.f);
+    mainCamViewCreateInfo.rotation = glm::quatLookAt(glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
 
     mainCamCreateInfo.SetViewParams(mainCamViewCreateInfo);
 
     CameraPerspectiveCreateInfo projParams = {};
     projParams.aspectRatio = float(mainWindow.GetFramebufferWidth()) / mainWindow.GetFramebufferHeight();
-    projParams.fov = glm::radians(90.f);
+    projParams.fovDegrees = 90.f;
     projParams.zNear = 0.1f;
     projParams.zFar = 100.f;
 
@@ -347,6 +375,10 @@ bool CameraManager::Init() noexcept
         }
     }, "_MAIN_CAM_FRAMEBUF_RESIZE_CALLBACK_");
 
+    if (!InitGPUData()) {
+        return false;
+    }
+
     m_isInitialized = true;
 
     return true;
@@ -355,7 +387,7 @@ bool CameraManager::Init() noexcept
 
 void CameraManager::Terminate() noexcept
 {
-    m_cameraStorage.clear();
+    TerminateGPUData();
 
     EventDispatcher& dispatcher = EventDispatcher::GetInstance();
     for (const CameraEventListenersStorage& storage : m_cameraEventListenersStorage) {
@@ -364,8 +396,44 @@ void CameraManager::Terminate() noexcept
         }
     }
     m_cameraEventListenersStorage.clear();
+    m_cameraStorage.clear();
     
     m_isInitialized = false;
+}
+
+
+bool CameraManager::InitGPUData() noexcept
+{
+    if (IsInitialized()) {
+        return true;
+    }
+
+    MemoryBufferCreateInfo constBufferCreateInfo = {};
+    constBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
+    constBufferCreateInfo.dataSize = sizeof(COMMON_CAMERA_CB);
+    constBufferCreateInfo.elementSize = sizeof(COMMON_CAMERA_CB);
+    constBufferCreateInfo.creationFlags = static_cast<MemoryBufferCreationFlags>(
+        BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_WRITABLE);
+    constBufferCreateInfo.pData = nullptr;
+
+    m_pConstBuffer = MemoryBufferManager::GetInstance().RegisterBuffer();
+    ENG_ASSERT(m_pConstBuffer, "Failed to register common camera const buffer");
+    m_pConstBuffer->Create(constBufferCreateInfo);
+    ENG_ASSERT(m_pConstBuffer->IsValid(), "Failed to create common const buffer");
+    m_pConstBuffer->SetDebugName("__COMMON_CAMERA_CB__");
+
+    return true;
+}
+
+
+void CameraManager::TerminateGPUData() noexcept
+{
+    if (!IsInitialized()) {
+        return;
+    }
+
+    m_pConstBuffer->Destroy();
+    MemoryBufferManager::GetInstance().UnregisterBuffer(m_pConstBuffer);
 }
 
 

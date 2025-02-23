@@ -10,6 +10,8 @@
 #include "render/mem_manager/buffer_manager.h"
 #include "render/mesh_manager/mesh_manager.h"
 
+#include "core/camera/camera_manager.h"
+
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
 #include "utils/timer/timer.h"
@@ -89,6 +91,8 @@ void RenderSystem::RunColorPass() noexcept
     static Pipeline* pMergePipeline = nullptr;
 
     static MemoryBuffer* pCommonConstBuffer = nullptr;
+
+    static Camera* pMainCam = nullptr;
 
     if (!isInitialized) {
         srand(time(0));
@@ -401,6 +405,8 @@ void RenderSystem::RunColorPass() noexcept
         
         pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
 
+        pMainCam = &engGetMainCamera();
+
         isInitialized = true;
     }
 
@@ -416,6 +422,8 @@ void RenderSystem::RunColorPass() noexcept
     {
         pGBufferPipeline->ClearFrameBuffer();
         pGBufferPipeline->Bind();
+
+        CameraManager::GetInstance().PrepareGPUData(*pMainCam);
 
         COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(pCommonConstBuffer->MapWrite());
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");

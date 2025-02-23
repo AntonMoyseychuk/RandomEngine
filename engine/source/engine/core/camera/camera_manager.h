@@ -3,10 +3,13 @@
 #include "core/event_system/event_dispatcher.h"
 #include "engine/window_system/window_system_events.h"
 
+#include "render/mem_manager/buffer_manager.h"
+
 #include "utils/data_structures/strid.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <vector>
 #include <array>
@@ -17,15 +20,14 @@
 
 struct CameraViewCreateInfo
 {
+    glm::quat rotation;
     glm::vec3 position;
-    glm::vec3 lookAtPoint;
-    glm::vec3 upDirection;
 };
 
 
 struct CameraPerspectiveCreateInfo
 {
-    float fov;
+    float fovDegrees;
     float aspectRatio;
     float zNear;
     float zFar;
@@ -73,7 +75,7 @@ public:
     const glm::mat4x4& GetViewMatrix() const noexcept;
     const glm::mat4x4& GetProjectionMatrix() const noexcept;
 
-    float GetFov() const noexcept;
+    float GetFovDegrees() const noexcept;
     float GetAspectRatio() const noexcept;
     float GetZNear() const noexcept;
     float GetZFar() const noexcept;
@@ -89,9 +91,11 @@ public:
     bool IsPerspectiveProj() const noexcept { return m_flags.test(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ); }
     bool IsOrthoProj() const noexcept { return !IsPerspectiveProj(); }
 
-    bool IsProjMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_PROJ); }
+    bool IsProjMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
+    bool IsViewMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
 
-    void RequestRecalcProjMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_PROJ); }
+    void RequestRecalcProjMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
+    void RequestRecalcViewMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
 
 private:
     bool Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept;
@@ -104,14 +108,19 @@ private:
 
     void Update(float dt) noexcept;
 
-    void RecalcProj() noexcept;
+    void ClearProjRecalcRequest() noexcept { m_flags.reset(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
+    void ClearViewMatrixRecalcRequest() noexcept { m_flags.reset(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
+
+    void RecalcProjMatrix() noexcept;
+    void RecalcViewMatrix() noexcept;
 
 private:
     enum CameraFlagBits
     {
         FLAG_IS_INITIALIZED,
         FLAG_IS_PERSPECTIVE_PROJ,
-        FLAG_NEED_RECALC_PROJ,
+        FLAG_NEED_RECALC_PROJ_MAT,
+        FLAG_NEED_RECALC_VIEW_MAT,
 
         FLAG_COUNT,
     };
@@ -122,8 +131,11 @@ private:
     glm::mat4x4 m_matProjection = glm::identity<glm::mat4x4>();
     glm::mat4x4 m_matWCS = glm::identity<glm::mat4x4>();
 
+    glm::quat m_rotation = glm::identity<glm::quat>();
+    glm::vec3 m_position = glm::vec3(0.f);
+
     // perspective
-    float m_fov = 0.f;
+    float m_fovDegrees = 0.f;
     float m_aspectRatio = 0.f;
 
     // ortho
@@ -163,6 +175,7 @@ public:
     ~CameraManager();
 
     void Update(float dt) noexcept;
+    void PrepareGPUData(const Camera& cam) noexcept;
 
     Camera& GetCamera(uint32_t idx) noexcept;
 
@@ -183,6 +196,9 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
+    bool InitGPUData() noexcept;
+    void TerminateGPUData() noexcept;
+
     template <typename EventType>
     uint32_t GetCameraEventListenerIndex(const Camera& cam) const noexcept;
 
@@ -202,6 +218,8 @@ private:
 
     std::vector<Camera> m_cameraStorage;
     std::vector<CameraEventListenersStorage> m_cameraEventListenersStorage;
+
+    MemoryBuffer* m_pConstBuffer = nullptr;
     
     bool m_isInitialized = false;
 };
