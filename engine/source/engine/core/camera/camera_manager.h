@@ -175,10 +175,7 @@ public:
     void UnsubscribeCameraFromEvent(const Camera& cam) noexcept;
 
     template <typename EventType>
-    bool IsCameraHaveSubscription(const Camera& cam) const noexcept
-    {
-        return GetCameraEventListenerIndex<EventType>(cam) != MAX_CAM_EVENT_LISTENERS_COUNT;
-    }
+    bool IsCameraHaveSubscription(const Camera& cam) const noexcept;
 
 private:
     CameraManager() = default;

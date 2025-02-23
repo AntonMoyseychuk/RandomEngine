@@ -43,6 +43,13 @@ inline void CameraManager::UnsubscribeCameraFromEvent(const Camera &cam) noexcep
 
 
 template <typename EventType>
+inline bool CameraManager::IsCameraHaveSubscription(const Camera &cam) const noexcept
+{
+    return GetCameraEventListenerIndex<EventType>(cam) != MAX_CAM_EVENT_LISTENERS_COUNT;
+}
+
+
+template <typename EventType>
 inline uint32_t CameraManager::GetCameraEventListenerIndex(const Camera &cam) const noexcept
 {
     if (!cam.IsInitialized()) {
