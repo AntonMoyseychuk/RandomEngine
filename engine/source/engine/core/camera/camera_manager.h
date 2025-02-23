@@ -89,23 +89,29 @@ public:
     bool IsPerspectiveProj() const noexcept { return m_flags.test(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ); }
     bool IsOrthoProj() const noexcept { return !IsPerspectiveProj(); }
 
+    bool IsProjMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_PROJ); }
+
+    void RequestRecalcProjMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_PROJ); }
+
 private:
     bool Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept;
+    void Terminate() noexcept;
 
     bool CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept;
 
     bool CreatePerspectiveProj(const CameraPerspectiveCreateInfo& createInfo) noexcept;
     bool CreateOrthoProj(const CameraOrthoCreateInfo& createInfo) noexcept;
 
-    void RecalculateProj() noexcept;
+    void Update(float dt) noexcept;
 
-    void Terminate() noexcept;
+    void RecalcProj() noexcept;
 
 private:
     enum CameraFlagBits
     {
         FLAG_IS_INITIALIZED,
         FLAG_IS_PERSPECTIVE_PROJ,
+        FLAG_NEED_RECALC_PROJ,
 
         FLAG_COUNT,
     };
@@ -155,6 +161,8 @@ public:
     CameraManager& operator=(CameraManager&& other) noexcept = delete;
 
     ~CameraManager();
+
+    void Update(float dt) noexcept;
 
     Camera& GetCamera(uint32_t idx) noexcept;
 

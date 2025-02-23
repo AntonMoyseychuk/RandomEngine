@@ -183,7 +183,7 @@ bool Camera::CreatePerspectiveProj(const CameraPerspectiveCreateInfo &createInfo
 
     m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ);
 
-    RecalculateProj();
+    RequestRecalcProjMatrix();
 
     return true;
 }
@@ -208,19 +208,31 @@ bool Camera::CreateOrthoProj(const CameraOrthoCreateInfo &createInfo) noexcept
 
     m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ, false);
 
-    RecalculateProj();
+    RequestRecalcProjMatrix();
 
     return true;
 }
 
 
-void Camera::RecalculateProj() noexcept
+void Camera::Update(float dt) noexcept
 {
+    RecalcProj();
+}
+
+
+void Camera::RecalcProj() noexcept
+{
+    if (!IsProjMatrixRecalcRequested()) {
+        return;
+    }
+
     if (IsPerspectiveProj()) {
         m_matProjection = glm::perspective(m_fov, m_aspectRatio, m_zNear, m_zFar);
     } else if (IsOrthoProj()) {
         m_matProjection = glm::ortho(m_left, m_right, m_bottom, m_top, m_zNear, m_zFar);
     }
+
+    m_flags.reset(CameraFlagBits::FLAG_NEED_RECALC_PROJ);
 }
 
 
@@ -255,6 +267,14 @@ CameraManager& CameraManager::GetInstance() noexcept
 CameraManager::~CameraManager()
 {
     Terminate();
+}
+
+
+void CameraManager::Update(float dt) noexcept
+{
+    for (Camera& cam : m_cameraStorage) {
+        cam.Update(dt);
+    }
 }
 
 
@@ -311,10 +331,19 @@ bool CameraManager::Init() noexcept
         const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
         const uint32_t width = event.GetWidth();
         const uint32_t height = event.GetHeight();
+
+        const float halfWidth = width * 0.5f;
+        const float halfHeight = height * 0.5f;
         
         if (width > 0 && height > 0) {
             mainCam.m_aspectRatio = float(width) / height;
-            mainCam.RecalculateProj();
+            
+            mainCam.m_left   = -halfWidth;
+            mainCam.m_right  = halfWidth;
+            mainCam.m_top    = -halfHeight;
+            mainCam.m_bottom = halfHeight;
+
+            mainCam.RequestRecalcProjMatrix();
         }
     }, "_MAIN_CAM_FRAMEBUF_RESIZE_CALLBACK_");
 
