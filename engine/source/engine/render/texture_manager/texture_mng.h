@@ -92,7 +92,7 @@ struct Texture2DCreateInfo
 };
 
 
-using TextureID = BaseID<uint32_t>;
+using TextureID = ds::BaseID<uint32_t>;
 
 
 class Texture

@@ -15,21 +15,6 @@ static std::unique_ptr<CameraManager> pCameraMngInst = nullptr;
 
 
 #define ASSERT_CAMERA_MNG_INIT_STATUS() ENG_ASSERT(engIsCameraManagerInitialized(), "Camera manager is not initialized")
-#define ASSERT_CAMERA_INIT_STATUS() ENG_ASSERT(IsInitialized(), "Camera is not initialized")
-
-
-const CameraPerspectiveCreateInfo& CameraCreateInfo::GetPerspectiveProjParams() const noexcept
-{
-    ENG_ASSERT(IsPerspectiveProj(), "Attempt to get perspective projection create info from ortho");
-    return std::get<CameraPerspectiveCreateInfo>(projParams);
-}
-
-
-const CameraOrthoCreateInfo& CameraCreateInfo::GetOrthoProjParams() const noexcept
-{
-    ENG_ASSERT(IsOrthoProj(), "Attempt to get ortho projection create info from perspective");
-    return std::get<CameraOrthoCreateInfo>(projParams);
-}
 
 
 Camera::~Camera()
@@ -38,203 +23,133 @@ Camera::~Camera()
 }
 
 
-const glm::mat4x4& Camera::GetViewMatrix() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_matWCS;
-}
-
-
-const glm::mat4x4& Camera::GetProjectionMatrix() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_matProjection;
-}
-
-
-float Camera::GetFovDegrees() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_fovDegrees;
-}
-
-
-float Camera::GetAspectRatio() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_aspectRatio;
-}
-
-
-float Camera::GetZNear() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_zNear;
-}
-
-
-float Camera::GetZFar() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_zFar;
-}
-
-
-glm::vec3 Camera::GetXDir() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_matWCS[0];
-}
-
-
-glm::vec3 Camera::GetYDir() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_matWCS[1];
-}
-
-
-glm::vec3 Camera::GetZDir() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_matWCS[2];
-}
-
-
-glm::vec3 Camera::GetPosition() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return -m_matWCS[3];
-}
-
-
-uint32_t Camera::GetIndex() const noexcept
-{
-    ASSERT_CAMERA_INIT_STATUS();
-    return m_idx;
-}
-
-
-bool Camera::Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept
-{
-    if (IsInitialized()) {
-        ENG_LOG_WARN("Camera {} is already initialized", index);
-        return true;
-    }
-
-    ENG_ASSERT(CameraManager::IsCameraIdxValid(index), "Invalid camera index: {}", index);
-
-    if (!CreateViewMatrix(createInfo.GetViewParams())) {
-        ENG_ASSERT_FAIL("Failed to create camera {} view matrix", index);
-        return false;
-    }
-
-    bool isProjInitialized = false;
-
-    if (createInfo.IsPerspectiveProj()) {
-        isProjInitialized = CreatePerspectiveProj(createInfo.GetPerspectiveProjParams());
-    } else if (createInfo.IsOrthoProj()) {
-        isProjInitialized = CreateOrthoProj(createInfo.GetOrthoProjParams());
-    } else {
-        ENG_ASSERT_FAIL("Invalid camera create info type");
-    }
-
-    if (!isProjInitialized) {
-        ENG_ASSERT_FAIL("Failed to create camera {} projection matrix", index);
-        return false;
-    }
-
-    m_idx = index;
-    m_flags.set(CameraFlagBits::FLAG_IS_INITIALIZED, true);
-
-    return true;
-}
-
-
 void Camera::Destroy() noexcept
 {
     m_matProjection = glm::identity<glm::mat4x4>();
     m_matWCS = glm::identity<glm::mat4x4>();
-
+    
     m_rotation = glm::identity<glm::quat>();
     m_position = glm::vec3(0.f);
-
+    
     m_fovDegrees = 0.f;
     m_aspectRatio = 0.f;
-
+    
     m_left = 0.f;
     m_right = 0.f;
     m_top = 0.f;
     m_bottom = 0.f;
-
+    
     m_zNear = 0.f;
     m_zFar = 0.f;
-
-    m_flags = {};
-    m_idx = UINT16_MAX;
 }
 
 
-bool Camera::CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept
+void Camera::SetPerspProjection() noexcept
 {
-    m_position = createInfo.position;
-    m_rotation = createInfo.rotation;
-
-    RecalcViewMatrix();
-
-    return true;
+    m_flags.set(FLAG_IS_ORTHO_PROJ, false);
+    RequestRecalcProjMatrix();
 }
 
 
-bool Camera::CreatePerspectiveProj(const CameraPerspectiveCreateInfo &createInfo) noexcept
+void Camera::SetOrthoProjection() noexcept
 {
-    static constexpr float EPS = glm::epsilon<float>();
-
-    if (createInfo.aspectRatio < EPS) {
-        ENG_ASSERT_FAIL("Camera create info aspect ratio is zero");
-        return false;
-    }
-
-    if (glm::abs(createInfo.zFar - createInfo.zNear) < EPS) {
-        ENG_ASSERT_FAIL("Camera create info zNear {} is equal to zFar {}", createInfo.zNear, createInfo.zFar);
-        return false;
-    }
-
-    m_fovDegrees = createInfo.fovDegrees;
-    m_aspectRatio = createInfo.aspectRatio;
-    m_zNear = createInfo.zNear;
-    m_zFar = createInfo.zFar;
-
-    m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ);
-
-    RecalcProjMatrix();
-
-    return true;
+    m_flags.set(FLAG_IS_ORTHO_PROJ, true);
+    RequestRecalcProjMatrix();
 }
 
 
-bool Camera::CreateOrthoProj(const CameraOrthoCreateInfo &createInfo) noexcept
+void Camera::SetFovDegress(float degrees) noexcept
 {
-    static constexpr glm::vec3 vecEPS(glm::epsilon<float>());
+    ENG_ASSERT(glm::abs(glm::mod(degrees, 180.f)) > glm::epsilon<float>(), "degress can't be multiple of PI");
 
-    if (glm::all(glm::lessThanEqual(glm::abs(createInfo.lbf - createInfo.rtn), vecEPS))) {
-        ENG_ASSERT_FAIL("Camera ortho create info is zero sized box");
-        return false;
-    }
+    m_fovDegrees = degrees;
+    RequestRecalcProjMatrix();
+}
 
-    m_left = createInfo.lbf.x;
-    m_right = createInfo.rtn.x;
-    m_top = createInfo.rtn.y;
-    m_bottom = createInfo.lbf.y;
 
-    m_zNear = createInfo.rtn.z;
-    m_zFar = createInfo.lbf.z;
+void Camera::SetAspectRatio(float aspect) noexcept
+{
+    ENG_ASSERT(aspect > glm::epsilon<float>(), "aspect can't be less or equal to zero");
 
-    m_flags.set(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ, false);
+    m_aspectRatio = aspect;
+    RequestRecalcProjMatrix();
+}
 
-    RecalcProjMatrix();
 
-    return true;
+void Camera::SetAspectRatio(uint32_t width, uint32_t height) noexcept
+{
+    ENG_ASSERT(height != 0, "height can't be equal to zero");
+
+    const float aspectRatio = float(width) / float(height);
+    SetAspectRatio(aspectRatio);
+}
+
+
+void Camera::SetZNear(float zNear) noexcept
+{
+    ENG_ASSERT(abs(m_zFar - zNear) > glm::epsilon<float>(), "Can't set Z Near equal to Z Far");
+    m_zNear = zNear;
+
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetZFar(float zFar) noexcept
+{
+    ENG_ASSERT(abs(zFar - m_zNear) > glm::epsilon<float>(), "Can't set Z Far equal to Z Near");
+    m_zFar = zFar;
+    
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetOrthoLeft(float left) noexcept
+{
+    ENG_ASSERT(abs(m_right - left) > glm::epsilon<float>(), "Can't set left equal to right");
+    
+    m_left = left;
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetOrthoRight(float right) noexcept
+{
+    ENG_ASSERT(abs(right - m_left) > glm::epsilon<float>(), "Can't set right equal to left");
+    
+    m_right = right;
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetOrthoTop(float top) noexcept
+{
+    ENG_ASSERT(abs(top - m_bottom) > glm::epsilon<float>(), "Can't set top equal to bottom");
+    
+    m_top = top;
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetOrthoBottom(float bottom) noexcept
+{
+    ENG_ASSERT(abs(m_top - bottom) > glm::epsilon<float>(), "Can't set bottom equal to top");
+    
+    m_bottom = bottom;
+    RequestRecalcProjMatrix();
+}
+
+
+void Camera::SetRotation(const glm::quat& rotation) noexcept
+{
+    m_rotation = rotation;
+    RequestRecalcViewMatrix();
+}
+
+
+void Camera::SetPosition(const glm::vec3& position) noexcept
+{
+    m_position = position;
+    RequestRecalcViewMatrix();
 }
 
 
@@ -287,7 +202,7 @@ void Camera::Update(float dt) noexcept
 
 void Camera::RecalcProjMatrix() noexcept
 {
-    if (IsPerspectiveProj()) {
+    if (IsPerspProj()) {
         m_matProjection = glm::perspective(glm::radians(m_fovDegrees), m_aspectRatio, m_zNear, m_zFar);
     } else if (IsOrthoProj()) {
         m_matProjection = glm::ortho(m_left, m_right, m_bottom, m_top, m_zNear, m_zFar);
@@ -315,20 +230,37 @@ CameraManager::~CameraManager()
 }
 
 
-void CameraManager::Update(float dt) noexcept
+Camera* CameraManager::RegisterCamera() noexcept
 {
-    for (Camera& cam : m_cameraStorage) {
-        cam.Update(dt);
-    }
+    const CameraID camID = AllocateCameraID();
+    Camera* pCam = &m_camerasStorage[camID.Value()];
+
+    ENG_ASSERT(!pCam->IsRegistered(), "Already registered camera was returned during registration");
+    
+    pCam->m_ID = camID;
+
+    return pCam;
 }
 
 
-Camera &CameraManager::GetCamera(uint32_t idx) noexcept
+void CameraManager::UnregisterCamera(Camera* pCam) noexcept
 {
-    ASSERT_CAMERA_MNG_INIT_STATUS();
-    ENG_ASSERT(idx < MAX_CAM_COUNT, "Invalid camera index: {}", idx);
+    if (!pCam) {
+        return;
+    }
 
-    return m_cameraStorage[idx];
+    pCam->Destroy();
+    DeallocateCameraID(pCam->m_ID);
+
+    pCam->m_ID.Invalidate();
+}
+
+
+void CameraManager::Update(float dt) noexcept
+{
+    for (Camera& cam : m_camerasStorage) {
+        cam.Update(dt);
+    }
 }
 
 
@@ -338,58 +270,10 @@ bool CameraManager::Init() noexcept
         return true;
     }
 
-    ENG_ASSERT(engIsWindowSystemInitialized(), "Window system must be initialized before camera manager initialization");
-    const Window& mainWindow = engGetMainWindow();
-
-    m_cameraStorage.resize(MAX_CAM_COUNT);
+    m_camerasStorage.resize(MAX_CAM_COUNT);
     m_cameraEventListenersStorage.resize(MAX_CAM_COUNT);
 
-    CameraCreateInfo mainCamCreateInfo = {};
-
-    CameraViewCreateInfo mainCamViewCreateInfo = {};
-    mainCamViewCreateInfo.position = glm::vec3(0.f, 0.f, 2.f);
-    mainCamViewCreateInfo.rotation = glm::quatLookAt(glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
-
-    mainCamCreateInfo.SetViewParams(mainCamViewCreateInfo);
-
-    CameraPerspectiveCreateInfo projParams = {};
-    projParams.aspectRatio = float(mainWindow.GetFramebufferWidth()) / mainWindow.GetFramebufferHeight();
-    projParams.fovDegrees = 90.f;
-    projParams.zNear = 0.1f;
-    projParams.zFar = 100.f;
-
-    mainCamCreateInfo.SetPerspective(projParams);
-    
-    for (uint32_t i = 0; i < m_cameraStorage.size(); ++i) {
-        Camera& cam = m_cameraStorage[i];
-        
-        if (!cam.Create(i, mainCamCreateInfo)) {
-            ENG_ASSERT_FAIL("Failed to create camera: {}");
-            return false;
-        }
-    }
-
-    Camera& mainCam = m_cameraStorage[MAIN_CAM_IDX];
-    
-    SubscribeCamera<EventFramebufferResized>(mainCam, [&mainCam](const void* pEvent) {
-        const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
-        const uint32_t width = event.GetWidth();
-        const uint32_t height = event.GetHeight();
-
-        const float halfWidth = width * 0.5f;
-        const float halfHeight = height * 0.5f;
-        
-        if (width > 0 && height > 0) {
-            mainCam.m_aspectRatio = float(width) / height;
-            
-            mainCam.m_left   = -halfWidth;
-            mainCam.m_right  = halfWidth;
-            mainCam.m_top    = -halfHeight;
-            mainCam.m_bottom = halfHeight;
-
-            mainCam.RequestRecalcProjMatrix();
-        }
-    }, "_MAIN_CAM_FRAMEBUF_RESIZE_CALLBACK_");
+    m_nextAllocatedID = CameraID(0);
 
     m_isInitialized = true;
 
@@ -406,16 +290,38 @@ void CameraManager::Terminate() noexcept
         }
     }
     m_cameraEventListenersStorage.clear();
-    m_cameraStorage.clear();
+    m_camerasStorage.clear();
+
+    m_cameraIDFreeList.clear();
+    m_nextAllocatedID = CameraID(0);
     
     m_isInitialized = false;
 }
 
 
-Camera& engGetMainCamera() noexcept
+CameraID CameraManager::AllocateCameraID() noexcept
 {
-    ASSERT_CAMERA_MNG_INIT_STATUS();
-    return pCameraMngInst->GetCamera(CameraManager::GetMainCameraIdx());
+    if (m_cameraIDFreeList.empty()) {
+        ENG_ASSERT(m_nextAllocatedID.Value() < m_camerasStorage.size() - 1, "Memory buffer storage overflow");
+
+        const CameraID camID = m_nextAllocatedID;
+        m_nextAllocatedID = CameraID(m_nextAllocatedID.Value() + 1);
+
+        return camID;
+    }
+
+    const CameraID camID = m_cameraIDFreeList.front();
+    m_cameraIDFreeList.pop_front();
+        
+    return camID;
+}
+
+
+void CameraManager::DeallocateCameraID(CameraID ID) noexcept
+{
+    if (ID < m_nextAllocatedID && std::find(m_cameraIDFreeList.cbegin(), m_cameraIDFreeList.cend(), ID) == m_cameraIDFreeList.cend()) {
+        m_cameraIDFreeList.emplace_back(ID);
+    }
 }
 
 

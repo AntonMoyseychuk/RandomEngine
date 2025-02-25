@@ -43,7 +43,7 @@ struct MemoryBufferCreateInfo
 };
 
 
-using BufferID = BaseID<uint32_t>;
+using BufferID = ds::BaseID<uint32_t>;
 
 
 class MemoryBuffer

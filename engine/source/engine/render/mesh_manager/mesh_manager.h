@@ -38,7 +38,7 @@ struct MeshVertexLayoutCreateInfo
 };
 
 
-using MeshVertexLayoutID = BaseID<uint32_t>;
+using MeshVertexLayoutID = ds::BaseID<uint32_t>;
 
 
 class MeshVertexLayout
@@ -116,7 +116,7 @@ struct MeshGPUBufferDataCreateInfo
 };
 
 
-using MeshGPUBufferDataID = BaseID<uint64_t>;
+using MeshGPUBufferDataID = ds::BaseID<uint32_t>;
 
 
 class MeshGPUBufferData
@@ -142,8 +142,8 @@ public:
     bool IsValid() const noexcept;
 
 private:
-    MeshGPUBufferDataID m_ID;
     ds::StrID           m_name = "_INVALID_";
+    MeshGPUBufferDataID m_ID;
 
     MemoryBuffer*       m_pVertexGPUBuffer = nullptr;
     MemoryBuffer*       m_pIndexGPUBuffer = nullptr;
@@ -209,7 +209,7 @@ private:
 };
 
 
-using MeshID = BaseID<uint32_t>;
+using MeshID = ds::BaseID<uint32_t>;
 
 
 class MeshObj

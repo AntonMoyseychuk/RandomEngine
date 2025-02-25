@@ -62,7 +62,7 @@ void RenderSystem::RunColorPass() noexcept
     static Timer timer;
     timer.Tick();
 
-    static Window& window = *WindowSystem::GetInstance().GetWindowByTag(WINDOW_TAG_MAIN);
+    static Window& window = engGetMainWindow();
     static TextureManager& texManager = TextureManager::GetInstance();
     static ShaderManager& shaderManager = ShaderManager::GetInstance();
     static RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
@@ -70,6 +70,7 @@ void RenderSystem::RunColorPass() noexcept
     static MemoryBufferManager& memBufferManager = MemoryBufferManager::GetInstance();
     static MeshDataManager& meshDataManager = MeshDataManager::GetInstance();
     static MeshManager& meshManager = MeshManager::GetInstance();
+    static CameraManager& cameraManager = CameraManager::GetInstance();
 
     static bool isInitialized = false;
     static ShaderProgram* pGBufferProgram = nullptr;
@@ -418,12 +419,44 @@ void RenderSystem::RunColorPass() noexcept
         pCameraConstBuffer->Create(cameraConstBufferCreateInfo);
         ENG_ASSERT(pCameraConstBuffer->IsValid(), "Failed to create camera const buffer");
         pCameraConstBuffer->SetDebugName("__COMMON_CAMERA_CB__");
-
+        
         pCameraConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CAMERA_CB).GetBinding());
+        
+        pMainCam = cameraManager.RegisterCamera();
+        ENG_ASSERT(pMainCam && pMainCam->IsRegistered(), "Failed to register camera");
+        
+        pMainCam->SetPerspProjection();
+        
+        pMainCam->SetZNear(0.1f);
+        pMainCam->SetZFar(100.f);
 
-        pMainCam = &engGetMainCamera();
+        pMainCam->SetPosition(glm::vec3(0.f, 0.f, 2.f));
+        pMainCam->SetRotation(glm::quatLookAt(glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f)));
+
+        pMainCam->SetAspectRatio(window.GetFramebufferWidth(), window.GetFramebufferHeight());
+        pMainCam->SetFovDegress(90.f);
+
+        cameraManager.SubscribeCamera<EventFramebufferResized>(*pMainCam, [](const void* pEvent) {
+            const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+            const uint32_t width = event.GetWidth();
+            const uint32_t height = event.GetHeight();
+    
+            const float halfWidth = width * 0.5f;
+            const float halfHeight = height * 0.5f;
+            
+            if (width > 0 && height > 0) {
+                pMainCam->SetAspectRatio(width, height);
+                
+                pMainCam->SetOrthoLeft(-halfWidth);
+                pMainCam->SetOrthoRight(halfWidth);
+                pMainCam->SetOrthoBottom(-halfHeight);
+                pMainCam->SetOrthoTop(halfHeight);
+            }
+        });
 
         isInitialized = true;
+
+        return;
     }
 
     const float elapsedTime = timer.GetElapsedTimeInMillisec();

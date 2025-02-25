@@ -250,7 +250,7 @@ struct PipelineCreateInfo
 };
 
 
-using PipelineID = BaseID<uint32_t>;
+using PipelineID = ds::BaseID<uint32_t>;
 
 
 class Pipeline

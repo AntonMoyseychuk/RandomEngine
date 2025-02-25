@@ -1,11 +1,11 @@
 template <typename EventType>
-inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListener::CallbackType& callback, ds::StrID debugName) noexcept
+inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListener::CallbackType& callback) noexcept
 {
     if (IsCameraSubscribed<EventType>(cam)) {
         return;
     }
 
-    CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetIndex()];
+    CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetID().Value()];
     CameraEventListenerDesc* pDesc = nullptr;
 
     for (CameraEventListenerDesc& desc : listenersStorage) {
@@ -18,9 +18,16 @@ inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListene
     if (pDesc) {
         EventDispatcher& dispatcher = EventDispatcher::GetInstance();
 
-        pDesc->eventTypeHash = Event<EventType>::GetTypeHash();
+        const type_info& typeID = Event<EventType>::GetTypeID();
+        
+        pDesc->eventTypeHash = typeID.hash_code();
         pDesc->ID = dispatcher.Subscribe<EventType>(callback);
+    #if defined(ENG_DEBUG)
+        char debugName[512];
+        sprintf_s(debugName, "_cam_%d_%s_callback_", cam.GetID().Value(), typeID.name());
+
         dispatcher.SetListenerDebugName(pDesc->ID, debugName);
+    #endif
     }
 }
 
@@ -52,13 +59,13 @@ inline bool CameraManager::IsCameraSubscribed(const Camera &cam) const noexcept
 template <typename EventType>
 inline uint32_t CameraManager::GetCameraEventListenerIndex(const Camera &cam) const noexcept
 {
-    if (!cam.IsInitialized()) {
+    if (!cam.IsRegistered()) {
         return MAX_CAM_EVENT_LISTENERS_COUNT;
     }
 
-    const CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetIndex()];
+    const CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetID().Value()];
     
-    const uint64_t eventTypeHash = Event<EventType>::GetTypeHash();
+    const uint64_t eventTypeHash = Event<EventType>::GetTypeID().hash_code();
     
     const auto listenerIt = std::find_if(listenersStorage.cbegin(), listenersStorage.cend(), [eventTypeHash](const CameraEventListenerDesc& desc) {
         return desc.eventTypeHash == eventTypeHash;

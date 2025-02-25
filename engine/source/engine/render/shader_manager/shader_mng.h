@@ -40,7 +40,7 @@ struct ShaderProgramCreateInfo
 };
 
 
-using ProgramID = BaseID<uint32_t>;
+using ProgramID = ds::BaseID<uint32_t>;
 
 
 class ShaderProgram

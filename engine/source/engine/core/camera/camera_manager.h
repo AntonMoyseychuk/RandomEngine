@@ -4,62 +4,20 @@
 #include "engine/window_system/window_system_events.h"
 
 #include "utils/data_structures/strid.h"
+#include "utils/data_structures/base_id.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include <vector>
+#include <deque>
 #include <array>
 #include <bitset>
 #include <variant>
-#include <optional>
 
 
-struct CameraViewCreateInfo
-{
-    glm::quat rotation;
-    glm::vec3 position;
-};
-
-
-struct CameraPerspectiveCreateInfo
-{
-    float fovDegrees;
-    float aspectRatio;
-    float zNear;
-    float zFar;
-};
-
-
-struct CameraOrthoCreateInfo
-{
-    glm::vec3 lbf; // left, bottom, far
-    glm::vec3 rtn; // right, top, near
-};
-
-
-class CameraCreateInfo
-{
-public:
-    void SetPerspective(const CameraPerspectiveCreateInfo& perspCreateInfo) noexcept { projParams = perspCreateInfo; }
-    void SetOrtho(const CameraOrthoCreateInfo& orthoCreateInfo) noexcept { projParams = orthoCreateInfo; }
-    void SetViewParams(const CameraViewCreateInfo& viewCreateInfo) noexcept { viewParams = viewCreateInfo; }
-
-    constexpr bool IsPerspectiveProj() const noexcept { return std::holds_alternative<CameraPerspectiveCreateInfo>(projParams); }
-    constexpr bool IsOrthoProj() const noexcept { return std::holds_alternative<CameraOrthoCreateInfo>(projParams); }
-
-    const CameraPerspectiveCreateInfo& GetPerspectiveProjParams() const noexcept;
-    const CameraOrthoCreateInfo& GetOrthoProjParams() const noexcept;
-
-    const CameraViewCreateInfo& GetViewParams() const noexcept { return viewParams; }
-
-private:
-    using CameraProjParamsType = std::variant<CameraPerspectiveCreateInfo, CameraOrthoCreateInfo>;
-
-    CameraViewCreateInfo viewParams;
-    CameraProjParamsType projParams;
-};
+using CameraID = ds::BaseID<uint16_t>;
 
 
 class Camera
@@ -70,24 +28,48 @@ public:
     Camera() = default;
     ~Camera();
 
-    const glm::mat4x4& GetViewMatrix() const noexcept;
-    const glm::mat4x4& GetProjectionMatrix() const noexcept;
+    void Destroy() noexcept;
 
-    float GetFovDegrees() const noexcept;
-    float GetAspectRatio() const noexcept;
-    float GetZNear() const noexcept;
-    float GetZFar() const noexcept;
+    void SetPerspProjection() noexcept;
+    void SetOrthoProjection() noexcept;
 
-    glm::vec3 GetXDir() const noexcept;
-    glm::vec3 GetYDir() const noexcept;
-    glm::vec3 GetZDir() const noexcept;
-    glm::vec3 GetPosition() const noexcept;
+    void SetFovDegress(float degrees) noexcept;
+    void SetAspectRatio(float aspect) noexcept;
+    void SetAspectRatio(uint32_t width, uint32_t height) noexcept;
+    void SetZNear(float zNear) noexcept;
+    void SetZFar(float zFar) noexcept;
 
-    uint32_t GetIndex() const noexcept;
+    void SetOrthoLeft(float left) noexcept;
+    void SetOrthoRight(float right) noexcept;
+    void SetOrthoTop(float top) noexcept;
+    void SetOrthoBottom(float bottom) noexcept;
 
-    bool IsInitialized() const noexcept { return m_flags.test(CameraFlagBits::FLAG_IS_INITIALIZED); }
-    bool IsPerspectiveProj() const noexcept { return m_flags.test(CameraFlagBits::FLAG_IS_PERSPECTIVE_PROJ); }
-    bool IsOrthoProj() const noexcept { return !IsPerspectiveProj(); }
+    void SetRotation(const glm::quat& rotation) noexcept;
+    void SetPosition(const glm::vec3& position) noexcept;
+
+    float GetFovDegrees() const noexcept { return m_fovDegrees; }
+    float GetAspectRatio() const noexcept { return m_aspectRatio; }
+    float GetZNear() const noexcept { return m_zNear; }
+    float GetZFar() const noexcept { return m_zFar; }
+
+    float GetOrthoLeft() const noexcept { return m_left; }
+    float GetOrthoRight() const noexcept { return m_right; }
+    float GetOrthoTop() const noexcept { return m_top; }
+    float GetOrthoBottom() const noexcept { return m_bottom; }
+
+    glm::vec3 GetXDir() const noexcept { return m_matWCS[0]; }
+    glm::vec3 GetYDir() const noexcept { return m_matWCS[1]; }
+    glm::vec3 GetZDir() const noexcept { return m_matWCS[2]; }
+    glm::vec3 GetPosition() const noexcept { return -m_matWCS[3]; }
+
+    CameraID GetID() const noexcept { return m_ID; }
+
+    const glm::mat4x4& GetViewMatrix() const noexcept { return m_matWCS; }
+    const glm::mat4x4& GetProjectionMatrix() const noexcept { return m_matProjection; }
+
+    bool IsRegistered() const noexcept { return m_ID.IsValid(); }
+    bool IsPerspProj() const noexcept { return !IsOrthoProj(); }
+    bool IsOrthoProj() const noexcept { return m_flags.test(CameraFlagBits::FLAG_IS_ORTHO_PROJ); }
 
     bool IsProjMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
     bool IsViewMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
@@ -96,14 +78,6 @@ public:
     void RequestRecalcViewMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
 
 private:
-    bool Create(uint32_t index, const CameraCreateInfo& createInfo) noexcept;
-    void Destroy() noexcept;
-
-    bool CreateViewMatrix(const CameraViewCreateInfo& createInfo) noexcept;
-
-    bool CreatePerspectiveProj(const CameraPerspectiveCreateInfo& createInfo) noexcept;
-    bool CreateOrthoProj(const CameraOrthoCreateInfo& createInfo) noexcept;
-
     void Update(float dt) noexcept;
 
     void ClearProjRecalcRequest() noexcept { m_flags.reset(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
@@ -115,8 +89,7 @@ private:
 private:
     enum CameraFlagBits
     {
-        FLAG_IS_INITIALIZED,
-        FLAG_IS_PERSPECTIVE_PROJ,
+        FLAG_IS_ORTHO_PROJ,
         FLAG_NEED_RECALC_PROJ_MAT,
         FLAG_NEED_RECALC_VIEW_MAT,
 
@@ -146,7 +119,7 @@ private:
     float m_zFar = 0.f;
 
     CameraFlags m_flags = {};
-    uint16_t m_idx = UINT16_MAX;
+    CameraID m_ID;
 };
 
 
@@ -159,8 +132,6 @@ class CameraManager
 public:
     static CameraManager& GetInstance() noexcept;
 
-    static constexpr bool IsCameraIdxValid(uint32_t index) noexcept { return index < MAX_CAM_COUNT; }
-    static constexpr uint32_t GetMainCameraIdx() noexcept { return MAIN_CAM_IDX; }
     static constexpr uint32_t GetMaxCamerasCount() noexcept { return MAX_CAM_COUNT; }
     static constexpr uint32_t GetMaxCameraEventListenersCount() noexcept { return MAX_CAM_EVENT_LISTENERS_COUNT; }
 
@@ -172,14 +143,13 @@ public:
 
     ~CameraManager();
 
+    Camera* RegisterCamera() noexcept;
+    void UnregisterCamera(Camera* pCam) noexcept;
+
     void Update(float dt) noexcept;
 
-    Camera& GetCamera(uint32_t idx) noexcept;
-
-    bool IsInitialized() const noexcept { return m_isInitialized; }
-
     template <typename EventType>
-    void SubscribeCamera(const Camera& cam, const EventListener::CallbackType& callback, ds::StrID debugName = "") noexcept;
+    void SubscribeCamera(const Camera& cam, const EventListener::CallbackType& callback) noexcept;
 
     template <typename EventType>
     void UnsubscribeCamera(const Camera& cam) noexcept;
@@ -187,19 +157,23 @@ public:
     template <typename EventType>
     bool IsCameraSubscribed(const Camera& cam) const noexcept;
 
+    bool IsInitialized() const noexcept { return m_isInitialized; }
+
 private:
     CameraManager() = default;
 
     bool Init() noexcept;
     void Terminate() noexcept;
 
+    CameraID AllocateCameraID() noexcept;
+    void DeallocateCameraID(CameraID ID) noexcept;
+
     template <typename EventType>
     uint32_t GetCameraEventListenerIndex(const Camera& cam) const noexcept;
 
 private:
-    static inline constexpr uint32_t MAIN_CAM_IDX = 0;
-    static inline constexpr uint32_t MAX_CAM_COUNT = MAIN_CAM_IDX + 1;
     static inline constexpr uint32_t MAX_CAM_EVENT_LISTENERS_COUNT = 8;
+    static inline constexpr uint32_t MAX_CAM_COUNT = 8;
 
 private:
     struct CameraEventListenerDesc
@@ -210,14 +184,14 @@ private:
 
     using CameraEventListenersStorage = std::array<CameraEventListenerDesc, MAX_CAM_EVENT_LISTENERS_COUNT>;
 
-    std::vector<Camera> m_cameraStorage;
+    std::vector<Camera> m_camerasStorage;
     std::vector<CameraEventListenersStorage> m_cameraEventListenersStorage;
+
+    std::deque<CameraID> m_cameraIDFreeList;
+    CameraID m_nextAllocatedID = CameraID{0};
     
     bool m_isInitialized = false;
 };
-
-
-Camera& engGetMainCamera() noexcept;
 
 
 bool engInitCameraManager() noexcept;

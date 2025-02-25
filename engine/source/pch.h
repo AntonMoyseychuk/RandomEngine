@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include <type_traits>
+#include <typeindex>
 #include <limits>
 
 #include <random>
