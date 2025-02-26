@@ -5,11 +5,6 @@
 
 #include "utils/debug/assertion.h"
 
-#include "auto/auto_registers_common.h"
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/vector_query.hpp>
-
 
 static std::unique_ptr<CameraManager> pCameraMngInst = nullptr;
 

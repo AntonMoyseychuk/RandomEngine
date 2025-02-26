@@ -7,7 +7,7 @@
 
 #include "utils/data_structures/hash.h"
 
-#include "auto/auto_registers_common.h"
+#include "auto/registers_common.h"
 
 
 static std::unique_ptr<RenderTargetManager> pRenderTargetMngInst = nullptr;

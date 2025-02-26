@@ -37,6 +37,7 @@ add_subdirectory(${ENGINE_SHADERGEN_DIR})
 
 # Shader files for c++ files auto generation
 set(ENGINE_SHADER_AUTOGEN_FILES
+    ${ENGINE_SHADERS_INCLUDE_DIR}/resource_constants.fx
     ${ENGINE_SHADERS_INCLUDE_DIR}/registers_common.fx
 )
 

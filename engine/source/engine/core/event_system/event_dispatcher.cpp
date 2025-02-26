@@ -101,7 +101,6 @@ void EventDispatcher::SetListenerDebugName(const EventListenerID& listenerID, ds
     }
 
     std::vector<EventListener>& listenersCollection = listenersCollectionIt->second;
-    ENG_ASSERT(listenerID.Value() < listenersCollection.size(), "listenerID value is out of range");
 
     for (EventListener& listener : listenersCollection) {
         if (listener.GetID() == listenerID) {
@@ -121,7 +120,6 @@ void EventDispatcher::Unsubscribe(EventListenerID listenerID) noexcept
     }
 
     std::vector<EventListener>& listenersCollection = listenersCollectionIt->second;
-    ENG_ASSERT(listenerID.Value() < listenersCollection.size(), "listenerID value is out of range");
     
     EventListener* pTargetListener = nullptr;
 

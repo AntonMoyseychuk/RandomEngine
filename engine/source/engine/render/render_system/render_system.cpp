@@ -18,7 +18,7 @@
 
 #include "render/platform/OpenGL/opengl_driver.h"
 
-#include "auto/auto_registers_common.h"
+#include "auto/registers_common.h"
 
 
 static std::unique_ptr<RenderSystem> pRenderSysInst = nullptr;
@@ -351,13 +351,13 @@ void RenderSystem::RunColorPass() noexcept
             CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 1.f, 0.f,
 
             // Top face
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f,
            -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f,
             CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 1.f,
             CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 0.f,
 
             // Bottom face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 0.f,
            -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 1.f,
             CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 1.f,
             CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 0.f,
@@ -471,11 +471,17 @@ void RenderSystem::RunColorPass() noexcept
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
     ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");
 
-    const glm::mat4x4& cameraViewMat = pMainCam->GetViewMatrix();
-    memcpy_s(&pCamConstBuff->COMMON_VIEW_MATRIX_00, 16 * sizeof(float), &cameraViewMat, sizeof(cameraViewMat));
-    const glm::mat4x4& cameraProjMat = pMainCam->GetProjectionMatrix();
-    memcpy_s(&pCamConstBuff->COMMON_PROJ_MATRIX_00, 16 * sizeof(float), &cameraProjMat, sizeof(cameraProjMat));
+    const glm::mat4x4 cameraViewMat = glm::transpose(pMainCam->GetViewMatrix());
+    constexpr size_t commonViewMatSize = sizeof(pCamConstBuff->COMMON_VIEW_MATRIX);
+    memcpy_s(pCamConstBuff->COMMON_VIEW_MATRIX, commonViewMatSize, &cameraViewMat, commonViewMatSize);
     
+    const glm::mat4x4 cameraProjMat = glm::transpose(pMainCam->GetProjectionMatrix());
+    constexpr size_t commonProjMatSize = sizeof(pCamConstBuff->COMMON_PROJ_MATRIX);
+    memcpy_s(&pCamConstBuff->COMMON_PROJ_MATRIX, commonProjMatSize, &cameraProjMat, commonProjMatSize);
+    
+    pCamConstBuff->COMMON_VIEW_Z_NEAR = pMainCam->GetZNear();
+    pCamConstBuff->COMMON_VIEW_Z_FAR = pMainCam->GetZFar();
+
     pCameraConstBuffer->Unmap();
 
     {

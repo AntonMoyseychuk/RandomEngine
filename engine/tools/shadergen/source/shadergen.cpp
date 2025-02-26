@@ -23,7 +23,10 @@ enum CMD_ARGS
 namespace fs = std::filesystem;
 
 
-
+#define CHECK_FILE_CONTENT_PARAMS(FILEPATH, FILE_CONTENT, FILE_SIZE) \
+    if (!CheckFileContentInput(FILEPATH, FILE_CONTENT, FILE_SIZE)) { \
+        return;                                                      \
+    }
 
 static const char* TranslateGLSLToEngineResourceType(const fs::path& filepath, const std::string& type) noexcept
 {
@@ -55,6 +58,36 @@ static const char* TranslateGLSLToEngineConstantPrimitiveType(const fs::path& fi
         { "uint", "uint32_t" },
         { "float", "float" },
         { "double", "double" },
+        
+        { "vec2", "glm::vec2" },
+        { "vec3", "glm::vec3" },
+        { "vec4", "glm::vec4" },
+        { "ivec2", "glm::ivec2" },
+        { "ivec3", "glm::ivec3" },
+        { "ivec4", "glm::ivec4" },
+        { "bvec2", "glm::bvec2" },
+        { "bvec3", "glm::bvec3" },
+        { "bvec4", "glm::bvec4" },
+
+        { "mat2", "glm::mat2" },
+        { "mat3", "glm::mat3" },
+        { "mat4", "glm::mat4" },
+        { "mat2x3", "glm::mat2x3" },
+        { "mat2x4", "glm::mat2x4" },
+        { "mat3x2", "glm::mat3x2" },
+        { "mat3x4", "glm::mat3x4" },
+        { "mat4x2", "glm::mat4x2" },
+        { "mat4x3", "glm::mat4x3" },
+
+        { "dmat2", "glm::dmat2" },
+        { "dmat3", "glm::dmat3" },
+        { "dmat4", "glm::dmat4" },
+        { "dmat2x3", "glm::dmat2x3" },
+        { "dmat2x4", "glm::dmat2x4" },
+        { "dmat3x2", "glm::dmat3x2" },
+        { "dmat3x4", "glm::dmat3x4" },
+        { "dmat4x2", "glm::dmat4x2" },
+        { "dmat4x3", "glm::dmat4x3" },
     };
 
     const auto typeIt = GLSLToEnginePrimitiveTypeMap.find(type);
@@ -166,6 +199,14 @@ static std::vector<std::cmatch> FindConstantDeclarationMatches(const char* pFile
 }
 
 
+static std::vector<std::cmatch> FindIncludesDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
+{
+    static std::regex INCLUDE_DECL_PATTERN(R"(REFLECT_INCLUDE\(([^,]+)\))");
+    
+    return FindPatternMatches(INCLUDE_DECL_PATTERN, pFileContent, fileSize);
+}
+
+
 static std::vector<std::cmatch> FindSrvVariableDeclarationMatches(const char* pFileContent, size_t fileSize) noexcept
 {
     static std::regex SRV_VAR_PATTERN(R"(DECLARE_SRV_VARIABLE\(([^,]+), ([^,]+), ([^,]+), ([^,]+)\))");
@@ -198,11 +239,27 @@ static std::vector<std::cmatch> FindConstantBufferMembersDeclarationMatches(cons
 }
 
 
+static void FillIncludesDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
+{
+    CHECK_FILE_CONTENT_PARAMS(filepath, pFileContent, fileSize);
+
+    const std::vector<std::cmatch> includesDeclMatches = FindIncludesDeclarationMatches(pFileContent, fileSize);
+
+    for (const std::cmatch& match : includesDeclMatches) {
+        const std::string includeName = match[1].str();
+
+        ss << "#include \"" << includeName << ".h\"\n";
+    }
+
+    if (!includesDeclMatches.empty()) {
+        ss << '\n';
+    }
+}
+
+
 static void FillConstantDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
 {
-    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
-        return;
-    }
+    CHECK_FILE_CONTENT_PARAMS(filepath, pFileContent, fileSize);
 
     const std::vector<std::cmatch> constantDeclMatches = FindConstantDeclarationMatches(pFileContent, fileSize);
 
@@ -217,16 +274,14 @@ static void FillConstantDeclaration(std::stringstream& ss, const char* pFileCont
     }
 
     if (!constantDeclMatches.empty()) {
-        ss << "\n\n";
+        ss << '\n';
     }
 }
 
 
 static void FillSrvVariablesDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
 {
-    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
-        return;
-    }
+    CHECK_FILE_CONTENT_PARAMS(filepath, pFileContent, fileSize);
 
     const std::vector<std::cmatch> srvVarsDeclMatches = FindSrvVariableDeclarationMatches(pFileContent, fileSize);
 
@@ -245,16 +300,14 @@ static void FillSrvVariablesDeclaration(std::stringstream& ss, const char* pFile
     }
 
     if (!srvVarsDeclMatches.empty()) {
-        ss << "\n";
+        ss << '\n';
     }
 }
 
 
 static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
 {
-    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
-        return;
-    }
+    CHECK_FILE_CONTENT_PARAMS(filepath, pFileContent, fileSize);
 
     const std::vector<std::cmatch> srvTexturesDeclMatches = FindSrvTextureDeclarationMatches(pFileContent, fileSize);
 
@@ -273,21 +326,18 @@ static void FillSrvTextureDeclaration(std::stringstream& ss, const char* pFileCo
         "    inline static constexpr uint32_t _SAMPLER_IDX = " << samplerIdx << ";\n"
         "    inline static constexpr uint32_t _FORMAT = " << format << ";\n"
         "};\n"
-        "\n"
         "\n";
     }
 
     if (!srvTexturesDeclMatches.empty()) {
-        ss << "\n";
+        ss << '\n';
     }
 }
 
 
 static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFileContent, size_t fileSize, const fs::path& filepath) noexcept
 {
-    if (!CheckFileContentInput(filepath, pFileContent, fileSize)) {
-        return;
-    }
+    CHECK_FILE_CONTENT_PARAMS(filepath, pFileContent, fileSize);
 
     const std::vector<std::cmatch> constBuffDeclMatches = FindConstantBufferDeclarationMatches(pFileContent, fileSize);
 
@@ -323,8 +373,11 @@ static void FillConstantBufferDeclaration(std::stringstream& ss, const char* pFi
         }
 
         ss << "};\n"
-        "\n"
         "\n";
+    }
+
+    if (!constBuffDeclMatches.empty()) {
+        ss << '\n';
     }
 }
 
@@ -374,10 +427,10 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     "#pragma once\n"
     "// ----------- This is auto file, don't modify! -----------\n"
     "\n"
-    "#include \"engine/render/shader_manager/resource_bind.h\"\n"
-    "\n"
-    "\n";
+    "#include \"render/shader_manager/resource_bind.h\"\n"
+    "#include \"utils/math/glm_math.h\"\n\n";
 
+    FillIncludesDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillConstantDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillSrvVariablesDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillSrvTextureDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
@@ -385,8 +438,7 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
 
     ss << '\n';
     
-    const std::filesystem::path outputFilepath = inputParams.outputDirectory / 
-        ("auto_" + inputParams.inputFilepath.filename().replace_extension(".h").string());
+    const std::filesystem::path outputFilepath = inputParams.outputDirectory / inputParams.inputFilepath.filename().replace_extension(".h");
 
     const std::string outputContent = ss.str();
     WriteTextFile(outputFilepath, outputContent.data(), outputContent.size());
