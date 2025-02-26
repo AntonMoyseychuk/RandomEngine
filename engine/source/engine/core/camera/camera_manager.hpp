@@ -22,6 +22,7 @@ inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListene
         
         pDesc->eventTypeHash = typeID.hash_code();
         pDesc->ID = dispatcher.Subscribe<EventType>(callback);
+        
     #if defined(ENG_DEBUG)
         char debugName[512];
         sprintf_s(debugName, "_cam_%d_%s_callback_", cam.GetID().Value(), typeID.name());

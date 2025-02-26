@@ -192,6 +192,12 @@ private:
 };
 
 
+constexpr inline bool camIsFovDegreesValid(float degrees) noexcept
+{
+    return degrees > M3D_EPS && degrees < 180.f;
+}
+
+
 bool engInitCameraManager() noexcept;
 void engTerminateCameraManager() noexcept;
 bool engIsCameraManagerInitialized() noexcept;

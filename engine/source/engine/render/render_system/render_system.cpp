@@ -454,6 +454,16 @@ void RenderSystem::RunColorPass() noexcept
             }
         });
 
+        cameraManager.SubscribeCamera<EventMouseWheel>(*pMainCam, [](const void* pEvent) {
+            const EventMouseWheel& event = CastEventTo<EventMouseWheel>(pEvent);
+    
+            const float fovDegrees = pMainCam->GetFovDegrees() - event.GetDY();
+
+            if (camIsFovDegreesValid(fovDegrees)) {
+                pMainCam->SetFovDegress(fovDegrees);
+            }
+        });
+
         isInitialized = true;
 
         return;

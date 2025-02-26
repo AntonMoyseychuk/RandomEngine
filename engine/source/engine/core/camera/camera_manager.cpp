@@ -55,7 +55,7 @@ void Camera::SetOrthoProjection() noexcept
 
 void Camera::SetFovDegress(float degrees) noexcept
 {
-    ENG_ASSERT(glm::abs(glm::mod(degrees, 180.f)) > glm::epsilon<float>(), "degress can't be multiple of PI");
+    ENG_ASSERT(camIsFovDegreesValid(degrees), "degress can't be multiple of PI or less than zero");
 
     m_fovDegrees = degrees;
     RequestRecalcProjMatrix();
