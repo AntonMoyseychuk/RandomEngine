@@ -26,7 +26,7 @@ void main()
 #if defined(PASS_GBUFFER)
     const vec4 albedo = texture(TEST_TEXTURE, fs_in_texCoords);
 
-    fs_out_albedo = albedo * abs(sin(COMMON_ELAPSED_TIME * M_PI));
+    fs_out_albedo = albedo * abs(sin(COMMON_ELAPSED_TIME));
     fs_out_normal = fs_in_color;
     fs_out_specular = fs_in_color;
 #elif defined(PASS_MERGE)

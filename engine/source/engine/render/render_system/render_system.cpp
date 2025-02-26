@@ -63,6 +63,7 @@ void RenderSystem::RunColorPass() noexcept
     timer.Tick();
 
     static Window& window = engGetMainWindow();
+    static Input& input = window.GetInput();
     static TextureManager& texManager = TextureManager::GetInstance();
     static ShaderManager& shaderManager = ShaderManager::GetInstance();
     static RenderTargetManager& rtManager = RenderTargetManager::GetInstance();
@@ -392,8 +393,8 @@ void RenderSystem::RunColorPass() noexcept
 
         MemoryBufferCreateInfo commonConstBufferCreateInfo = {};
         commonConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
-        commonConstBufferCreateInfo.dataSize = sizeof(COMMON_CB);
-        commonConstBufferCreateInfo.elementSize = sizeof(COMMON_CB);
+        commonConstBufferCreateInfo.dataSize = sizeof(COMMON_DYN_CB);
+        commonConstBufferCreateInfo.elementSize = sizeof(COMMON_DYN_CB);
         commonConstBufferCreateInfo.creationFlags = static_cast<MemoryBufferCreationFlags>(
             BUFFER_CREATION_FLAG_DYNAMIC_STORAGE | BUFFER_CREATION_FLAG_READABLE | BUFFER_CREATION_FLAG_WRITABLE);
         commonConstBufferCreateInfo.pData = nullptr;
@@ -402,9 +403,9 @@ void RenderSystem::RunColorPass() noexcept
         ENG_ASSERT(pCommonConstBuffer, "Failed to register common const buffer");
         pCommonConstBuffer->Create(commonConstBufferCreateInfo);
         ENG_ASSERT(pCommonConstBuffer->IsValid(), "Failed to create common const buffer");
-        pCommonConstBuffer->SetDebugName("__COMMON_CB__");
+        pCommonConstBuffer->SetDebugName("__COMMON_DYN_CB__");
         
-        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_CB).GetBinding());
+        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_DYN_CB).GetBinding());
 
         MemoryBufferCreateInfo cameraConstBufferCreateInfo = {};
         cameraConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
@@ -469,14 +470,42 @@ void RenderSystem::RunColorPass() noexcept
         return;
     }
 
-    const float elapsedTime = timer.GetElapsedTimeInMillisec();
-    const float deltaTime = timer.GetDeltaTimeInMillisec();
+    const float elapsedTime = timer.GetElapsedTimeInSec();
+    const float deltaTime = timer.GetDeltaTimeInSec();
 
     char title[256];
-    sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1000.f / deltaTime);
+    sprintf_s(title, "%.3f ms | %.1f FPS", deltaTime, 1.f / deltaTime);
     window.SetTitle(title);
+
+    glm::vec3 offset(0.f);
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_W)) {
+        offset -= pMainCam->GetZDir();
+    }
     
-    glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_S)) {
+        offset += pMainCam->GetZDir();
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_D)) {
+        offset += pMainCam->GetXDir();
+    }
+    
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_A)) {
+        offset -= pMainCam->GetXDir();
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_E)) {
+        offset += pMainCam->GetYDir();
+    }
+    
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_Q)) {
+        offset -= pMainCam->GetYDir();
+    }
+
+    if (!glm::isNull(offset, M3D_EPS)) {
+        pMainCam->Move(glm::normalize(offset) * deltaTime);
+    }
 
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
     ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");
@@ -488,19 +517,25 @@ void RenderSystem::RunColorPass() noexcept
     const glm::mat4x4 cameraProjMat = glm::transpose(pMainCam->GetProjectionMatrix());
     constexpr size_t commonProjMatSize = sizeof(pCamConstBuff->COMMON_PROJ_MATRIX);
     memcpy_s(&pCamConstBuff->COMMON_PROJ_MATRIX, commonProjMatSize, &cameraProjMat, commonProjMatSize);
+
+    const glm::mat4x4 cameraViewProjMat = glm::transpose(pMainCam->GetViewProjectionMatrix());
+    constexpr size_t commonViewProjMatSize = sizeof(pCamConstBuff->COMMON_VIEW_PROJ_MATRIX);
+    memcpy_s(&pCamConstBuff->COMMON_VIEW_PROJ_MATRIX, commonViewProjMatSize, &cameraViewProjMat, commonViewProjMatSize);
     
     pCamConstBuff->COMMON_VIEW_Z_NEAR = pMainCam->GetZNear();
     pCamConstBuff->COMMON_VIEW_Z_FAR = pMainCam->GetZFar();
 
     pCameraConstBuffer->Unmap();
 
+    glViewport(0, 0, window.GetFramebufferWidth(), window.GetFramebufferHeight());
+
     {
         pGBufferPipeline->ClearFrameBuffer();
         pGBufferPipeline->Bind();
 
-        COMMON_CB* pCommonUBO = static_cast<COMMON_CB*>(pCommonConstBuffer->MapWrite());
+        COMMON_DYN_CB* pCommonUBO = static_cast<COMMON_DYN_CB*>(pCommonConstBuffer->MapWrite());
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");
-        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime / 4000.f;
+        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime;
         pCommonUBO->COMMON_DELTA_TIME = deltaTime;
         pCommonConstBuffer->Unmap();
 

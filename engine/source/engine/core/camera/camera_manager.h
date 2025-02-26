@@ -42,6 +42,9 @@ public:
     void SetOrthoTop(float top) noexcept;
     void SetOrthoBottom(float bottom) noexcept;
 
+    void Move(const glm::vec3& offset) noexcept;
+    void MoveAlongDir(const glm::vec3& dir, float distance) noexcept;
+
     void SetRotation(const glm::quat& rotation) noexcept;
     void SetPosition(const glm::vec3& position) noexcept;
 
@@ -64,6 +67,7 @@ public:
 
     const glm::mat4x4& GetViewMatrix() const noexcept { return m_matWCS; }
     const glm::mat4x4& GetProjectionMatrix() const noexcept { return m_matProjection; }
+    const glm::mat4x4& GetViewProjectionMatrix() const noexcept { return m_matViewProjection; }
 
     bool IsRegistered() const noexcept { return m_ID.IsValid(); }
     bool IsPerspProj() const noexcept { return !IsOrthoProj(); }
@@ -71,6 +75,8 @@ public:
 
     bool IsProjMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
     bool IsViewMatrixRecalcRequested() const noexcept { return m_flags.test(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
+    
+    bool IsNeedRecalcViewProjMatrix() const noexcept { return IsViewMatrixRecalcRequested() || IsProjMatrixRecalcRequested(); }
 
     void RequestRecalcProjMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_PROJ_MAT); }
     void RequestRecalcViewMatrix() noexcept { m_flags.set(CameraFlagBits::FLAG_NEED_RECALC_VIEW_MAT); }
@@ -83,6 +89,7 @@ private:
 
     void RecalcProjMatrix() noexcept;
     void RecalcViewMatrix() noexcept;
+    void RecalcViewProjMatrix() noexcept;
 
 private:
     enum CameraFlagBits
@@ -97,8 +104,9 @@ private:
     using CameraFlags = std::bitset<16>;
     static_assert(CameraFlagBits::FLAG_COUNT < CameraFlags().size());
 
-    glm::mat4x4 m_matProjection = glm::identity<glm::mat4x4>();
-    glm::mat4x4 m_matWCS = glm::identity<glm::mat4x4>();
+    glm::mat4x4 m_matViewProjection = glm::identity<glm::mat4x4>();
+    glm::mat4x4 m_matProjection     = glm::identity<glm::mat4x4>();
+    glm::mat4x4 m_matWCS            = glm::identity<glm::mat4x4>();
 
     glm::quat m_rotation = glm::identity<glm::quat>();
     glm::vec3 m_position = glm::vec3(0.f);

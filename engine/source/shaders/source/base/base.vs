@@ -54,8 +54,7 @@ void main()
     vs_out_texCoords = vs_in_texCoords;
 
     const vec4 wpos = vec4(vs_in_position, 1.0f);
-    const vec4 viewPos = vec4(TransformVec3(wpos, COMMON_VIEW_MATRIX), 1.0f);
-    gl_Position = TransformVec4(viewPos, COMMON_PROJ_MATRIX);
+    gl_Position = TransformVec4(wpos, COMMON_VIEW_PROJ_MATRIX);
 #else
     vs_out_texCoords = vertices[gl_VertexID].texCoords;
     gl_Position = vertices[gl_VertexID].position;

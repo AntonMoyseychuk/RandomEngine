@@ -20,8 +20,9 @@ Camera::~Camera()
 
 void Camera::Destroy() noexcept
 {
-    m_matProjection = glm::identity<glm::mat4x4>();
-    m_matWCS = glm::identity<glm::mat4x4>();
+    m_matViewProjection = glm::identity<glm::mat4x4>();
+    m_matProjection     = glm::identity<glm::mat4x4>();
+    m_matWCS            = glm::identity<glm::mat4x4>();
     
     m_rotation = glm::identity<glm::quat>();
     m_position = glm::vec3(0.f);
@@ -64,7 +65,7 @@ void Camera::SetFovDegress(float degrees) noexcept
 
 void Camera::SetAspectRatio(float aspect) noexcept
 {
-    ENG_ASSERT(aspect > glm::epsilon<float>(), "aspect can't be less or equal to zero");
+    ENG_ASSERT(aspect > M3D_EPS, "aspect can't be less or equal to zero");
 
     m_aspectRatio = aspect;
     RequestRecalcProjMatrix();
@@ -82,7 +83,7 @@ void Camera::SetAspectRatio(uint32_t width, uint32_t height) noexcept
 
 void Camera::SetZNear(float zNear) noexcept
 {
-    ENG_ASSERT(abs(m_zFar - zNear) > glm::epsilon<float>(), "Can't set Z Near equal to Z Far");
+    ENG_ASSERT(abs(m_zFar - zNear) > M3D_EPS, "Can't set Z Near equal to Z Far");
     m_zNear = zNear;
 
     RequestRecalcProjMatrix();
@@ -91,7 +92,7 @@ void Camera::SetZNear(float zNear) noexcept
 
 void Camera::SetZFar(float zFar) noexcept
 {
-    ENG_ASSERT(abs(zFar - m_zNear) > glm::epsilon<float>(), "Can't set Z Far equal to Z Near");
+    ENG_ASSERT(abs(zFar - m_zNear) > M3D_EPS, "Can't set Z Far equal to Z Near");
     m_zFar = zFar;
     
     RequestRecalcProjMatrix();
@@ -100,7 +101,7 @@ void Camera::SetZFar(float zFar) noexcept
 
 void Camera::SetOrthoLeft(float left) noexcept
 {
-    ENG_ASSERT(abs(m_right - left) > glm::epsilon<float>(), "Can't set left equal to right");
+    ENG_ASSERT(abs(m_right - left) > M3D_EPS, "Can't set left equal to right");
     
     m_left = left;
     RequestRecalcProjMatrix();
@@ -109,7 +110,7 @@ void Camera::SetOrthoLeft(float left) noexcept
 
 void Camera::SetOrthoRight(float right) noexcept
 {
-    ENG_ASSERT(abs(right - m_left) > glm::epsilon<float>(), "Can't set right equal to left");
+    ENG_ASSERT(abs(right - m_left) > M3D_EPS, "Can't set right equal to left");
     
     m_right = right;
     RequestRecalcProjMatrix();
@@ -118,7 +119,7 @@ void Camera::SetOrthoRight(float right) noexcept
 
 void Camera::SetOrthoTop(float top) noexcept
 {
-    ENG_ASSERT(abs(top - m_bottom) > glm::epsilon<float>(), "Can't set top equal to bottom");
+    ENG_ASSERT(abs(top - m_bottom) > M3D_EPS, "Can't set top equal to bottom");
     
     m_top = top;
     RequestRecalcProjMatrix();
@@ -127,10 +128,26 @@ void Camera::SetOrthoTop(float top) noexcept
 
 void Camera::SetOrthoBottom(float bottom) noexcept
 {
-    ENG_ASSERT(abs(m_top - bottom) > glm::epsilon<float>(), "Can't set bottom equal to top");
+    ENG_ASSERT(abs(m_top - bottom) > M3D_EPS, "Can't set bottom equal to top");
     
     m_bottom = bottom;
     RequestRecalcProjMatrix();
+}
+
+
+void Camera::Move(const glm::vec3& offset) noexcept
+{
+    m_position += offset;
+    RequestRecalcViewMatrix();
+}
+
+
+void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
+{
+    ENG_ASSERT(glm::isNormalized(dir, M3D_EPS), "dir must be normalized vector");
+    
+    m_position += dir * distance;
+    RequestRecalcViewMatrix();
 }
 
 
@@ -150,47 +167,22 @@ void Camera::SetPosition(const glm::vec3& position) noexcept
 
 void Camera::Update(float dt) noexcept
 {
-    const Input& input = engGetMainWindow().GetInput();
-    
-    glm::vec3 offset(0.f);
+    bool shouldRecalcViewProjMat = false;
 
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_W)) {
-        offset -= GetZDir() * dt;
-    }
-    
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_S)) {
-        offset += GetZDir() * dt;
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_D)) {
-        offset += GetXDir() * dt;
-    }
-    
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_A)) {
-        offset -= GetXDir() * dt;
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_E)) {
-        offset += GetYDir() * dt;
-    }
-    
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_Q)) {
-        offset -= GetYDir() * dt;
-    }
-
-    if (!glm::isNull(offset, glm::epsilon<float>())) {
-        m_position += glm::normalize(offset) * dt;
-        RequestRecalcViewMatrix();
+    if (IsViewMatrixRecalcRequested()) {
+        RecalcViewMatrix();
+        ClearViewMatrixRecalcRequest();
+        shouldRecalcViewProjMat = true;
     }
 
     if (IsProjMatrixRecalcRequested()) {
         RecalcProjMatrix();
         ClearProjRecalcRequest();
+        shouldRecalcViewProjMat = true;
     }
 
-    if (IsViewMatrixRecalcRequested()) {
-        RecalcViewMatrix();
-        ClearViewMatrixRecalcRequest();
+    if (shouldRecalcViewProjMat) {
+        RecalcViewProjMatrix();
     }
 }
 
@@ -207,8 +199,13 @@ void Camera::RecalcProjMatrix() noexcept
 
 void Camera::RecalcViewMatrix() noexcept
 {
-    m_matWCS = glm::mat4_cast(m_rotation);
-    m_matWCS *= glm::translate(glm::identity<glm::mat4x4>(), -m_position);
+    m_matWCS = glm::mat4_cast(m_rotation) * glm::translate(glm::identity<glm::mat4x4>(), -m_position);
+}
+
+
+void Camera::RecalcViewProjMatrix() noexcept
+{
+    m_matViewProjection = m_matProjection * m_matWCS;
 }
 
 
