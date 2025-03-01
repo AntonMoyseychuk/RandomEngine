@@ -508,27 +508,23 @@ void RenderSystem::RunColorPass() noexcept
         pMainCam->Move(glm::normalize(offset) * deltaTime);
     }
 
-    glm::vec2 rotationOffset(0.f);
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_LEFT)) {
-        rotationOffset.y -= 50.f * deltaTime;
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_RIGHT)) {
-        rotationOffset.y += 50.f * deltaTime;
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_UP)) {
-        rotationOffset.x -= 50.f * deltaTime;
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_DOWN)) {
-        rotationOffset.x += 50.f * deltaTime;
-    }
-
-    if (!amIsZero(rotationOffset)) {
-        pMainCam->Rotate(rotationOffset.x, rotationOffset.y);
-    }
+    // if (input.IsKeyPressed(KeyboardKey::KEY_F5)) {
+    //     window.SetCursorState(!window.IsCursorEnabled());
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // }
+    //
+    // if (!window.IsCursorEnabled()) {
+    //     const glm::vec2 rotationOffset = 0.5f * glm::vec2(input.GetCursorDy(), input.GetCursorDx());
+    //
+    //     if (!amIsZero(rotationOffset)) {
+    //         glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(pMainCam->GetRotationQuat()));
+    //
+    //         eulerAngles.x = glm::clamp(eulerAngles.x + rotationOffset.x, -90.f, 90.f);
+    //         eulerAngles.y += rotationOffset.y;
+    //
+    //         pMainCam->SetRotation(glm::quat(glm::radians(eulerAngles)));
+    //     }
+    // }
 
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
     ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");

@@ -44,3 +44,15 @@ constexpr inline bool amIsZero(float value) noexcept
 {
     return glm::abs(value) < M3D_EPS;
 }
+
+
+template <typename T>
+constexpr inline bool amIsNormalized(const T& value) noexcept
+{
+    return glm::isNormalized(value, M3D_EPS);
+}
+
+constexpr inline bool amIsNormalized(const glm::quat& quat) noexcept
+{
+    return std::abs(glm::length(quat) - 1.0f) < M3D_EPS;
+}

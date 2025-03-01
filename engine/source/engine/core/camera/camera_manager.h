@@ -43,8 +43,9 @@ public:
     void Move(const glm::vec3& offset) noexcept;
     void MoveAlongDir(const glm::vec3& dir, float distance) noexcept;
 
-    void Rotate(const glm::vec3& axis, float degrees) noexcept;
-    void Rotate(float pitchDegrees, float yawDegrees, float rollDegrees = 0.f) noexcept;
+    void Rotate(const glm::quat& rotation) noexcept;
+    void RotateAxis(const glm::vec3& axis, float degrees) noexcept;
+    void RotatePitchYawRoll(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept;
 
     void SetRotation(const glm::quat& rotation) noexcept;
     void SetPosition(const glm::vec3& position) noexcept;
@@ -62,7 +63,9 @@ public:
     glm::vec3 GetXDir() const noexcept { return glm::vec3(m_matWCS[0].x, m_matWCS[1].x, m_matWCS[2].x); }
     glm::vec3 GetYDir() const noexcept { return glm::vec3(m_matWCS[0].y, m_matWCS[1].y, m_matWCS[2].y); }
     glm::vec3 GetZDir() const noexcept { return glm::vec3(m_matWCS[0].z, m_matWCS[1].z, m_matWCS[2].z); }
-    glm::vec3 GetPosition() const noexcept { return -m_matWCS[3]; }
+    
+    const glm::quat& GetRotationQuat() const noexcept { return m_rotation; }
+    const glm::vec3& GetPosition() const noexcept { return m_position; }
 
     CameraID GetID() const noexcept { return m_ID; }
 

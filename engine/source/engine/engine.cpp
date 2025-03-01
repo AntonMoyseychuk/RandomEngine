@@ -67,7 +67,7 @@ void Engine::Update() noexcept
 {
     ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
     
-    m_pMainWindow->PollEvents();
+    m_pMainWindow->Update();
     
     CameraManager::GetInstance().Update(1.f);
 }

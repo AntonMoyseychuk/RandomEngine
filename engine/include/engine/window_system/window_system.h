@@ -197,6 +197,8 @@ private:
     bool Init(Window* pWindow) noexcept;
     void Destroy() noexcept;
 
+    void Update() noexcept;
+
 private:
     void OnKeyEvent(KeyboardKey key, KeyState state) noexcept;
     void OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept;
@@ -250,14 +252,17 @@ class Window
     friend class WindowSystem;
 
 private:
-    enum WindowState : uint32_t
+    enum WindowStateBits : uint32_t
     {
-        STATE_CLOSED,
-        STATE_FOCUSED,
-        STATE_MAXIMIZED,
-        STATE_MINIMIZED,
+        STATE_BIT_VISIBLE,
+        STATE_BIT_OPENED,
+        STATE_BIT_FOCUSED,
+        STATE_BIT_MAXIMIZED,
+        STATE_BIT_MINIMIZED,
 
-        STATE_COUNT
+        STATE_BIT_CURSOR_DISABLED,
+
+        STATE_BIT_COUNT
     };
 
 public:
@@ -270,11 +275,13 @@ public:
     Window(Window&& other) = delete;
     Window& operator=(Window&& other) = delete;
 
-    void PollEvents() noexcept;
+    void Update() noexcept;
     void SwapBuffers() noexcept;
 
     void Show() noexcept;
     void Hide() noexcept;
+
+    void SetCursorState(bool enabled) noexcept;
 
     Input& GetInput() noexcept { return m_input; }
     void* GetNativeWindow() noexcept { return m_pNativeWindow; }
@@ -288,17 +295,23 @@ public:
     const char* GetTitle() const noexcept;
     void SetTitle(const char* title) noexcept;
 
-    bool IsClosed() const noexcept { return m_state.test(STATE_CLOSED); }
-    bool IsFocused() const noexcept { return m_state.test(STATE_FOCUSED); }
-    bool IsMaximized() const noexcept { return m_state.test(STATE_MAXIMIZED); }
-    bool IsMinimized() const noexcept { return m_state.test(STATE_MINIMIZED); }
-    bool IsVisible() const noexcept;
+    bool IsClosed() const noexcept { return !m_state.test(STATE_BIT_OPENED); }
+    bool IsFocused() const noexcept { return m_state.test(STATE_BIT_FOCUSED); }
+    bool IsMaximized() const noexcept { return m_state.test(STATE_BIT_MAXIMIZED); }
+    bool IsMinimized() const noexcept { return m_state.test(STATE_BIT_MINIMIZED); }
+    bool IsCursorEnabled() const noexcept { return !m_state.test(STATE_BIT_CURSOR_DISABLED); }
+    bool IsVisible() const noexcept { return m_state.test(STATE_BIT_VISIBLE); }
 
     bool IsInitialized() const noexcept { return m_pNativeWindow != nullptr; }
 
 private:
     bool Init(const WindowCreateInfo& createInfo) noexcept;
     void Destroy() noexcept;
+
+    void PollEvents() noexcept;
+
+    void DisableCursor() noexcept;
+    void EnableCursor() noexcept;
 
 private:
     enum WindowEventIndex
@@ -333,7 +346,7 @@ private:
     uint32_t m_framebufferWidth = 0;
     uint32_t m_framebufferHeight = 0;
 
-    std::bitset<STATE_COUNT> m_state = STATE_CLOSED;
+    std::bitset<STATE_BIT_COUNT> m_state;
 };
 
 

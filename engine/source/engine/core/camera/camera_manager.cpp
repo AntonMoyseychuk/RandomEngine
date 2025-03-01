@@ -144,21 +144,30 @@ void Camera::Move(const glm::vec3& offset) noexcept
 
 void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
 {
-    ENG_ASSERT(glm::isNormalized(dir, M3D_EPS), "dir must be normalized vector");
+    ENG_ASSERT(amIsNormalized(dir), "dir must be normalized vector");
     
     m_position += dir * distance;
     RequestRecalcViewMatrix();
 }
 
 
-void Camera::Rotate(const glm::vec3& axis, float degrees) noexcept
+void Camera::Rotate(const glm::quat& rotation) noexcept
+{
+    ENG_ASSERT(amIsNormalized(rotation), "rotation quaternion must be normalized");
+
+    m_rotation = glm::normalize(rotation * m_rotation);
+    RequestRecalcViewMatrix();
+}
+
+
+void Camera::RotateAxis(const glm::vec3 &axis, float degrees) noexcept
 {
     m_rotation = glm::normalize(glm::angleAxis(glm::radians(degrees), axis) * m_rotation);
     RequestRecalcViewMatrix();
 }
 
 
-void Camera::Rotate(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
+void Camera::RotatePitchYawRoll(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
 {
     const glm::quat rotPitch = glm::angleAxis(glm::radians(pitchDegrees), glm::vec3(1, 0, 0));
     const glm::quat rotYaw   = glm::angleAxis(glm::radians(yawDegrees),   glm::vec3(0, 1, 0));

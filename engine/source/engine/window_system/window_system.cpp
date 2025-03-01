@@ -388,6 +388,12 @@ void Input::Destroy() noexcept
 }
 
 
+void Input::Update() noexcept
+{
+    m_prevCursorPosition = m_currCursorPosition;
+}
+
+
 KeyState Input::GetKeyState(KeyboardKey key) const noexcept
 {
     const size_t keyIndex = static_cast<size_t>(key);
@@ -395,6 +401,7 @@ KeyState Input::GetKeyState(KeyboardKey key) const noexcept
 
     return m_keyStates[keyIndex];
 }
+
 
 MouseButtonState Input::GetMouseButtonState(MouseButton button) const noexcept
 {
@@ -459,8 +466,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowMinimized>(
             [this](const void* pEvent) {
-                m_state.set(STATE_MINIMIZED);
-                m_state.reset(STATE_MAXIMIZED);
+                m_state.set(STATE_BIT_MINIMIZED);
+                m_state.reset(STATE_BIT_MAXIMIZED);
             }
         );
 
@@ -474,8 +481,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowMaximized>(
             [this](const void* pEvent) {
-                m_state.set(STATE_MAXIMIZED);
-                m_state.reset(STATE_MINIMIZED);
+                m_state.set(STATE_BIT_MAXIMIZED);
+                m_state.reset(STATE_BIT_MINIMIZED);
             }
         );
 
@@ -489,8 +496,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowSizeRestored>(
             [this](const void* pEvent) {
-                m_state.reset(STATE_MAXIMIZED);
-                m_state.reset(STATE_MINIMIZED);
+                m_state.reset(STATE_BIT_MAXIMIZED);
+                m_state.reset(STATE_BIT_MINIMIZED);
             }
         );
 
@@ -504,7 +511,7 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowClosed>(
             [this](const void* pEvent) {
-                m_state.set(STATE_CLOSED);
+                m_state.set(STATE_BIT_OPENED, false);
             }
         );
 
@@ -518,7 +525,7 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowFocused>(
             [this](const void* pEvent) {
-                m_state.set(STATE_FOCUSED);
+                m_state.set(STATE_BIT_FOCUSED);
             }
         );
 
@@ -532,7 +539,7 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     {
         const EventListenerID listenerID = dispatcher.Subscribe<EventWindowUnfocused>(
             [this](const void* pEvent) {
-                m_state.reset(STATE_FOCUSED);
+                m_state.reset(STATE_BIT_FOCUSED);
             }
         );
 
@@ -631,7 +638,7 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     m_input.Init(this);
     ENG_ASSERT_WINDOW(m_input.IsInitialized(), "Input system initialization failed");
 
-    m_state.reset(STATE_CLOSED);
+    m_state.set(STATE_BIT_OPENED, true);
 
     return true;
 }
@@ -660,7 +667,7 @@ void Window::Destroy() noexcept
     m_framebufferWidth = 0;
     m_framebufferHeight = 0;
 
-    m_state = STATE_CLOSED;
+    m_state.reset();
 }
 
 
@@ -668,6 +675,39 @@ void Window::PollEvents() noexcept
 {
     ASSERT_WINDOW_INIT_STATUS(this);
     glfwPollEvents();
+}
+
+
+void Window::DisableCursor() noexcept
+{
+    ASSERT_WINDOW_INIT_STATUS(this);
+
+    if (!IsCursorEnabled()) {
+        return;
+    }
+
+    m_state.set(STATE_BIT_CURSOR_DISABLED, true);
+    glfwSetInputMode(static_cast<GLFWwindow*>(m_pNativeWindow), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+
+void Window::EnableCursor() noexcept
+{
+    ASSERT_WINDOW_INIT_STATUS(this);
+
+    if (IsCursorEnabled()) {
+        return;
+    }
+
+    m_state.set(STATE_BIT_CURSOR_DISABLED, false);
+    glfwSetInputMode(static_cast<GLFWwindow*>(m_pNativeWindow), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
+
+void Window::Update() noexcept
+{
+    m_input.Update();
+    PollEvents();
 }
 
 
@@ -681,6 +721,12 @@ void Window::SwapBuffers() noexcept
 void Window::Show() noexcept
 {
     ASSERT_WINDOW_INIT_STATUS(this);
+
+    if (IsVisible()) {
+        return;
+    }
+
+    m_state.set(STATE_BIT_VISIBLE, true);
     glfwShowWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
 }
 
@@ -688,7 +734,25 @@ void Window::Show() noexcept
 void Window::Hide() noexcept
 {
     ASSERT_WINDOW_INIT_STATUS(this);
+
+    if (!IsVisible()) {
+        return;
+    }
+
+    m_state.set(STATE_BIT_VISIBLE, false);
     glfwHideWindow(static_cast<GLFWwindow*>(m_pNativeWindow));
+}
+
+
+void Window::SetCursorState(bool enabled) noexcept
+{
+    ASSERT_WINDOW_INIT_STATUS(this);
+    
+    if (enabled) {
+        EnableCursor();
+    } else {
+        DisableCursor();
+    }
 }
 
 
@@ -703,13 +767,6 @@ void Window::SetTitle(const char *title) noexcept
 {
     ASSERT_WINDOW_INIT_STATUS(this);
     glfwSetWindowTitle(static_cast<GLFWwindow*>(m_pNativeWindow), title);
-}
-
-
-bool Window::IsVisible() const noexcept
-{
-    ASSERT_WINDOW_INIT_STATUS(this);
-    return glfwGetWindowAttrib(static_cast<GLFWwindow*>(m_pNativeWindow), GLFW_VISIBLE);
 }
 
 
