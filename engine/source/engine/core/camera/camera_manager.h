@@ -10,9 +10,7 @@
 
 #include <vector>
 #include <deque>
-#include <array>
 #include <bitset>
-#include <variant>
 
 
 using CameraID = ds::BaseID<uint16_t>;
@@ -45,6 +43,9 @@ public:
     void Move(const glm::vec3& offset) noexcept;
     void MoveAlongDir(const glm::vec3& dir, float distance) noexcept;
 
+    void Rotate(const glm::vec3& axis, float degrees) noexcept;
+    void Rotate(float pitchDegrees, float yawDegrees, float rollDegrees = 0.f) noexcept;
+
     void SetRotation(const glm::quat& rotation) noexcept;
     void SetPosition(const glm::vec3& position) noexcept;
 
@@ -58,9 +59,9 @@ public:
     float GetOrthoTop() const noexcept { return m_top; }
     float GetOrthoBottom() const noexcept { return m_bottom; }
 
-    glm::vec3 GetXDir() const noexcept { return m_matWCS[0]; }
-    glm::vec3 GetYDir() const noexcept { return m_matWCS[1]; }
-    glm::vec3 GetZDir() const noexcept { return m_matWCS[2]; }
+    glm::vec3 GetXDir() const noexcept { return glm::vec3(m_matWCS[0].x, m_matWCS[1].x, m_matWCS[2].x); }
+    glm::vec3 GetYDir() const noexcept { return glm::vec3(m_matWCS[0].y, m_matWCS[1].y, m_matWCS[2].y); }
+    glm::vec3 GetZDir() const noexcept { return glm::vec3(m_matWCS[0].z, m_matWCS[1].z, m_matWCS[2].z); }
     glm::vec3 GetPosition() const noexcept { return -m_matWCS[3]; }
 
     CameraID GetID() const noexcept { return m_ID; }
@@ -104,12 +105,12 @@ private:
     using CameraFlags = std::bitset<16>;
     static_assert(CameraFlagBits::FLAG_COUNT < CameraFlags().size());
 
-    glm::mat4x4 m_matViewProjection = glm::identity<glm::mat4x4>();
-    glm::mat4x4 m_matProjection     = glm::identity<glm::mat4x4>();
-    glm::mat4x4 m_matWCS            = glm::identity<glm::mat4x4>();
+    glm::mat4x4 m_matViewProjection = M3D_MAT4_IDENTITY;
+    glm::mat4x4 m_matProjection     = M3D_MAT4_IDENTITY;
+    glm::mat4x4 m_matWCS            = M3D_MAT4_IDENTITY;
 
-    glm::quat m_rotation = glm::identity<glm::quat>();
-    glm::vec3 m_position = glm::vec3(0.f);
+    glm::quat m_rotation = M3D_QUAT_IDENTITY;
+    glm::vec3 m_position = M3D_ZEROF3;
 
     // perspective
     float m_fovDegrees = 0.f;

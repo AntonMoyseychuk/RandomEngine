@@ -503,8 +503,30 @@ void RenderSystem::RunColorPass() noexcept
         offset -= pMainCam->GetYDir();
     }
 
-    if (!glm::isNull(offset, M3D_EPS)) {
+    if (!amIsZero(offset)) {
         pMainCam->Move(glm::normalize(offset) * deltaTime);
+    }
+
+    glm::vec2 rotationOffset(0.f);
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_LEFT)) {
+        rotationOffset.y -= 50.f * deltaTime;
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_RIGHT)) {
+        rotationOffset.y += 50.f * deltaTime;
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_UP)) {
+        rotationOffset.x -= 50.f * deltaTime;
+    }
+
+    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_DOWN)) {
+        rotationOffset.x += 50.f * deltaTime;
+    }
+
+    if (!amIsZero(rotationOffset)) {
+        pMainCam->Rotate(rotationOffset.x, rotationOffset.y);
     }
 
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();

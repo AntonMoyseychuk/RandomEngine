@@ -151,6 +151,24 @@ void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
 }
 
 
+void Camera::Rotate(const glm::vec3& axis, float degrees) noexcept
+{
+    m_rotation = glm::normalize(glm::angleAxis(glm::radians(degrees), axis) * m_rotation);
+    RequestRecalcViewMatrix();
+}
+
+
+void Camera::Rotate(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
+{
+    const glm::quat rotPitch = glm::angleAxis(glm::radians(pitchDegrees), glm::vec3(1, 0, 0));
+    const glm::quat rotYaw   = glm::angleAxis(glm::radians(yawDegrees),   glm::vec3(0, 1, 0));
+    const glm::quat rotRoll  = glm::angleAxis(glm::radians(rollDegrees),  glm::vec3(0, 0, 1));
+
+    m_rotation = glm::normalize(rotRoll * rotYaw * rotPitch * m_rotation);
+    RequestRecalcViewMatrix();
+}
+
+
 void Camera::SetRotation(const glm::quat& rotation) noexcept
 {
     m_rotation = rotation;
