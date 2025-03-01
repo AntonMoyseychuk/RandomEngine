@@ -677,7 +677,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER;
 
         FrameBufferAttachment pAttachments[] = { 
-            gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment//, commonDepthAttachment
+            gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment, commonDepthAttachment
         };
 
         gbufferFrameBufferCreateInfo.pAttachments = pAttachments;

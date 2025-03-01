@@ -36,13 +36,13 @@ struct Vertex
 
 #if defined(PASS_MERGE)
     Vertex vertices[6] = Vertex[6](
-        Vertex(vec4(-1.0f, -1.0f, 0.0f, 1.0f), vec2(0.0f, 0.0f)),
-        Vertex(vec4( 1.0f, -1.0f, 0.0f, 1.0f), vec2(1.0f, 0.0f)),
-        Vertex(vec4(-1.0f,  1.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f)),
+        Vertex(vec4(-1.0f, -1.0f, 1.0f, 1.0f), vec2(0.0f, 0.0f)),
+        Vertex(vec4( 1.0f, -1.0f, 1.0f, 1.0f), vec2(1.0f, 0.0f)),
+        Vertex(vec4(-1.0f,  1.0f, 1.0f, 1.0f), vec2(0.0f, 1.0f)),
 
-        Vertex(vec4( 1.0f, -1.0f, 0.0f, 1.0f), vec2(1.0f, 0.0f)),
-        Vertex(vec4( 1.0f,  1.0f, 0.0f, 1.0f), vec2(1.0f, 1.0f)),
-        Vertex(vec4(-1.0f,  1.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f))
+        Vertex(vec4( 1.0f, -1.0f, 1.0f, 1.0f), vec2(1.0f, 0.0f)),
+        Vertex(vec4( 1.0f,  1.0f, 1.0f, 1.0f), vec2(1.0f, 1.0f)),
+        Vertex(vec4(-1.0f,  1.0f, 1.0f, 1.0f), vec2(0.0f, 1.0f))
     );
 #endif
 

@@ -253,6 +253,7 @@ void RenderSystem::RunColorPass() noexcept
         };
         gBufferFrameBufferClearValues.pColorAttachmentClearColors = pGBufferColorAttachmentClearColors;
         gBufferFrameBufferClearValues.colorAttachmentsCount = _countof(pGBufferColorAttachmentClearColors);
+        gBufferFrameBufferClearValues.depthClearValue = 1.f;
 
         PipelineCreateInfo gBufferPipelineCreateInfo = {};
         gBufferPipelineCreateInfo.pInputAssemblyState = &gBufferInputAssemblyState;
@@ -428,7 +429,7 @@ void RenderSystem::RunColorPass() noexcept
         
         pMainCam->SetPerspProjection();
         
-        pMainCam->SetZNear(0.1f);
+        pMainCam->SetZNear(0.01f);
         pMainCam->SetZFar(100.f);
 
         pMainCam->SetPosition(glm::vec3(0.f, 0.f, 2.f));
