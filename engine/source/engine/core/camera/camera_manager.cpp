@@ -226,7 +226,7 @@ void Camera::RecalcProjMatrix() noexcept
 
 void Camera::RecalcViewMatrix() noexcept
 {
-    m_matWCS = glm::mat4_cast(m_rotation) * glm::translate(glm::identity<glm::mat4x4>(), -m_position);
+    m_matWCS = glm::mat4_cast(m_rotation) * glm::translate(M3D_MAT4_IDENTITY, -m_position);
 }
 
 

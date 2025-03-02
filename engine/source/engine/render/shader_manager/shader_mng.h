@@ -130,7 +130,6 @@ private:
     std::vector<ShaderProgram> m_shaderProgramsStorage;
     
     std::deque<ProgramID> m_programIDFreeList;
-
     ProgramID m_nextAllocatedID = ProgramID(0);
 
     bool m_isInitialized = false;

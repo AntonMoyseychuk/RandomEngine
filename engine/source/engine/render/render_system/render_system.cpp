@@ -433,7 +433,7 @@ void RenderSystem::RunColorPass() noexcept
         pMainCam->SetZFar(100.f);
 
         pMainCam->SetPosition(glm::vec3(0.f, 0.f, 2.f));
-        pMainCam->SetRotation(glm::quatLookAt(glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f)));
+        pMainCam->SetRotation(glm::quatLookAt(-M3D_AXIS_Z, M3D_AXIS_Y));
 
         pMainCam->SetAspectRatio(window.GetFramebufferWidth(), window.GetFramebufferHeight());
         pMainCam->SetFovDegress(90.f);
@@ -525,6 +525,8 @@ void RenderSystem::RunColorPass() noexcept
     //         pMainCam->SetRotation(glm::quat(glm::radians(eulerAngles)));
     //     }
     // }
+
+    const glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(pMainCam->GetRotationQuat()));
 
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
     ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");
