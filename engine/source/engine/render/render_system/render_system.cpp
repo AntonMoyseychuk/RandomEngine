@@ -469,30 +469,13 @@ void RenderSystem::RunColorPass() noexcept
     window.SetTitle(title);
 
     glm::vec3 offset(0.f);
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_W)) {
-        offset -= pMainCam->GetZDir();
-    }
     
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_S)) {
-        offset += pMainCam->GetZDir();
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_D)) {
-        offset += pMainCam->GetXDir();
-    }
-    
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_A)) {
-        offset -= pMainCam->GetXDir();
-    }
-
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_E)) {
-        offset += pMainCam->GetYDir();
-    }
-    
-    if (input.IsKeyPressedOrHold(KeyboardKey::KEY_Q)) {
-        offset -= pMainCam->GetYDir();
-    }
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_W) * (-pMainCam->GetZDir());
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_S) * (pMainCam->GetZDir());
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_D) * (pMainCam->GetXDir());
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_A) * (-pMainCam->GetXDir());
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_E) * (pMainCam->GetYDir());
+    offset += (float)input.IsKeyPressedOrHold(KeyboardKey::KEY_Q) * (-pMainCam->GetYDir());
 
     if (!amIsZero(offset)) {
         pMainCam->Move(glm::normalize(offset) * deltaTime);
