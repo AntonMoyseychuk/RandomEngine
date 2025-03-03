@@ -174,139 +174,62 @@ bool Input::Init(Window* pWindow) noexcept
         ENG_LOG_WINDOW_WARN("pWindow is invalid");
         return false;
     }
+    
+    const EventListener::CallbackType mousePressedListener = [this](const void* pEvent) {
+        const EventMousePressed& event = CastEventTo<EventMousePressed>(pEvent);
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_PRESSED);
+    };
 
+    const EventListener::CallbackType mouseReleasedListener = [this](const void* pEvent) {
+        const EventMouseReleased& event = CastEventTo<EventMouseReleased>(pEvent);
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_RELEASED);
+    };
+
+    const EventListener::CallbackType mouseHoldListener = [this](const void* pEvent) {
+        const EventMouseHold& event = CastEventTo<EventMouseHold>(pEvent);
+        OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_HOLD);
+    };
+
+    const EventListener::CallbackType keyPressedListener = [this](const void* pEvent) {
+        const EventKeyPressed& event = CastEventTo<EventKeyPressed>(pEvent);
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_PRESSED);
+    };
+
+    const EventListener::CallbackType keyReleasedListener = [this](const void* pEvent) {
+        const EventKeyReleased& event = CastEventTo<EventKeyReleased>(pEvent);
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_RELEASED);
+    };
+
+    const EventListener::CallbackType keyHoldListener = [this](const void* pEvent) {
+        const EventKeyHold& event = CastEventTo<EventKeyHold>(pEvent);
+        OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_HOLD);
+    };
+
+    const EventListener::CallbackType wheelListener = [this](const void* pEvent) {
+        const EventMouseWheel& event = CastEventTo<EventMouseWheel>(pEvent);
+        OnWheelEvent(event.GetDX(), event.GetDY());
+    };
+
+    const EventListener::CallbackType cursorMovedListener = [this](const void* pEvent) {
+        const EventCursorMoved& event = CastEventTo<EventCursorMoved>(pEvent);
+        OnMouseMoveEvent(event.GetX(), event.GetY());
+    };
+
+    const EventListener::CallbackType cursorLeavedListener = [](const void* pEvent) {};
+    const EventListener::CallbackType cursorEnteredListener = [](const void* pEvent) {};
+
+    SubscribeEventListener<EventCursorMoved>(IDX_CURSOR_MOVED, cursorMovedListener, "WINDOW_SYS_CURSOR_MOVE");
+    SubscribeEventListener<EventCursorLeaved>(IDX_CURSOR_LEAVED, cursorLeavedListener, "WINDOW_SYS_CURSOR_LEAVE");
+    SubscribeEventListener<EventCursorEntered>(IDX_CURSOR_ENTERED, cursorEnteredListener, "WINDOW_SYS_CURSOR_ENTER");
+    SubscribeEventListener<EventMousePressed>(IDX_MOUSE_PRESSED, mousePressedListener, "WINDOW_SYS_MOUSE_PRESS");
+    SubscribeEventListener<EventMouseReleased>(IDX_MOUSE_RELEASED, mouseReleasedListener, "WINDOW_SYS_MOUSE_RELEASE");
+    SubscribeEventListener<EventMouseHold>(IDX_MOUSE_HOLD, mouseHoldListener, "WINDOW_SYS_MOUSE_HOLD");
+    SubscribeEventListener<EventMouseWheel>(IDX_MOUSE_WHEEL, wheelListener, "WINDOW_SYS_MOUSE_WHEEL");
+    SubscribeEventListener<EventKeyPressed>(IDX_KEY_PRESSED, keyPressedListener, "WINDOW_SYS_KEY_PRESS");
+    SubscribeEventListener<EventKeyReleased>(IDX_KEY_RELEASED, keyReleasedListener, "WINDOW_SYS_KEY_RELEASE");
+    SubscribeEventListener<EventKeyHold>(IDX_KEY_HOLD, keyHoldListener, "WINDOW_SYS_KEY_HOLD");
+    
     GLFWwindow* pNativeWindow = static_cast<GLFWwindow*>(pWindow->GetNativeWindow());
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventCursorMoved>(
-            [this](const void* pEvent) {
-                const EventCursorMoved& event = CastEventTo<EventCursorMoved>(pEvent);
-                OnMouseMoveEvent(event.GetX(), event.GetY());
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_MOV");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_MOVED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_MOVED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-    
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventMousePressed>(
-            [this](const void* pEvent) {
-                OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMousePressed>(pEvent).GetButton()), MouseButtonState::STATE_PRESSED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_PRESS");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_PRESSED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventMouseReleased>(
-            [this](const void* pEvent) {
-                OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseReleased>(pEvent).GetButton()), MouseButtonState::STATE_RELEASED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_RELEASE");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_RELEASED].id = listenerID.Value(); 
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventMouseHold>(
-            [this](const void* pEvent) {
-                OnMouseButtonEvent(GLFWButtonToCustomMouseButton(CastEventTo<EventMouseHold>(pEvent).GetButton()), MouseButtonState::STATE_HOLD);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_HOLD");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_HOLD].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_HOLD].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventKeyPressed>(
-            [this](const void* pEvent) {
-                OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyPressed>(pEvent).GetKey()), KeyState::STATE_PRESSED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_PRESS");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_PRESSED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_PRESSED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventKeyReleased>(
-            [this](const void* pEvent) {
-                OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyReleased>(pEvent).GetKey()), KeyState::STATE_RELEASED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_RELEASE");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_RELEASED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_RELEASED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventKeyHold>(
-            [this](const void* pEvent) {
-                OnKeyEvent(GLFWKeyToCustomKey(CastEventTo<EventKeyHold>(pEvent).GetKey()), KeyState::STATE_HOLD);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_KEY_HOLD");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_HOLD].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_KEY_HOLD].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventCursorLeaved>([](const void* pEvent) {});
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_LEAVE");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_LEAVED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_LEAVED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventCursorEntered>([](const void* pEvent) {});
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CURSOR_ENTER");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_ENTERED].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_CURSOR_ENTERED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-    
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventMouseWheel>([](const void* pEvent) {});
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MOUSE_WHEEL");
-
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_WHEEL].id = listenerID.Value();
-        m_inputListenersIDDescs[InputEventIndex::IDX_MOUSE_WHEEL].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
 
     glfwSetKeyCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
         static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
@@ -384,6 +307,9 @@ void Input::Destroy() noexcept
     m_prevCursorPosition = {};
     m_currCursorPosition = {};
     m_mouseButtonStates = {};
+    m_mouseWheelDX = 0.f;
+    m_mouseWheelDY = 0.f;
+
     m_isIntialized = false;
 }
 
@@ -391,6 +317,8 @@ void Input::Destroy() noexcept
 void Input::Update() noexcept
 {
     m_prevCursorPosition = m_currCursorPosition;
+    m_mouseWheelDX = 0.f;
+    m_mouseWheelDY = 0.f;
 }
 
 
@@ -430,6 +358,13 @@ void Input::OnMouseMoveEvent(double xpos, double ypos) noexcept
     
     m_currCursorPosition.x = static_cast<float>(xpos);
     m_currCursorPosition.y = static_cast<float>(ypos);
+}
+
+
+void Input::OnWheelEvent(float xOffset, float yOffset) noexcept
+{
+    m_mouseWheelDX = xOffset;
+    m_mouseWheelDY = yOffset;
 }
 
 

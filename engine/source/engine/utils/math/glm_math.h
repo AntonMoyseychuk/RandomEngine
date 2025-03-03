@@ -8,9 +8,11 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/vector_query.hpp>
+#include <glm/gtx/norm.hpp>
 
 
 constexpr inline float M3D_EPS     = glm::epsilon<float>();
+constexpr inline float M3D_TWO_EPS = 2.f * M3D_EPS;
 constexpr inline float M3D_PI      = glm::pi<float>();
 constexpr inline float M3D_TWO_PI  = 2.0f * M3D_PI;
 constexpr inline float M3D_HALF_PI = 0.5f * M3D_PI;
@@ -37,7 +39,7 @@ constexpr inline glm::quat M3D_QUAT_IDENTITY = glm::identity<glm::quat>();
 template <typename T>
 constexpr inline bool amIsZero(const T& value) noexcept
 {
-    return glm::isNull(value, M3D_EPS);
+    return glm::length2(value) < M3D_TWO_EPS;
 }
 
 constexpr inline bool amIsZero(float value) noexcept
@@ -49,10 +51,24 @@ constexpr inline bool amIsZero(float value) noexcept
 template <typename T>
 constexpr inline bool amIsNormalized(const T& value) noexcept
 {
-    return glm::isNormalized(value, M3D_EPS);
+    return glm::abs(glm::length2(value) - 1.f) < M3D_EPS;
 }
+
 
 constexpr inline bool amIsNormalized(const glm::quat& quat) noexcept
 {
-    return std::abs(glm::length(quat) - 1.0f) < M3D_EPS;
+    return std::abs(glm::length(quat) - 1.f) < M3D_EPS;
+}
+
+
+template <typename T>
+constexpr inline bool amAreEqual(const T& left, const T& right) noexcept
+{
+    return glm::all(glm::epsilonEqual(left, right, M3D_EPS));
+}
+
+
+constexpr inline bool amAreEqual(float left, float right) noexcept
+{
+    return glm::abs(left - right) < M3D_EPS;
 }

@@ -191,6 +191,9 @@ public:
     float GetCursorDx() const noexcept { return m_currCursorPosition.x - m_prevCursorPosition.x; }
     float GetCursorDy() const noexcept { return m_currCursorPosition.y - m_prevCursorPosition.y; }
 
+    float GetMouseWheelDx() const noexcept { return m_mouseWheelDX; }
+    float GetMouseWheelDy() const noexcept { return m_mouseWheelDY; }
+
     bool IsInitialized() const noexcept { return m_isIntialized; }
     
 private:
@@ -198,11 +201,6 @@ private:
     void Destroy() noexcept;
 
     void Update() noexcept;
-
-private:
-    void OnKeyEvent(KeyboardKey key, KeyState state) noexcept;
-    void OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept;
-    void OnMouseMoveEvent(double xpos, double ypos) noexcept;
 
 private:
     enum InputEventIndex
@@ -221,6 +219,24 @@ private:
         IDX_COUNT,
     };
 
+    void OnKeyEvent(KeyboardKey key, KeyState state) noexcept;
+    void OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept;
+    void OnMouseMoveEvent(double xpos, double ypos) noexcept;
+    void OnWheelEvent(float xOffset, float yOffset) noexcept;
+
+    template <typename EventT, typename ListenerT>
+    void SubscribeEventListener(InputEventIndex idx, const ListenerT& listener, const char* pDbgName)
+    {
+        EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+
+        const EventListenerID listenerID = dispatcher.Subscribe<EventT>(listener);
+        dispatcher.SetListenerDebugName(listenerID, pDbgName);
+
+        m_inputListenersIDDescs[idx].id = listenerID.Value();
+        m_inputListenersIDDescs[idx].typeIndexHash = listenerID.TypeIndexHash();
+    }
+
+private:
     struct InputEventListenerDesc
     {
         uint64_t id;
@@ -232,6 +248,9 @@ private:
 
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
+
+    float m_mouseWheelDX = 0.f;
+    float m_mouseWheelDY = 0.f;
     
     std::array<MouseButtonState, static_cast<size_t>(MouseButton::BUTTON_COUNT)> m_mouseButtonStates;
     bool m_isIntialized = false;

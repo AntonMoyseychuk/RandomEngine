@@ -456,16 +456,6 @@ void RenderSystem::RunColorPass() noexcept
             }
         });
 
-        cameraManager.SubscribeCamera<EventMouseWheel>(*pMainCam, [](const void* pEvent) {
-            const EventMouseWheel& event = CastEventTo<EventMouseWheel>(pEvent);
-    
-            const float fovDegrees = pMainCam->GetFovDegrees() - event.GetDY();
-
-            if (camIsFovDegreesValid(fovDegrees)) {
-                pMainCam->SetFovDegress(fovDegrees);
-            }
-        });
-
         isInitialized = true;
 
         return;
@@ -508,25 +498,10 @@ void RenderSystem::RunColorPass() noexcept
         pMainCam->Move(glm::normalize(offset) * deltaTime);
     }
 
-    // if (input.IsKeyPressed(KeyboardKey::KEY_F5)) {
-    //     window.SetCursorState(!window.IsCursorEnabled());
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    // }
-    //
-    // if (!window.IsCursorEnabled()) {
-    //     const glm::vec2 rotationOffset = 0.5f * glm::vec2(input.GetCursorDy(), input.GetCursorDx());
-    //
-    //     if (!amIsZero(rotationOffset)) {
-    //         glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(pMainCam->GetRotationQuat()));
-    //
-    //         eulerAngles.x = glm::clamp(eulerAngles.x + rotationOffset.x, -90.f, 90.f);
-    //         eulerAngles.y += rotationOffset.y;
-    //
-    //         pMainCam->SetRotation(glm::quat(glm::radians(eulerAngles)));
-    //     }
-    // }
-
-    const glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(pMainCam->GetRotationQuat()));
+    const float fovDegrees = pMainCam->GetFovDegrees() - input.GetMouseWheelDy();
+    if (camIsFovDegreesValid(fovDegrees)) {
+        pMainCam->SetFovDegress(fovDegrees);
+    }
 
     COMMON_CAMERA_CB* pCamConstBuff = pCameraConstBuffer->MapWrite<COMMON_CAMERA_CB>();
     ENG_ASSERT(pCamConstBuff, "Failed to map camera const buffer");

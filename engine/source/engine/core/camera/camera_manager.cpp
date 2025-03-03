@@ -20,12 +20,12 @@ Camera::~Camera()
 
 void Camera::Destroy() noexcept
 {
-    m_matViewProjection = glm::identity<glm::mat4x4>();
-    m_matProjection     = glm::identity<glm::mat4x4>();
-    m_matWCS            = glm::identity<glm::mat4x4>();
+    m_matViewProjection = M3D_MAT4_IDENTITY;
+    m_matProjection     = M3D_MAT4_IDENTITY;
+    m_matWCS            = M3D_MAT4_IDENTITY;
     
-    m_rotation = glm::identity<glm::quat>();
-    m_position = glm::vec3(0.f);
+    m_rotation = M3D_QUAT_IDENTITY;
+    m_position = M3D_ZEROF3;
     
     m_fovDegrees = 0.f;
     m_aspectRatio = 0.f;
@@ -42,33 +42,41 @@ void Camera::Destroy() noexcept
 
 void Camera::SetPerspProjection() noexcept
 {
-    m_flags.set(FLAG_IS_ORTHO_PROJ, false);
-    RequestRecalcProjMatrix();
+    if (!IsPerspProj()) {
+        m_flags.set(FLAG_IS_ORTHO_PROJ, false);
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetOrthoProjection() noexcept
 {
-    m_flags.set(FLAG_IS_ORTHO_PROJ, true);
-    RequestRecalcProjMatrix();
+    if (!IsOrthoProj()) {
+        m_flags.set(FLAG_IS_ORTHO_PROJ, true);
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetFovDegress(float degrees) noexcept
 {
-    ENG_ASSERT(camIsFovDegreesValid(degrees), "degress can't be multiple of PI or less than zero");
+    if (!amAreEqual(m_fovDegrees, degrees)) {
+        ENG_ASSERT(camIsFovDegreesValid(degrees), "degress can't be multiple of PI or less than zero");
 
-    m_fovDegrees = degrees;
-    RequestRecalcProjMatrix();
+        m_fovDegrees = degrees;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetAspectRatio(float aspect) noexcept
 {
-    ENG_ASSERT(aspect > M3D_EPS, "aspect can't be less or equal to zero");
+    if (!amAreEqual(m_aspectRatio, aspect)) {
+        ENG_ASSERT(aspect > M3D_EPS, "aspect can't be less or equal to zero");
 
-    m_aspectRatio = aspect;
-    RequestRecalcProjMatrix();
+        m_aspectRatio = aspect;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
@@ -83,112 +91,138 @@ void Camera::SetAspectRatio(uint32_t width, uint32_t height) noexcept
 
 void Camera::SetZNear(float zNear) noexcept
 {
-    ENG_ASSERT(abs(m_zFar - zNear) > M3D_EPS, "Can't set Z Near equal to Z Far");
-    m_zNear = zNear;
-
-    RequestRecalcProjMatrix();
+    if (!amAreEqual(m_zNear, zNear)) {
+        ENG_ASSERT(abs(m_zFar - zNear) > M3D_EPS, "Can't set Z Near equal to Z Far");
+    
+        m_zNear = zNear;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetZFar(float zFar) noexcept
 {
-    ENG_ASSERT(abs(zFar - m_zNear) > M3D_EPS, "Can't set Z Far equal to Z Near");
-    m_zFar = zFar;
+    if (!amAreEqual(m_zFar, zFar)) {
+        ENG_ASSERT(abs(zFar - m_zNear) > M3D_EPS, "Can't set Z Far equal to Z Near");
     
-    RequestRecalcProjMatrix();
+        m_zFar = zFar;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetOrthoLeft(float left) noexcept
 {
-    ENG_ASSERT(abs(m_right - left) > M3D_EPS, "Can't set left equal to right");
+    if (!amAreEqual(m_left, left)) {
+        ENG_ASSERT(abs(m_right - left) > M3D_EPS, "Can't set left equal to right");
     
-    m_left = left;
-    RequestRecalcProjMatrix();
+        m_left = left;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetOrthoRight(float right) noexcept
 {
-    ENG_ASSERT(abs(right - m_left) > M3D_EPS, "Can't set right equal to left");
+    if (!amAreEqual(m_right, right)) {
+        ENG_ASSERT(abs(right - m_left) > M3D_EPS, "Can't set right equal to left");
     
-    m_right = right;
-    RequestRecalcProjMatrix();
+        m_right = right;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetOrthoTop(float top) noexcept
 {
-    ENG_ASSERT(abs(top - m_bottom) > M3D_EPS, "Can't set top equal to bottom");
+    if (!amAreEqual(m_top, top)) {
+        ENG_ASSERT(abs(top - m_bottom) > M3D_EPS, "Can't set top equal to bottom");
     
-    m_top = top;
-    RequestRecalcProjMatrix();
+        m_top = top;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::SetOrthoBottom(float bottom) noexcept
 {
-    ENG_ASSERT(abs(m_top - bottom) > M3D_EPS, "Can't set bottom equal to top");
+    if (!amAreEqual(m_bottom, bottom)) {
+        ENG_ASSERT(abs(m_top - bottom) > M3D_EPS, "Can't set bottom equal to top");
     
-    m_bottom = bottom;
-    RequestRecalcProjMatrix();
+        m_bottom = bottom;
+        RequestRecalcProjMatrix();
+    }
 }
 
 
 void Camera::Move(const glm::vec3& offset) noexcept
 {
-    m_position += offset;
-    RequestRecalcViewMatrix();
+    if (!amIsZero(offset)) {
+        m_position += offset;
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
 {
-    ENG_ASSERT(amIsNormalized(dir), "dir must be normalized vector");
+    if (!amIsZero(distance)) {
+        ENG_ASSERT(amIsNormalized(dir), "dir must be normalized vector");
     
-    m_position += dir * distance;
-    RequestRecalcViewMatrix();
+        m_position += dir * distance;
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::Rotate(const glm::quat& rotation) noexcept
 {
-    ENG_ASSERT(amIsNormalized(rotation), "rotation quaternion must be normalized");
+    if (!amAreEqual(rotation, M3D_QUAT_IDENTITY)) {
+        ENG_ASSERT(amIsNormalized(rotation), "rotation quaternion must be normalized");
 
-    m_rotation = glm::normalize(rotation * m_rotation);
-    RequestRecalcViewMatrix();
+        m_rotation = glm::normalize(rotation * m_rotation);
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::RotateAxis(const glm::vec3 &axis, float degrees) noexcept
 {
-    m_rotation = glm::normalize(glm::angleAxis(glm::radians(degrees), axis) * m_rotation);
-    RequestRecalcViewMatrix();
+    if (!amIsZero(degrees)) {
+        m_rotation = glm::normalize(glm::angleAxis(glm::radians(degrees), axis) * m_rotation);
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::RotatePitchYawRoll(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
 {
-    const glm::quat rotPitch = glm::angleAxis(glm::radians(pitchDegrees), glm::vec3(1, 0, 0));
-    const glm::quat rotYaw   = glm::angleAxis(glm::radians(yawDegrees),   glm::vec3(0, 1, 0));
-    const glm::quat rotRoll  = glm::angleAxis(glm::radians(rollDegrees),  glm::vec3(0, 0, 1));
+    if (!amIsZero(glm::vec3(pitchDegrees, yawDegrees, rollDegrees))) {
+        const glm::quat rotPitch = glm::angleAxis(glm::radians(pitchDegrees), M3D_AXIS_X);
+        const glm::quat rotYaw   = glm::angleAxis(glm::radians(yawDegrees),   M3D_AXIS_Y);
+        const glm::quat rotRoll  = glm::angleAxis(glm::radians(rollDegrees),  M3D_AXIS_Z);
 
-    m_rotation = glm::normalize(rotRoll * rotYaw * rotPitch * m_rotation);
-    RequestRecalcViewMatrix();
+        m_rotation = glm::normalize(rotRoll * rotYaw * rotPitch * m_rotation);
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::SetRotation(const glm::quat& rotation) noexcept
 {
-    m_rotation = rotation;
-    RequestRecalcViewMatrix();
+    if (!amAreEqual(m_rotation, rotation)) {
+        m_rotation = rotation;
+        RequestRecalcViewMatrix();
+    }
 }
 
 
 void Camera::SetPosition(const glm::vec3& position) noexcept
 {
-    m_position = position;
-    RequestRecalcViewMatrix();
+    if (!amAreEqual(m_position, position)) {
+        m_position = position;
+        RequestRecalcViewMatrix();
+    }
 }
 
 
