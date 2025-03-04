@@ -163,7 +163,33 @@ static void DisablePolygonOffset(PolygonMode mode) noexcept
 }
 
 
-static void EnableOrDisableFaceCulling(CullMode mode) noexcept
+static void SetupPolygonOffset(PolygonMode mode, float biasConstFactor, float biasSlopeFactor, float biasClamp, bool enabled) noexcept
+{
+    if (enabled) {
+        EnablePolygonOffset(mode);
+        glPolygonOffsetClamp(biasConstFactor, biasSlopeFactor, biasClamp);
+    } else {
+        DisablePolygonOffset(mode);
+    }
+}
+
+
+static void SetupFaceStencilTesting(GLenum face, GLuint mask, uint32_t sfOp, uint32_t spdfOp, uint32_t spdpOp, bool enabled)
+{
+    if (enabled) {
+        glStencilMaskSeparate(face, mask);
+
+        const GLenum frontFaceStencilFailOp = CompressedStencilOpToGLEnum(sfOp);
+        const GLenum frontFaceStencilPassDepthFailOp = CompressedStencilOpToGLEnum(spdfOp);
+        const GLenum frontFaceStencilPassDepthPassOp = CompressedStencilOpToGLEnum(spdpOp);
+        glStencilOpSeparate(face, frontFaceStencilFailOp, frontFaceStencilPassDepthFailOp, frontFaceStencilPassDepthPassOp);
+    } else {
+        glStencilMaskSeparate(face, 0x00);
+    }
+}
+
+
+static void SetupFaceCulling(CullMode mode) noexcept
 {
     switch(mode) {
         case CullMode::CULL_MODE_NONE:
@@ -264,117 +290,21 @@ void Pipeline::Bind() noexcept
 {
     ENG_ASSERT(IsValid(), "Pipeline is invalid");
 
-    static constexpr uint32_t colorMaskRBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_R_BIT);
-    static constexpr uint32_t colorMaskGBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_G_BIT);
-    static constexpr uint32_t colorMaskBBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_B_BIT);
-    static constexpr uint32_t colorMaskABit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_A_BIT);
-
-    for (uint32_t index = 0; index < m_compressedColorBlendAttachmentStates.size(); ++index) {
-        const CompressedColorBlendAttachmentState& state = m_compressedColorBlendAttachmentStates[index];
-        
-        const GLboolean rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
-        const GLboolean gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
-        const GLboolean bMask = state.colorWriteMask & colorMaskBBit ? GL_TRUE : GL_FALSE;
-        const GLboolean aMask = state.colorWriteMask & colorMaskABit ? GL_TRUE : GL_FALSE;
-
-        glColorMaski(index, rMask, gMask, bMask, aMask);
-
-        if (!state.blendEnable) {
-            glDisablei(GL_BLEND, index);
-        } else {
-            glEnablei(GL_BLEND, index);
-
-            const GLenum srcRGBBlendFactor = CompressedBlendFactorToGLEnum(state.srcRGBBlendFactor);
-            const GLenum dstRGBBlendFactor = CompressedBlendFactorToGLEnum(state.dstRGBBlendFactor);
-            const GLenum srcAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.srcAlphaBlendFactor);
-            const GLenum dstAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.dstAlphaBlendFactor);
-
-            const GLenum rgbBlendOp = CompressedBlendOpToGLEnum(state.rgbBlendOp);
-            const GLenum alphaBlendOp = CompressedBlendOpToGLEnum(state.alphaBlendOp);
-
-            glBlendEquationSeparatei(state.attachmentIndex, rgbBlendOp, alphaBlendOp);
-            glBlendFuncSeparatei(state.attachmentIndex, srcRGBBlendFactor, dstRGBBlendFactor, srcAlphaBlendFactor, dstAlphaBlendFactor);
-
-            const bool isAnyBlendFactorConstant = IsBlendFactorConstant(srcRGBBlendFactor) || IsBlendFactorConstant(dstRGBBlendFactor)
-                || IsBlendFactorConstant(srcAlphaBlendFactor) || IsBlendFactorConstant(dstAlphaBlendFactor);
-            
-            if (isAnyBlendFactorConstant) {
-                glBlendColor(m_blendConstants[0], m_blendConstants[1], m_blendConstants[2], m_blendConstants[3]);
-            }
-        }
-    }
-    
-    if (!m_compressedGlobalState.colorBlendLogicOpEnable) {
-        glDisable(GL_COLOR_LOGIC_OP);
-    } else {
-        glDisable(GL_COLOR_LOGIC_OP);
-
-        const GLenum colorLogicOp = CompressedLogicOpToGLEnum(m_compressedGlobalState.colorBlendLogicOp);
-        glLogicOp(colorLogicOp);
-    }
-
     m_pFrameBuffer->Bind();
     m_pShaderProgram->Bind();
 
-    if (!m_compressedGlobalState.depthTestEnable) {
-        glDisable(GL_DEPTH_TEST);
-    } else {
-        glEnable(GL_DEPTH_TEST);
+    const CompressedGlobalState& state = m_compressedGlobalState;
 
-        if (!m_compressedGlobalState.depthWriteEnable) {
-            glDepthMask(GL_FALSE);
-        } else {
-            glDepthMask(GL_TRUE);
+    const GLenum frontFace = state.frontFace == uint64_t(FrontFace::FRONT_FACE_CLOCKWISE) ? GL_CW : GL_CCW;
+    glFrontFace(frontFace);
 
-            if (!m_compressedGlobalState.depthBiasEnabled) {
-                DisablePolygonOffset(static_cast<PolygonMode>(m_compressedGlobalState.polygonMode));
-            } else {
-                EnablePolygonOffset(static_cast<PolygonMode>(m_compressedGlobalState.polygonMode));
-                glPolygonOffsetClamp(m_depthBiasConstantFactor, m_depthBiasSlopeFactor, m_depthBiasClamp);
-            }
+    SetupFaceCulling(static_cast<CullMode>(state.cullMode));
 
-            const GLenum depthCompareFunc = CompressedCompareFuncToGLEnum(m_compressedGlobalState.depthCompareFunc);
-            glDepthFunc(depthCompareFunc);
-        }
-    }
+    SetupDepthTesting();
+    SetupStencilTesting();
+    SetupColorBlending();
 
-    if (!m_compressedGlobalState.stencilTestEnable) {
-        glDisable(GL_STENCIL_TEST);
-    } else {
-        glEnable(GL_STENCIL_TEST);
-
-        if (!m_compressedGlobalState.stencilFrontWriteEnable) {
-            glStencilMaskSeparate(GL_FRONT, 0x00);
-        } else {
-            glStencilMaskSeparate(GL_FRONT, m_stencilFrontMask);
-
-            const GLenum frontFaceStencilFailOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.frontFaceStencilFailOp);
-            const GLenum frontFaceStencilPassDepthFailOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.frontFaceStencilPassDepthFailOp);
-            const GLenum frontFaceStencilPassDepthPassOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.frontFaceStencilPassDepthPassOp);
-            glStencilOpSeparate(GL_FRONT, frontFaceStencilFailOp, frontFaceStencilPassDepthFailOp, frontFaceStencilPassDepthPassOp);
-        }
-
-        if (!m_compressedGlobalState.stencilBackWriteEnable) {
-            glStencilMaskSeparate(GL_BACK, 0x00);
-        } else {
-            glStencilMaskSeparate(GL_BACK, m_stencilBackMask);
-
-            const GLenum backFaceStencilFailOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.backFaceStencilFailOp);
-            const GLenum backFaceStencilPassDepthFailOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.backFaceStencilPassDepthFailOp);
-            const GLenum backFaceStencilPassDepthPassOp = CompressedStencilOpToGLEnum(m_compressedGlobalState.backFaceStencilPassDepthPassOp);
-            glStencilOpSeparate(GL_FRONT, backFaceStencilFailOp, backFaceStencilPassDepthFailOp, backFaceStencilPassDepthPassOp);
-        }
-    }
-
-    if (m_compressedGlobalState.frontFace == static_cast<uint32_t>(FrontFace::FRONT_FACE_CLOCKWISE)) {
-        glFrontFace(GL_CW);
-    } else {
-        glFrontFace(GL_CCW);
-    }
-
-    EnableOrDisableFaceCulling(static_cast<CullMode>(m_compressedGlobalState.cullMode));
-
-    if (m_compressedGlobalState.polygonMode == static_cast<uint32_t>(PolygonMode::POLYGON_MODE_LINE)) {
+    if (state.polygonMode == uint64_t(PolygonMode::POLYGON_MODE_LINE)) {
         glLineWidth(m_lineWidth);
     }
 }
@@ -444,6 +374,117 @@ const ShaderProgram& Pipeline::GetShaderProgram() noexcept
 {
     ENG_ASSERT(IsValid(), "Pipeline is invalid");
     return *m_pShaderProgram;
+}
+
+
+void Pipeline::SetupColorBlending() noexcept
+{
+    static constexpr uint32_t colorMaskRBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_R_BIT);
+    static constexpr uint32_t colorMaskGBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_G_BIT);
+    static constexpr uint32_t colorMaskBBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_B_BIT);
+    static constexpr uint32_t colorMaskABit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_A_BIT);
+
+    bool isAnyBlendFactorConstant = false;
+
+    for (uint32_t index = 0; index < m_compressedColorBlendAttachmentStates.size(); ++index) {
+        const CompressedColorBlendAttachmentState& state = m_compressedColorBlendAttachmentStates[index];
+        
+        const GLboolean rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
+        const GLboolean gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
+        const GLboolean bMask = state.colorWriteMask & colorMaskBBit ? GL_TRUE : GL_FALSE;
+        const GLboolean aMask = state.colorWriteMask & colorMaskABit ? GL_TRUE : GL_FALSE;
+
+        glColorMaski(state.attachmentIndex, rMask, gMask, bMask, aMask);
+
+        if (state.blendEnable) {
+            glEnablei(GL_BLEND, state.attachmentIndex);
+
+            const GLenum srcRGBBlendFactor = CompressedBlendFactorToGLEnum(state.srcRGBBlendFactor);
+            const GLenum dstRGBBlendFactor = CompressedBlendFactorToGLEnum(state.dstRGBBlendFactor);
+            const GLenum srcAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.srcAlphaBlendFactor);
+            const GLenum dstAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.dstAlphaBlendFactor);
+
+            const GLenum rgbBlendOp = CompressedBlendOpToGLEnum(state.rgbBlendOp);
+            const GLenum alphaBlendOp = CompressedBlendOpToGLEnum(state.alphaBlendOp);
+
+            glBlendEquationSeparatei(state.attachmentIndex, rgbBlendOp, alphaBlendOp);
+            glBlendFuncSeparatei(state.attachmentIndex, srcRGBBlendFactor, dstRGBBlendFactor, srcAlphaBlendFactor, dstAlphaBlendFactor);
+
+            isAnyBlendFactorConstant = isAnyBlendFactorConstant
+                || IsBlendFactorConstant(srcRGBBlendFactor)
+                || IsBlendFactorConstant(dstRGBBlendFactor)
+                || IsBlendFactorConstant(srcAlphaBlendFactor)
+                || IsBlendFactorConstant(dstAlphaBlendFactor);
+        } else {
+            glDisablei(GL_BLEND, state.attachmentIndex);
+        }
+    }
+
+    const float blendConstRed = m_blendConstants[0] * isAnyBlendFactorConstant;
+    const float blendConstGreen = m_blendConstants[1] * isAnyBlendFactorConstant;
+    const float blendConstBlue = m_blendConstants[2] * isAnyBlendFactorConstant;
+    const float blendConstAlpha = m_blendConstants[3] * isAnyBlendFactorConstant;
+
+    glBlendColor(blendConstRed, blendConstGreen, blendConstBlue, blendConstAlpha);
+
+    if (m_compressedGlobalState.colorBlendLogicOpEnable) {
+        glEnable(GL_COLOR_LOGIC_OP);
+
+        const GLenum colorLogicOp = CompressedLogicOpToGLEnum(m_compressedGlobalState.colorBlendLogicOp);
+        glLogicOp(colorLogicOp);
+    } else {
+        glDisable(GL_COLOR_LOGIC_OP);
+    }
+}
+
+
+void Pipeline::SetupDepthTesting() noexcept
+{
+    const CompressedGlobalState& state = m_compressedGlobalState;
+
+    if (state.depthTestEnable) {
+        glEnable(GL_DEPTH_TEST);
+
+        if (state.depthWriteEnable) {
+            glDepthMask(GL_TRUE);
+
+            const PolygonMode polygonMode = static_cast<PolygonMode>(state.polygonMode);
+            SetupPolygonOffset(polygonMode, m_depthBiasConstantFactor, m_depthBiasSlopeFactor, m_depthBiasClamp, state.depthBiasEnabled);
+
+            const GLenum depthCompareFunc = CompressedCompareFuncToGLEnum(state.depthCompareFunc);
+            glDepthFunc(depthCompareFunc);
+        } else {
+            glDepthMask(GL_FALSE);
+        }
+    } else {
+        glDisable(GL_DEPTH_TEST);
+    }
+}
+
+
+void Pipeline::SetupStencilTesting() noexcept
+{
+    if (m_compressedGlobalState.stencilTestEnable) {
+        glEnable(GL_STENCIL_TEST);
+
+        SetupFaceStencilTesting(
+            GL_FRONT, 
+            m_stencilFrontMask, 
+            m_compressedGlobalState.frontFaceStencilFailOp, 
+            m_compressedGlobalState.frontFaceStencilPassDepthFailOp, 
+            m_compressedGlobalState.frontFaceStencilPassDepthPassOp, 
+            m_compressedGlobalState.stencilFrontWriteEnable);
+
+        SetupFaceStencilTesting(
+            GL_BACK, 
+            m_stencilBackMask, 
+            m_compressedGlobalState.backFaceStencilFailOp, 
+            m_compressedGlobalState.backFaceStencilPassDepthFailOp, 
+            m_compressedGlobalState.backFaceStencilPassDepthPassOp, 
+            m_compressedGlobalState.stencilBackWriteEnable);
+    } else {
+        glDisable(GL_STENCIL_TEST);
+    }
 }
 
 

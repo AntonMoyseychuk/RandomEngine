@@ -281,6 +281,11 @@ public:
     const ShaderProgram& GetShaderProgram() noexcept;
 
 private:
+    void SetupColorBlending() noexcept;
+    void SetupDepthTesting() noexcept;
+    void SetupStencilTesting() noexcept;
+
+private:
     static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_INDEX = 5;
     static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK = 4;
     static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR = 4;
