@@ -2,6 +2,11 @@
 
 #include "core.h"
 
+
+#ifdef ENG_USE_INVERTED_Z
+    #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#endif
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>

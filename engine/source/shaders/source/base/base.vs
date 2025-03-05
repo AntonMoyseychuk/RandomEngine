@@ -6,14 +6,13 @@
 
 #if defined(PASS_GBUFFER)
     layout(location = 0) in vec3 vs_in_position;
-    layout(location = 1) in vec4 vs_in_color;
-    layout(location = 2) in vec3 vs_in_normal;
-    layout(location = 3) in vec2 vs_in_texCoords;
+    layout(location = 1) in vec3 vs_in_normal;
+    layout(location = 2) in vec2 vs_in_texCoords;
 #endif
 
 
 #if defined(PASS_GBUFFER)
-    layout(location = 0) out vec4 vs_out_color;
+    layout(location = 0) out vec3 vs_out_normal;
     layout(location = 1) out vec2 vs_out_texCoords;
 #elif defined(PASS_MERGE)
     layout(location = 0) out vec2 vs_out_texCoords;
@@ -24,7 +23,6 @@ struct Vertex
 {
 #if defined(PASS_GBUFFER)
     vec3 position;
-    vec4 color;
     vec3 normal;
     vec2 texCoords;
 #elif defined(PASS_MERGE)
@@ -36,13 +34,13 @@ struct Vertex
 
 #if defined(PASS_MERGE)
     Vertex vertices[6] = Vertex[6](
-        Vertex(vec4(-1.0f, -1.0f, 1.0f, 1.0f), vec2(0.0f, 0.0f)),
-        Vertex(vec4( 1.0f, -1.0f, 1.0f, 1.0f), vec2(1.0f, 0.0f)),
-        Vertex(vec4(-1.0f,  1.0f, 1.0f, 1.0f), vec2(0.0f, 1.0f)),
+        Vertex(vec4(-1.0f, -1.0f, 0.5f, 1.0f), vec2(0.0f, 0.0f)),
+        Vertex(vec4( 1.0f, -1.0f, 0.5f, 1.0f), vec2(1.0f, 0.0f)),
+        Vertex(vec4( 1.0f,  1.0f, 0.5f, 1.0f), vec2(1.0f, 1.0f)),
 
-        Vertex(vec4( 1.0f, -1.0f, 1.0f, 1.0f), vec2(1.0f, 0.0f)),
-        Vertex(vec4( 1.0f,  1.0f, 1.0f, 1.0f), vec2(1.0f, 1.0f)),
-        Vertex(vec4(-1.0f,  1.0f, 1.0f, 1.0f), vec2(0.0f, 1.0f))
+        Vertex(vec4(-1.0f, -1.0f, 0.5f, 1.0f), vec2(0.0f, 0.0f)),
+        Vertex(vec4( 1.0f,  1.0f, 0.5f, 1.0f), vec2(1.0f, 1.0f)),
+        Vertex(vec4(-1.0f,  1.0f, 0.5f, 1.0f), vec2(0.0f, 1.0f))
     );
 #endif
 
@@ -50,13 +48,13 @@ struct Vertex
 void main()
 {
 #if defined(PASS_GBUFFER)
-    vs_out_color = vs_in_color;
+    vs_out_normal    = normalize(vs_in_normal);
     vs_out_texCoords = vs_in_texCoords;
 
     const vec4 wpos = vec4(vs_in_position, 1.0f);
     gl_Position = TransformVec4(wpos, COMMON_VIEW_PROJ_MATRIX);
 #else
     vs_out_texCoords = vertices[gl_VertexID].texCoords;
-    gl_Position = vertices[gl_VertexID].position;
+    gl_Position      = vertices[gl_VertexID].position;
 #endif
 }

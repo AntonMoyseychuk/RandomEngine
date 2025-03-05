@@ -29,4 +29,7 @@
 #define ONEF3 vec3(1.f)
 #define ONEF4 vec4(1.f)
 
+
+#define lerp(a, b, t) mix(a, b, t)
+
 #endif

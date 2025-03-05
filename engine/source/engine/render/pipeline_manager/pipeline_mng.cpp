@@ -165,6 +165,12 @@ static void DisablePolygonOffset(PolygonMode mode) noexcept
 
 static void SetupPolygonOffset(PolygonMode mode, float biasConstFactor, float biasSlopeFactor, float biasClamp, bool enabled) noexcept
 {
+#if defined(ENG_USE_INVERTED_Z)
+    biasConstFactor = -biasConstFactor;
+    biasSlopeFactor = -biasSlopeFactor;
+    biasClamp       = -biasClamp;
+#endif
+
     if (enabled) {
         EnablePolygonOffset(mode);
         glPolygonOffsetClamp(biasConstFactor, biasSlopeFactor, biasClamp);
@@ -306,6 +312,25 @@ void Pipeline::Bind() noexcept
 
     if (state.polygonMode == uint64_t(PolygonMode::POLYGON_MODE_LINE)) {
         glLineWidth(m_lineWidth);
+    }
+
+
+    {
+        // TODO: FIX THIS SHIT!!!
+
+        if (m_pFrameBuffer->GetID() != RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
+            static constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
+    
+            const uint32_t frameBufferColorAttachmentsCount = m_pFrameBuffer->GetColorAttachmentsCount();
+            ENG_ASSERT(frameBufferColorAttachmentsCount <= MAX_COLOR_ATTACHMENTS, "Invalid color attachments count");
+    
+            std::array<GLenum, MAX_COLOR_ATTACHMENTS> drawBuffers = { GL_NONE };
+            for (size_t i = 0; i < frameBufferColorAttachmentsCount; ++i) {
+                drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
+            }
+    
+            glDrawBuffers(frameBufferColorAttachmentsCount, drawBuffers.data());
+        }
     }
 }
 
@@ -568,10 +593,10 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
         static constexpr uint32_t writeMaskGBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_G_BIT);
         static constexpr uint32_t writeMaskBBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_B_BIT);
         static constexpr uint32_t writeMaskABit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_A_BIT);
-        compressedState.colorWriteMask |= writeMask & writeMaskRBit ? writeMaskRBit : 0;
-        compressedState.colorWriteMask |= writeMask & writeMaskGBit ? writeMaskGBit : 0;
-        compressedState.colorWriteMask |= writeMask & writeMaskBBit ? writeMaskBBit : 0;
-        compressedState.colorWriteMask |= writeMask & writeMaskABit ? writeMaskABit : 0;
+        compressedState.colorWriteMask |= (writeMask & writeMaskRBit);
+        compressedState.colorWriteMask |= (writeMask & writeMaskGBit);
+        compressedState.colorWriteMask |= (writeMask & writeMaskBBit);
+        compressedState.colorWriteMask |= (writeMask & writeMaskABit);
         
         compressedState.srcRGBBlendFactor = static_cast<uint32_t>(state.srcRGBBlendFactor);
         compressedState.dstRGBBlendFactor = static_cast<uint32_t>(state.dstRGBBlendFactor);
@@ -671,6 +696,10 @@ bool PipelineManager::Init() noexcept
     }
 
     m_pipelineStorage.resize(ENG_MAX_PIPELINES_COUNT);
+
+#if defined(ENG_USE_INVERTED_Z)
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+#endif
     
     m_isInitialized = true;
 

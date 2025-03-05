@@ -250,10 +250,18 @@ void Camera::Update(float dt) noexcept
 
 void Camera::RecalcProjMatrix() noexcept
 {
+#if defined(ENG_USE_INVERTED_Z)
+    const float zNear = m_zFar;
+    const float zFar = m_zNear;
+#else
+    const float zNear = m_zNear;
+    const float zFar = m_zFar;
+#endif
+
     if (IsPerspProj()) {
-        m_matProjection = glm::perspective(glm::radians(m_fovDegrees), m_aspectRatio, m_zNear, m_zFar);
+        m_matProjection = glm::perspective(glm::radians(m_fovDegrees), m_aspectRatio, zNear, zFar);
     } else if (IsOrthoProj()) {
-        m_matProjection = glm::ortho(m_left, m_right, m_bottom, m_top, m_zNear, m_zFar);
+        m_matProjection = glm::ortho(m_left, m_right, m_bottom, m_top, zNear, zFar);
     }   
 }
 

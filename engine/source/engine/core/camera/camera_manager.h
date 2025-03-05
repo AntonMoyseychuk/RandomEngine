@@ -6,7 +6,7 @@
 #include "utils/data_structures/strid.h"
 #include "utils/data_structures/base_id.h"
 
-#include "utils/math/glm_math.h"
+#include "utils/math/common_math.h"
 
 #include <vector>
 #include <deque>

@@ -428,7 +428,7 @@ void GenerateAutoFile(const ShaderGenInputParams& inputParams) noexcept
     "// ----------- This is auto file, don't modify! -----------\n"
     "\n"
     "#include \"render/shader_manager/resource_bind.h\"\n"
-    "#include \"utils/math/glm_math.h\"\n\n";
+    "#include \"utils/math/common_math.h\"\n\n";
 
     FillIncludesDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);
     FillConstantDeclaration(ss, commentLessFileContent.c_str(), commentLessFileContent.length() + 1, inputParams.inputFilepath);

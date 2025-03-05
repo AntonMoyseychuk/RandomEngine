@@ -64,3 +64,6 @@
 
   #define ENG_MAYBE_UNUSED
 #endif
+
+
+#define ENG_USE_INVERTED_Z

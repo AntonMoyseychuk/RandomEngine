@@ -83,10 +83,13 @@ void RenderSystem::RunColorPass() noexcept
     static MeshObj* pCubeMeshObj = nullptr;
 
     static Texture* pGBufferAlbedoTex = nullptr;
-    static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
     static Texture* pGBufferNormalTex = nullptr;
     static Texture* pGBufferSpecTex = nullptr;
     static Texture* pCommonDepthTex = nullptr;
+    static TextureSamplerState* pGBufferAlbedoSampler = nullptr;
+    static TextureSamplerState* pGBufferNormalSampler = nullptr;
+    static TextureSamplerState* pGBufferSpecSampler = nullptr;
+    static TextureSamplerState* pGBufferDepthSampler = nullptr;
 
     static Pipeline* pGBufferPipeline = nullptr;
     static Pipeline* pMergePipeline = nullptr;
@@ -226,6 +229,9 @@ void RenderSystem::RunColorPass() noexcept
         pCommonDepthTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_COMMON_DEPTH);
 
         pGBufferAlbedoSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_ALBEDO_TEX));
+        pGBufferNormalSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_NORMAL_TEX));
+        pGBufferSpecSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_SPECULAR_TEX));
+        pGBufferDepthSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(COMMON_DEPTH_TEX));
 
 
         PipelineInputAssemblyStateCreateInfo gBufferInputAssemblyState = {};
@@ -240,7 +246,7 @@ void RenderSystem::RunColorPass() noexcept
         PipelineDepthStencilStateCreateInfo gBufferDepthStencilState = {};
         gBufferDepthStencilState.depthTestEnable = true;
         gBufferDepthStencilState.depthWriteEnable = true;
-        gBufferDepthStencilState.depthCompareFunc = CompareFunc::FUNC_LEQUAL;
+        gBufferDepthStencilState.depthCompareFunc = CompareFunc::FUNC_GREATER;
         gBufferDepthStencilState.stencilTestEnable = false;
 
         PipelineColorBlendStateCreateInfo gBufferColorBlendState = {};
@@ -248,12 +254,12 @@ void RenderSystem::RunColorPass() noexcept
         PipelineFrameBufferClearValues gBufferFrameBufferClearValues = {};
         const PipelineFrameBufferColorAttachmentClearColor pGBufferColorAttachmentClearColors[] = {
             { 1.f, 1.f, 0.f, 0.f },
-            { 1.f, 1.f, 0.f, 0.f },
-            { 1.f, 1.f, 0.f, 0.f }
+            { 0.f, 0.f, 0.f, 0.f },
+            { 0.f, 0.f, 0.f, 0.f }
         };
         gBufferFrameBufferClearValues.pColorAttachmentClearColors = pGBufferColorAttachmentClearColors;
         gBufferFrameBufferClearValues.colorAttachmentsCount = _countof(pGBufferColorAttachmentClearColors);
-        gBufferFrameBufferClearValues.depthClearValue = 1.f;
+        gBufferFrameBufferClearValues.depthClearValue = 0.f;
 
         PipelineCreateInfo gBufferPipelineCreateInfo = {};
         gBufferPipelineCreateInfo.pInputAssemblyState = &gBufferInputAssemblyState;
@@ -287,7 +293,7 @@ void RenderSystem::RunColorPass() noexcept
 
         PipelineFrameBufferClearValues mergeFrameBufferClearValues = {};
         const PipelineFrameBufferColorAttachmentClearColor pMergeColorAttachmentClearColors[] = {
-            { 0.f, 0.f, 0.f, 0.f }
+            { 1.f, 1.f, 0.f, 0.f },
         };
         mergeFrameBufferClearValues.pColorAttachmentClearColors = pMergeColorAttachmentClearColors;
         mergeFrameBufferClearValues.colorAttachmentsCount = _countof(pMergeColorAttachmentClearColors);
@@ -308,10 +314,9 @@ void RenderSystem::RunColorPass() noexcept
 
 
         const MeshVertexAttribDesc pVertexAttribDescs[] = {
-            MeshVertexAttribDesc {  0 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 0, 3, false },
-            MeshVertexAttribDesc {  3 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 1, 4, false },
-            MeshVertexAttribDesc {  7 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 2, 3, false },
-            MeshVertexAttribDesc { 10 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 3, 2, false },
+            MeshVertexAttribDesc { 0 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 0, 3, false },
+            MeshVertexAttribDesc { 3 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 1, 3, false },
+            MeshVertexAttribDesc { 6 * sizeof(float), MeshVertexAttribDataType::TYPE_FLOAT, 2, 2, false },
         };
 
         MeshVertexLayoutCreateInfo cubeVertexLayoutCreateInfo = {};
@@ -327,42 +332,42 @@ void RenderSystem::RunColorPass() noexcept
         constexpr float CUBE_HALF_SIZE = 0.5f;
 
         const float pCubeRawVertexData[] = {
-            // position                                     //color             // normal      // UV
+            // position                                     // normal      // UV
             // Front face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f, 0.f,
 
             // Back face
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 0.f, 0.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 0.f, 1.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 1.f, 1.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f,-1.f, 1.f, 0.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 1.f, 0.f,
 
             // Left face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 0.f, 1.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 1.f, 1.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f,-1.f, 0.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 1.f, 0.f,
 
             // Right face
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 1.f, 0.f, 1.f, 1.f, 0.f, 0.f, 1.f, 0.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f,
 
             // Top face
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f,
 
             // Bottom face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 1.f, 1.f, 0.f,-1.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 0.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 0.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 1.f, 0.f,
         };
 
         const uint8_t cubeIndices[] = {
@@ -389,8 +394,6 @@ void RenderSystem::RunColorPass() noexcept
         pCubeMeshObj->Create(pCubeVertexLayout, pCubeBufferData);
         ENG_ASSERT(pCubeMeshObj->IsValid(), "Failed to create cube mesh object");
 
-        pCubeMeshObj->Bind();
-
 
         MemoryBufferCreateInfo commonConstBufferCreateInfo = {};
         commonConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
@@ -405,8 +408,6 @@ void RenderSystem::RunColorPass() noexcept
         pCommonConstBuffer->Create(commonConstBufferCreateInfo);
         ENG_ASSERT(pCommonConstBuffer->IsValid(), "Failed to create common const buffer");
         pCommonConstBuffer->SetDebugName("__COMMON_DYN_CB__");
-        
-        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_DYN_CB).GetBinding());
 
         MemoryBufferCreateInfo cameraConstBufferCreateInfo = {};
         cameraConstBufferCreateInfo.type = MemoryBufferType::TYPE_CONSTANT_BUFFER;
@@ -501,8 +502,14 @@ void RenderSystem::RunColorPass() noexcept
     constexpr size_t commonViewProjMatSize = sizeof(pCamConstBuff->COMMON_VIEW_PROJ_MATRIX);
     memcpy_s(&pCamConstBuff->COMMON_VIEW_PROJ_MATRIX, commonViewProjMatSize, &cameraViewProjMat, commonViewProjMatSize);
     
-    pCamConstBuff->COMMON_VIEW_Z_NEAR = pMainCam->GetZNear();
-    pCamConstBuff->COMMON_VIEW_Z_FAR = pMainCam->GetZFar();
+    float camZNear = pMainCam->GetZNear();
+    float camZFar = pMainCam->GetZFar();
+#if defined(ENG_USE_INVERTED_Z)
+    std::swap(camZNear, camZFar);
+#endif
+
+    pCamConstBuff->COMMON_VIEW_Z_NEAR = camZNear;
+    pCamConstBuff->COMMON_VIEW_Z_FAR = camZFar;
 
     pCameraConstBuffer->Unmap();
 
@@ -514,12 +521,20 @@ void RenderSystem::RunColorPass() noexcept
 
         COMMON_DYN_CB* pCommonUBO = static_cast<COMMON_DYN_CB*>(pCommonConstBuffer->MapWrite());
         ENG_ASSERT(pCommonUBO, "pCommonUBO is nullptr");
-        pCommonUBO->COMMON_ELAPSED_TIME = elapsedTime;
-        pCommonUBO->COMMON_DELTA_TIME = deltaTime;
+        
+        pCommonUBO->COMMON_ELAPSED_TIME  = elapsedTime;
+        pCommonUBO->COMMON_DELTA_TIME    = deltaTime;
+        pCommonUBO->COMMON_SCREEN_WIDTH  = (float)window.GetFramebufferWidth();
+        pCommonUBO->COMMON_SCREEN_HEIGHT = (float)window.GetFramebufferHeight();
+        
         pCommonConstBuffer->Unmap();
+
+        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_DYN_CB).GetBinding());
 
         pTestTexture->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
         pTestTextureSampler->Bind(resGetResourceBinding(TEST_TEXTURE).GetBinding());
+
+        pCubeMeshObj->Bind();
 
         glDrawElementsInstanced(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE, 0, 1);
     }
@@ -530,6 +545,17 @@ void RenderSystem::RunColorPass() noexcept
 
         pGBufferAlbedoTex->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
         pGBufferAlbedoSampler->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
+        
+        pGBufferNormalTex->Bind(resGetResourceBinding(GBUFFER_NORMAL_TEX).GetBinding());
+        pGBufferNormalSampler->Bind(resGetResourceBinding(GBUFFER_NORMAL_TEX).GetBinding());
+        
+        pGBufferSpecTex->Bind(resGetResourceBinding(GBUFFER_SPECULAR_TEX).GetBinding());
+        pGBufferSpecSampler->Bind(resGetResourceBinding(GBUFFER_SPECULAR_TEX).GetBinding());
+        
+        pCommonDepthTex->Bind(resGetResourceBinding(COMMON_DEPTH_TEX).GetBinding());
+        pGBufferDepthSampler->Bind(resGetResourceBinding(COMMON_DEPTH_TEX).GetBinding());
+
+        pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_DYN_CB).GetBinding());
 
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
     }
