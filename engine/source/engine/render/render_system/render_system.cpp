@@ -75,7 +75,7 @@ void RenderSystem::RunColorPass() noexcept
 
     static bool isInitialized = false;
     static ShaderProgram* pGBufferProgram = nullptr;
-    static ShaderProgram* pMergeProgram = nullptr;
+    static ShaderProgram* pPostProcProgram = nullptr;
 
     static Texture* pTestTexture = nullptr;
     static TextureSamplerState* pTestTextureSampler = nullptr;
@@ -92,7 +92,7 @@ void RenderSystem::RunColorPass() noexcept
     static TextureSamplerState* pGBufferDepthSampler = nullptr;
 
     static Pipeline* pGBufferPipeline = nullptr;
-    static Pipeline* pMergePipeline = nullptr;
+    static Pipeline* pPostProcPipeline = nullptr;
 
     static MemoryBuffer* pCommonConstBuffer = nullptr;
     static MemoryBuffer* pCameraConstBuffer = nullptr;
@@ -150,30 +150,30 @@ void RenderSystem::RunColorPass() noexcept
         ENG_ASSERT(pGBufferProgram, "Failed to create GBUFFER shader program");
         pGBufferProgram->SetDebugName("Pass_GBuffer");
 
-        static const char* MERGE_DEFINES[] = {
+        static const char* POST_PROCESS_DEFINES[] = {
         #if defined(ENG_DEBUG)
             "ENV_DEBUG",
         #endif
-            "PASS_MERGE"
+            "PASS_POST_PROCESS"
         };
 
-        vsStageCreateInfo.pDefines = MERGE_DEFINES;
-        vsStageCreateInfo.definesCount = _countof(MERGE_DEFINES);
+        vsStageCreateInfo.pDefines = POST_PROCESS_DEFINES;
+        vsStageCreateInfo.definesCount = _countof(POST_PROCESS_DEFINES);
 
-        psStageCreateInfo.pDefines = MERGE_DEFINES;
-        psStageCreateInfo.definesCount = _countof(MERGE_DEFINES);
+        psStageCreateInfo.pDefines = POST_PROCESS_DEFINES;
+        psStageCreateInfo.definesCount = _countof(POST_PROCESS_DEFINES);
 
-        const ShaderStageCreateInfo* pMergeStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
+        const ShaderStageCreateInfo* pPostProcStages[] = { &vsStageCreateInfo, &psStageCreateInfo };
 
-        ShaderProgramCreateInfo gMergePassProgramCreateInfo = {};
-        gMergePassProgramCreateInfo.pStageCreateInfos = pMergeStages;
-        gMergePassProgramCreateInfo.stageCreateInfosCount = _countof(pMergeStages);
+        ShaderProgramCreateInfo gPostProcPassProgramCreateInfo = {};
+        gPostProcPassProgramCreateInfo.pStageCreateInfos = pPostProcStages;
+        gPostProcPassProgramCreateInfo.stageCreateInfosCount = _countof(pPostProcStages);
 
-        pMergeProgram = shaderManager.RegisterShaderProgram();
-        ENG_ASSERT(pMergeProgram, "Failed to register MERGE shader program");
-        pMergeProgram->Create(gMergePassProgramCreateInfo);
-        ENG_ASSERT(pMergeProgram, "Failed to create MERGE shader program");
-        pMergeProgram->SetDebugName("Pass_Merge");
+        pPostProcProgram = shaderManager.RegisterShaderProgram();
+        ENG_ASSERT(pPostProcProgram, "Failed to register POST PROCESS shader program");
+        pPostProcProgram->Create(gPostProcPassProgramCreateInfo);
+        ENG_ASSERT(pPostProcProgram, "Failed to create POST PROCESS shader program");
+        pPostProcProgram->SetDebugName("Pass_Post_Process");
 
 
         constexpr size_t texWidth = 256;
@@ -223,10 +223,10 @@ void RenderSystem::RunColorPass() noexcept
 
         pTestTextureSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(TEST_TEXTURE));
 
-        pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
-        pGBufferNormalTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_NORMAL);
-        pGBufferSpecTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
-        pCommonDepthTex = rtManager.GetRTTexture(RTTextureID::RT_TEX_COMMON_DEPTH);
+        pGBufferAlbedoTex = rtManager.GetRTTexture(RTTextureID::GBUFFER_ALBEDO);
+        pGBufferNormalTex = rtManager.GetRTTexture(RTTextureID::GBUFFER_NORMAL);
+        pGBufferSpecTex = rtManager.GetRTTexture(RTTextureID::GBUFFER_SPECULAR);
+        pCommonDepthTex = rtManager.GetRTTexture(RTTextureID::COMMON_DEPTH);
 
         pGBufferAlbedoSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_ALBEDO_TEX));
         pGBufferNormalSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(GBUFFER_NORMAL_TEX));
@@ -234,25 +234,25 @@ void RenderSystem::RunColorPass() noexcept
         pGBufferDepthSampler = texManager.GetSampler(resGetTexResourceSamplerIdx(COMMON_DEPTH_TEX));
 
 
-        PipelineInputAssemblyStateCreateInfo gBufferInputAssemblyState = {};
+        InputAssemblyStateCreateInfo gBufferInputAssemblyState = {};
         gBufferInputAssemblyState.topology = PrimitiveTopology::TOPOLOGY_TRIANGLES;
 
-        PipelineRasterizationStateCreateInfo gBufferRasterizationState = {};
+        RasterizationStateCreateInfo gBufferRasterizationState = {};
         gBufferRasterizationState.cullMode = CullMode::CULL_MODE_BACK;
         gBufferRasterizationState.depthBiasEnable = false;
         gBufferRasterizationState.frontFace = FrontFace::FRONT_FACE_COUNTER_CLOCKWISE;
         gBufferRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
 
-        PipelineDepthStencilStateCreateInfo gBufferDepthStencilState = {};
+        DepthStencilStateCreateInfo gBufferDepthStencilState = {};
         gBufferDepthStencilState.depthTestEnable = true;
         gBufferDepthStencilState.depthWriteEnable = true;
         gBufferDepthStencilState.depthCompareFunc = CompareFunc::FUNC_GREATER;
         gBufferDepthStencilState.stencilTestEnable = false;
 
-        PipelineColorBlendStateCreateInfo gBufferColorBlendState = {};
+        ColorBlendStateCreateInfo gBufferColorBlendState = {};
 
-        PipelineFrameBufferClearValues gBufferFrameBufferClearValues = {};
-        const PipelineFrameBufferColorAttachmentClearColor pGBufferColorAttachmentClearColors[] = {
+        FrameBufferClearValues gBufferFrameBufferClearValues = {};
+        const FrameBufferColorAttachmentClearColor pGBufferColorAttachmentClearColors[] = {
             { 1.f, 1.f, 0.f, 0.f },
             { 0.f, 0.f, 0.f, 0.f },
             { 0.f, 0.f, 0.f, 0.f }
@@ -267,7 +267,7 @@ void RenderSystem::RunColorPass() noexcept
         gBufferPipelineCreateInfo.pDepthStencilState = &gBufferDepthStencilState;
         gBufferPipelineCreateInfo.pColorBlendState = &gBufferColorBlendState;
         gBufferPipelineCreateInfo.pFrameBufferClearValues = &gBufferFrameBufferClearValues;
-        gBufferPipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER);
+        gBufferPipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::GBUFFER);
         gBufferPipelineCreateInfo.pShaderProgram = pGBufferProgram;
 
         pGBufferPipeline = pipelineManager.RegisterPipeline();
@@ -276,41 +276,41 @@ void RenderSystem::RunColorPass() noexcept
         ENG_ASSERT(pGBufferPipeline->IsValid(), "Failed to create GBUFFER pipeline");
 
 
-        PipelineInputAssemblyStateCreateInfo mergeInputAssemblyState = {};
-        mergeInputAssemblyState.topology = PrimitiveTopology::TOPOLOGY_TRIANGLES;
+        InputAssemblyStateCreateInfo postProcInputAssemblyState = {};
+        postProcInputAssemblyState.topology = PrimitiveTopology::TOPOLOGY_TRIANGLES;
 
-        PipelineRasterizationStateCreateInfo mergeRasterizationState = {};
-        mergeRasterizationState.cullMode = CullMode::CULL_MODE_BACK;
-        mergeRasterizationState.depthBiasEnable = false;
-        mergeRasterizationState.frontFace = FrontFace::FRONT_FACE_COUNTER_CLOCKWISE;
-        mergeRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
+        RasterizationStateCreateInfo postProcRasterizationState = {};
+        postProcRasterizationState.cullMode = CullMode::CULL_MODE_BACK;
+        postProcRasterizationState.depthBiasEnable = false;
+        postProcRasterizationState.frontFace = FrontFace::FRONT_FACE_COUNTER_CLOCKWISE;
+        postProcRasterizationState.polygonMode = PolygonMode::POLYGON_MODE_FILL;
 
-        PipelineDepthStencilStateCreateInfo mergeDepthStencilState = {};
-        mergeDepthStencilState.depthTestEnable = false;
-        mergeDepthStencilState.stencilTestEnable = false;
+        DepthStencilStateCreateInfo postProcDepthStencilState = {};
+        postProcDepthStencilState.depthTestEnable = false;
+        postProcDepthStencilState.stencilTestEnable = false;
 
-        PipelineColorBlendStateCreateInfo mergeColorBlendState = {};
+        ColorBlendStateCreateInfo postProcColorBlendState = {};
 
-        PipelineFrameBufferClearValues mergeFrameBufferClearValues = {};
-        const PipelineFrameBufferColorAttachmentClearColor pMergeColorAttachmentClearColors[] = {
-            { 1.f, 1.f, 0.f, 0.f },
+        FrameBufferClearValues postProcFrameBufferClearValues = {};
+        const FrameBufferColorAttachmentClearColor pPostProcColorAttachmentClearColors[] = {
+            { 0.f, 0.f, 0.f, 0.f },
         };
-        mergeFrameBufferClearValues.pColorAttachmentClearColors = pMergeColorAttachmentClearColors;
-        mergeFrameBufferClearValues.colorAttachmentsCount = _countof(pMergeColorAttachmentClearColors);
+        postProcFrameBufferClearValues.pColorAttachmentClearColors = pPostProcColorAttachmentClearColors;
+        postProcFrameBufferClearValues.colorAttachmentsCount = _countof(pPostProcColorAttachmentClearColors);
 
-        PipelineCreateInfo mergePipelineCreateInfo = {};
-        mergePipelineCreateInfo.pInputAssemblyState = &mergeInputAssemblyState;
-        mergePipelineCreateInfo.pRasterizationState = &mergeRasterizationState;
-        mergePipelineCreateInfo.pDepthStencilState = &mergeDepthStencilState;
-        mergePipelineCreateInfo.pColorBlendState = &mergeColorBlendState;
-        mergePipelineCreateInfo.pFrameBufferClearValues = &mergeFrameBufferClearValues;
-        mergePipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT);
-        mergePipelineCreateInfo.pShaderProgram = pMergeProgram;
+        PipelineCreateInfo postProcPipelineCreateInfo = {};
+        postProcPipelineCreateInfo.pInputAssemblyState = &postProcInputAssemblyState;
+        postProcPipelineCreateInfo.pRasterizationState = &postProcRasterizationState;
+        postProcPipelineCreateInfo.pDepthStencilState = &postProcDepthStencilState;
+        postProcPipelineCreateInfo.pColorBlendState = &postProcColorBlendState;
+        postProcPipelineCreateInfo.pFrameBufferClearValues = &postProcFrameBufferClearValues;
+        postProcPipelineCreateInfo.pFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::POST_PROCESS);
+        postProcPipelineCreateInfo.pShaderProgram = pPostProcProgram;
 
-        pMergePipeline = pipelineManager.RegisterPipeline();
-        ENG_ASSERT(pMergePipeline, "Failed to register MERGE pipeline");
-        pMergePipeline->Create(mergePipelineCreateInfo);
-        ENG_ASSERT(pMergePipeline->IsValid(), "Failed to create MERGE pipeline");
+        pPostProcPipeline = pipelineManager.RegisterPipeline();
+        ENG_ASSERT(pPostProcPipeline, "Failed to register POST PROCESS pipeline");
+        pPostProcPipeline->Create(postProcPipelineCreateInfo);
+        ENG_ASSERT(pPostProcPipeline->IsValid(), "Failed to create POST PROCESS pipeline");
 
 
         const MeshVertexAttribDesc pVertexAttribDescs[] = {
@@ -332,42 +332,42 @@ void RenderSystem::RunColorPass() noexcept
         constexpr float CUBE_HALF_SIZE = 0.5f;
 
         const float pCubeRawVertexData[] = {
-            // position                                     // normal      // UV
+            // position                                     // normal                       // UV
             // Front face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 0.f, 1.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f, -0.57735f, 0.57735f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f,  0.57735f, 0.57735f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f,  0.57735f, 0.57735f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f, -0.57735f, 0.57735f, 1.f, 0.f,
 
             // Back face
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 0.f, 0.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 0.f, 1.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 1.f, 1.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 0.f,-1.f, 1.f, 0.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f, -0.57735f, -0.57735f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f,  0.57735f, -0.57735f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f,  0.57735f, -0.57735f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f, -0.57735f, -0.57735f, 1.f, 0.f,
 
             // Left face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 0.f, 1.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 1.f, 1.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE,-1.f, 0.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f, -0.57735f, -0.57735f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f,  0.57735f, -0.57735f, 0.f, 1.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f,  0.57735f,  0.57735f, 1.f, 1.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f, -0.57735f,  0.57735f, 1.f, 0.f,
 
             // Right face
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 0.f, 0.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 1.f, 0.f, 0.f, 1.f, 0.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f, -0.57735f,  0.57735f, 0.f, 0.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f,  0.57735f,  0.57735f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f,  0.57735f, -0.57735f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f, -0.57735f, -0.57735f, 1.f, 0.f,
 
             // Top face
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f, 1.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f,  0.57735f,  0.57735f, 0.f, 0.f,
+           -CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f,  0.57735f, -0.57735f, 0.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f,  0.57735f, -0.57735f, 1.f, 1.f,
+            CUBE_HALF_SIZE, CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f,  0.57735f,  0.57735f, 1.f, 0.f,
 
             // Bottom face
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 0.f, 0.f,
-           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 0.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 1.f, 1.f,
-            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, 0.f,-1.f, 0.f, 1.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE, -0.57735f, -0.57735f, -0.57735f, 0.f, 0.f,
+           -CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE, -0.57735f, -0.57735f,  0.57735f, 0.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE, CUBE_HALF_SIZE,  0.57735f, -0.57735f,  0.57735f, 1.f, 1.f,
+            CUBE_HALF_SIZE,-CUBE_HALF_SIZE,-CUBE_HALF_SIZE,  0.57735f, -0.57735f, -0.57735f, 1.f, 0.f,
         };
 
         const uint8_t cubeIndices[] = {
@@ -540,24 +540,30 @@ void RenderSystem::RunColorPass() noexcept
     }
 
     {
-        pMergePipeline->ClearFrameBuffer();
-        pMergePipeline->Bind();
+        pPostProcPipeline->ClearFrameBuffer();
+        pPostProcPipeline->Bind();
 
         pGBufferAlbedoTex->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
         pGBufferAlbedoSampler->Bind(resGetResourceBinding(GBUFFER_ALBEDO_TEX).GetBinding());
-        
+            
         pGBufferNormalTex->Bind(resGetResourceBinding(GBUFFER_NORMAL_TEX).GetBinding());
         pGBufferNormalSampler->Bind(resGetResourceBinding(GBUFFER_NORMAL_TEX).GetBinding());
-        
+            
         pGBufferSpecTex->Bind(resGetResourceBinding(GBUFFER_SPECULAR_TEX).GetBinding());
         pGBufferSpecSampler->Bind(resGetResourceBinding(GBUFFER_SPECULAR_TEX).GetBinding());
-        
+            
         pCommonDepthTex->Bind(resGetResourceBinding(COMMON_DEPTH_TEX).GetBinding());
         pGBufferDepthSampler->Bind(resGetResourceBinding(COMMON_DEPTH_TEX).GetBinding());
 
         pCommonConstBuffer->BindIndexed(resGetResourceBinding(COMMON_DYN_CB).GetBinding());
 
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 1);
+    }
+
+    {
+        const FrameBuffer* pPostProcFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::POST_PROCESS);
+        glBlitNamedFramebuffer(pPostProcFrameBuffer->GetRenderID(), 0, 0, 0, window.GetWidth(), window.GetHeight(),
+            0, 0, window.GetWidth(), window.GetHeight(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
     }
 }
 

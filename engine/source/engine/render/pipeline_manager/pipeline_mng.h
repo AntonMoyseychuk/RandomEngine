@@ -161,13 +161,13 @@ enum class LogicOp : uint32_t
 };
 
 
-struct PipelineInputAssemblyStateCreateInfo
+struct InputAssemblyStateCreateInfo
 {
     PrimitiveTopology topology;
 };
 
 
-struct PipelineRasterizationStateCreateInfo
+struct RasterizationStateCreateInfo
 {
     FrontFace   frontFace;
     PolygonMode polygonMode;
@@ -180,7 +180,7 @@ struct PipelineRasterizationStateCreateInfo
 };
 
 
-struct PipelineDepthStencilStateCreateInfo
+struct DepthStencilStateCreateInfo
 {
     CompareFunc depthCompareFunc;
     StencilOp   frontFaceStencilFailOp;
@@ -199,7 +199,7 @@ struct PipelineDepthStencilStateCreateInfo
 };
 
 
-struct PipelineColorBlendAttachmentState
+struct ColorBlendAttachmentState
 {
     uint32_t            attachmentIndex;
     BlendFactor         srcRGBBlendFactor;
@@ -213,25 +213,25 @@ struct PipelineColorBlendAttachmentState
 };
 
 
-struct PipelineColorBlendStateCreateInfo
+struct ColorBlendStateCreateInfo
 {
-    const PipelineColorBlendAttachmentState* pAttachmentStates;
-    uint32_t                                 attachmentCount;
-    float                                    blendConstants[4];
-    LogicOp                                  logicOp;
-    bool                                     logicOpEnable;
+    const ColorBlendAttachmentState* pAttachmentStates;
+    uint32_t                         attachmentCount;
+    float                            blendConstants[4];
+    LogicOp                          logicOp;
+    bool                             logicOpEnable;
 };
 
 
-struct PipelineFrameBufferColorAttachmentClearColor
+struct FrameBufferColorAttachmentClearColor
 {
     float r, g, b, a;
 };
 
 
-struct PipelineFrameBufferClearValues
+struct FrameBufferClearValues
 {
-    const PipelineFrameBufferColorAttachmentClearColor* pColorAttachmentClearColors;
+    const FrameBufferColorAttachmentClearColor* pColorAttachmentClearColors;
     uint32_t                                            colorAttachmentsCount;
     float                                               depthClearValue;
     int32_t                                             stencilClearValue;
@@ -240,13 +240,13 @@ struct PipelineFrameBufferClearValues
 
 struct PipelineCreateInfo
 {
-    const PipelineInputAssemblyStateCreateInfo* pInputAssemblyState = nullptr;
-    const PipelineRasterizationStateCreateInfo* pRasterizationState = nullptr;
-    const PipelineDepthStencilStateCreateInfo*  pDepthStencilState = nullptr;
-    const PipelineColorBlendStateCreateInfo*    pColorBlendState = nullptr;
-    const PipelineFrameBufferClearValues*       pFrameBufferClearValues = nullptr;
-    FrameBuffer*                                pFrameBuffer = nullptr;
-    ShaderProgram*                              pShaderProgram = nullptr;
+    const InputAssemblyStateCreateInfo* pInputAssemblyState = nullptr;
+    const RasterizationStateCreateInfo* pRasterizationState = nullptr;
+    const DepthStencilStateCreateInfo*  pDepthStencilState = nullptr;
+    const ColorBlendStateCreateInfo*    pColorBlendState = nullptr;
+    const FrameBufferClearValues*       pFrameBufferClearValues = nullptr;
+    FrameBuffer*                        pFrameBuffer = nullptr;
+    ShaderProgram*                      pShaderProgram = nullptr;
 };
 
 
@@ -286,21 +286,21 @@ private:
     void SetupStencilTesting() noexcept;
 
 private:
-    static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_INDEX = 5;
-    static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK = 4;
-    static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR = 4;
-    static inline constexpr uint32_t BITS_PER_COLOR_ATTACHMENT_BLEND_OP = 3;
-    static inline constexpr uint32_t BITS_PER_BLEND_LOGIC_OP = 5;
-    static inline constexpr uint32_t BITS_PER_PRIMITIVE_TOPOLOGY = 4;
-    static inline constexpr uint32_t BITS_PER_CULL_MODE = 4;
-    static inline constexpr uint32_t BITS_PER_DEPTH_COMPARE_FUNC = 4;
-    static inline constexpr uint32_t BITS_PER_STENCIL_OP = 4;
-    static inline constexpr uint32_t BITS_PER_POLYGON_MODE = 2;
+    enum ColorAttachmentBlendStateBitsPerField : uint32_t
+    {
+        BITS_PER_COLOR_ATTACHMENT_INDEX = 5,
+        BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK = 4,
+        BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR = 4,
+        BITS_PER_COLOR_ATTACHMENT_BLEND_OP = 3,
+        BITS_PER_BLEND_LOGIC_OP = 5,
+        BITS_PER_PRIMITIVE_TOPOLOGY = 4,
+        BITS_PER_CULL_MODE = 4,
+        BITS_PER_DEPTH_COMPARE_FUNC = 4,
+        BITS_PER_STENCIL_OP = 4,
+        BITS_PER_POLYGON_MODE = 2
+    };
 
-private:
-    std::vector<PipelineFrameBufferColorAttachmentClearColor> m_frameBufferColorAttachmentClearColors;
-
-    struct CompressedColorBlendAttachmentState
+    struct CompressedColorAttachmentBlendState
     {
         uint32_t attachmentIndex : BITS_PER_COLOR_ATTACHMENT_INDEX;
         uint32_t colorWriteMask : BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK;
@@ -313,14 +313,7 @@ private:
         uint32_t blendEnable : 1;
     };
 
-    static_assert(sizeof(CompressedColorBlendAttachmentState) == sizeof(uint32_t));
-
-    std::vector<CompressedColorBlendAttachmentState> m_compressedColorBlendAttachmentStates;
-
-    float m_blendConstants[4] = { 0.f };
-
-    FrameBuffer* m_pFrameBuffer = nullptr;
-    ShaderProgram* m_pShaderProgram = nullptr;
+    static_assert(sizeof(CompressedColorAttachmentBlendState) == sizeof(uint32_t));
 
     struct CompressedGlobalState
     {
@@ -343,9 +336,21 @@ private:
         uint64_t colorBlendLogicOpEnable : 1;
         uint64_t stencilFrontWriteEnable : 1;
         uint64_t stencilBackWriteEnable : 1;
-    } m_compressedGlobalState;
+        uint64_t _PADDING : 13;
+    };
 
     static_assert(sizeof(CompressedGlobalState) == sizeof(uint64_t));
+
+private:
+    std::vector<FrameBufferColorAttachmentClearColor> m_frameBufferColorAttachmentClearColors;
+    std::vector<CompressedColorAttachmentBlendState> m_compressedColorBlendAttachmentStates;
+
+    float m_blendConstants[4] = { 0.f };
+
+    FrameBuffer* m_pFrameBuffer = nullptr;
+    ShaderProgram* m_pShaderProgram = nullptr;
+
+    CompressedGlobalState m_compressedGlobalState;
 
     PipelineID m_ID;
 

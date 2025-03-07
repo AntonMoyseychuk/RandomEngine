@@ -17,7 +17,7 @@ static int32_t MAX_COLOR_ATTACHMENTS = 0;
 
 static bool IsValidRenderTargetFrameBufferID(RTFrameBufferID ID) noexcept
 {
-    return ID < RTFrameBufferID::RT_FRAMEBUFFER_COUNT;
+    return ID < RTFrameBufferID::COUNT;
 }
 
 
@@ -177,10 +177,6 @@ void FrameBuffer::ClearDepthStencil(float depth, int32_t stencil) noexcept
 
 bool FrameBuffer::IsValid() const noexcept
 {
-    if (m_ID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        return true;
-    }
-
     return m_renderID != 0 && IsValidID();
 }
 
@@ -235,22 +231,13 @@ void FrameBuffer::Destroy() noexcept
     m_attachmentsState.depthAttachmentsCount = 0;
     m_attachmentsState.stencilAttachmentsCount = 0;
 
-    m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
+    m_ID = RTFrameBufferID::INVALID;
     m_renderID = 0;
 }
 
 
 bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
 {
-    if (createInfo.ID == RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-        m_attachmentsState.colorAttachmentsCount = MAX_COLOR_ATTACHMENTS;
-        m_attachmentsState.depthAttachmentsCount = 1;
-        m_attachmentsState.stencilAttachmentsCount = 1;
-        m_ID = RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT;
-
-        return true;
-    }
-
     ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before framebuffers initializing");
     
     ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(createInfo.ID), "Invalid frame buffer ID");
@@ -275,14 +262,14 @@ bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
     static auto GetFrameBufferAttachmentGLType = [](const FrameBufferAttachment& attachment) -> GLenum
     {
         switch(attachment.type) {
-            case FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT:
+            case FrameBufferAttachmentType::COLOR_ATTACHMENT:
                 ENG_ASSERT_GRAPHICS_API(attachment.index < (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid color attachment index");
                 return GL_COLOR_ATTACHMENT0 + attachment.index;
-            case FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT:
+            case FrameBufferAttachmentType::DEPTH_ATTACHMENT:
                 return GL_DEPTH_ATTACHMENT;
-            case FrameBufferAttachmentType::TYPE_STENCIL_ATTACHMENT:
+            case FrameBufferAttachmentType::STENCIL_ATTACHMENT:
                 return GL_STENCIL_ATTACHMENT;
-            case FrameBufferAttachmentType::TYPE_DEPTH_STENCIL_ATTACHMENT:
+            case FrameBufferAttachmentType::DEPTH_STENCIL_ATTACHMENT:
                 return GL_DEPTH_STENCIL_ATTACHMENT;
             default:
                 return GL_NONE;
@@ -315,14 +302,14 @@ bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
         const GLenum attachmentGLType = GetFrameBufferAttachmentGLType(attachment);
         ENG_ASSERT(attachmentGLType != GL_NONE, "Invalid frame buffer attachment type");
 
-        if (attachment.type == FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT) {
+        if (attachment.type == FrameBufferAttachmentType::COLOR_ATTACHMENT) {
             ++m_attachmentsState.colorAttachmentsCount;
-        } else if (attachment.type == FrameBufferAttachmentType::TYPE_DEPTH_STENCIL_ATTACHMENT) {
+        } else if (attachment.type == FrameBufferAttachmentType::DEPTH_STENCIL_ATTACHMENT) {
             m_attachmentsState.depthAttachmentsCount = 1;
             m_attachmentsState.stencilAttachmentsCount = 1;
-        } else if (attachment.type == FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT) {
+        } else if (attachment.type == FrameBufferAttachmentType::DEPTH_ATTACHMENT) {
             m_attachmentsState.depthAttachmentsCount = 1;
-        } else if (attachment.type == FrameBufferAttachmentType::TYPE_STENCIL_ATTACHMENT) {
+        } else if (attachment.type == FrameBufferAttachmentType::STENCIL_ATTACHMENT) {
             m_attachmentsState.stencilAttachmentsCount = 1;
         }
 
@@ -409,7 +396,7 @@ RenderTargetManager::~RenderTargetManager()
 
 Texture *RenderTargetManager::GetRTTexture(RTTextureID texID) noexcept
 {
-    ENG_ASSERT_GRAPHICS_API(texID != RTTextureID::RT_TEX_INVALID && texID < RTTextureID::RT_TEX_COUNT, "Invalid RT texture ID");
+    ENG_ASSERT_GRAPHICS_API(texID < RTTextureID::COUNT, "Invalid RT texture ID");
 
     Texture* pRTTexture = m_RTTextureStorage[static_cast<size_t>(texID)];
     ENG_ASSERT_GRAPHICS_API(pRTTexture != nullptr, "RT texture is nullptr");
@@ -559,7 +546,7 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 
     TextureManager& texManager = TextureManager::GetInstance();
 
-    m_RTTextureStorage.resize(static_cast<size_t>(RTTextureID::RT_TEX_COUNT));
+    m_RTTextureStorage.resize(static_cast<size_t>(RTTextureID::COUNT));
 
     FrameBufferAttachment gbufferAlbedoColorAttachment = {};
 
@@ -577,11 +564,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         pGbufferAlbedoTex->Create(gbufferAlbedoTextureCreateInfo);
         ENG_ASSERT(pGbufferAlbedoTex->IsValid(), "Failed to create texture: {}", gbufferAlbedoTexName.CStr());
         
-        const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_ALBEDO);
+        const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_ALBEDO);
         m_RTTextureStorage[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
 
         gbufferAlbedoColorAttachment.pTexure = pGbufferAlbedoTex;
-        gbufferAlbedoColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
+        gbufferAlbedoColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
         gbufferAlbedoColorAttachment.index = 0;
     }
 
@@ -601,11 +588,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         pGbufferNormalTex->Create(gbufferNormalTextureCreateInfo);
         ENG_ASSERT(pGbufferNormalTex->IsValid(), "Failed to create texture: {}", gbufferNormalTexName.CStr());
 
-        const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_NORMAL);
+        const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_NORMAL);
         m_RTTextureStorage[gbufferNormalTexIdx] = pGbufferNormalTex;
 
         gbufferNormalColorAttachment.pTexure = pGbufferNormalTex;
-        gbufferNormalColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
+        gbufferNormalColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
         gbufferNormalColorAttachment.index = 1;
     }
 
@@ -625,11 +612,11 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         pGbufferSpecTex->Create(gbufferSpecularTextureCreateInfo);
         ENG_ASSERT(pGbufferSpecTex->IsValid(), "Failed to create texture: {}", gbufferSpecularTexName.CStr());
 
-        const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_GBUFFER_SPECULAR);
+        const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_SPECULAR);
         m_RTTextureStorage[gbufferSpecTexIdx] = pGbufferSpecTex;
 
         gbufferSpecColorAttachment.pTexure = pGbufferSpecTex;
-        gbufferSpecColorAttachment.type = FrameBufferAttachmentType::TYPE_COLOR_ATTACHMENT;
+        gbufferSpecColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
         gbufferSpecColorAttachment.index = 2;
     }
 
@@ -649,32 +636,42 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         pCommonDepthTex->Create(commonDepthTextureCreateInfo);
         ENG_ASSERT(pCommonDepthTex->IsValid(), "Failed to create texture: {}", commonDepthTexName.CStr());
 
-        const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::RT_TEX_COMMON_DEPTH);
+        const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::COMMON_DEPTH);
         m_RTTextureStorage[commonDepthTexIdx] = pCommonDepthTex;
 
         commonDepthAttachment.pTexure = pCommonDepthTex;
-        commonDepthAttachment.type = FrameBufferAttachmentType::TYPE_DEPTH_ATTACHMENT;
+        commonDepthAttachment.type = FrameBufferAttachmentType::DEPTH_ATTACHMENT;
     }
 
-    m_frameBufferStorage.resize(static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_COUNT));
+    FrameBufferAttachment postProcColorAttachment = {};
 
     {
-        FramebufferCreateInfo defaultFrameBufferCreateInfo = {};
-        defaultFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT;
+        Texture2DCreateInfo commonColorTextureCreateInfo = {};
+        commonColorTextureCreateInfo.format = resGetTexResourceFormat(COMMON_COLOR_TEX);
+        commonColorTextureCreateInfo.width = width;
+        commonColorTextureCreateInfo.height = height;
+        commonColorTextureCreateInfo.mipmapsCount = 0;
+        commonColorTextureCreateInfo.inputData = {};
 
-        ds::StrID defaultFrameBufferName = "__DEFAULT_FRAMEBUFFER__";
-        FrameBuffer& defaultFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT)];
+        ds::StrID commonColorTexName = "__COMMON_COLOR__";
+        Texture* pCommonColorTex = texManager.RegisterTexture2D(commonColorTexName);
+        ENG_ASSERT(pCommonColorTex, "Failed to register texture: {}", commonColorTexName.CStr());
+        pCommonColorTex->Create(commonColorTextureCreateInfo);
+        ENG_ASSERT(pCommonColorTex->IsValid(), "Failed to create texture: {}", commonColorTexName.CStr());
 
-        if (!defaultFrameBuffer.Create(defaultFrameBufferCreateInfo)) {
-            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", defaultFrameBufferName.CStr());
-        }
+        const size_t commonColorTexIdx = static_cast<size_t>(RTTextureID::COMMON_COLOR);
+        m_RTTextureStorage[commonColorTexIdx] = pCommonColorTex;
 
-        defaultFrameBuffer.SetDebugName(defaultFrameBufferName);
+        postProcColorAttachment.pTexure = pCommonColorTex;
+        postProcColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
+        postProcColorAttachment.index = 0;
     }
+
+    m_frameBufferStorage.resize(static_cast<size_t>(RTFrameBufferID::COUNT));
 
     {
         FramebufferCreateInfo gbufferFrameBufferCreateInfo = {};
-        gbufferFrameBufferCreateInfo.ID = RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER;
+        gbufferFrameBufferCreateInfo.ID = RTFrameBufferID::GBUFFER;
 
         FrameBufferAttachment pAttachments[] = { 
             gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment, commonDepthAttachment
@@ -684,13 +681,34 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
         gbufferFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
 
         ds::StrID gbufferFrameBufferName = "__GBUFFER_FRAMEBUFFER__";
-        FrameBuffer& gbufferFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::RT_FRAMEBUFFER_GBUFFER)];
+        FrameBuffer& gbufferFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::GBUFFER)];
 
         if (!gbufferFrameBuffer.Create(gbufferFrameBufferCreateInfo)) {
             ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", gbufferFrameBufferName.CStr());
         }
 
         gbufferFrameBuffer.SetDebugName(gbufferFrameBufferName);
+    }
+
+    {
+        FramebufferCreateInfo postProcFrameBufferCreateInfo = {};
+        postProcFrameBufferCreateInfo.ID = RTFrameBufferID::POST_PROCESS;
+
+        FrameBufferAttachment pAttachments[] = { 
+            postProcColorAttachment
+        };
+
+        postProcFrameBufferCreateInfo.pAttachments = pAttachments;
+        postProcFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
+
+        ds::StrID postProcFrameBufferName = "__POST_PROC_FRAMEBUFFER__";
+        FrameBuffer& postProcFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::POST_PROCESS)];
+
+        if (!postProcFrameBuffer.Create(postProcFrameBufferCreateInfo)) {
+            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", postProcFrameBufferName.CStr());
+        }
+
+        postProcFrameBuffer.SetDebugName(postProcFrameBufferName);
     }
 }
 

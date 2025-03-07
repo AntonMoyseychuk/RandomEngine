@@ -7,7 +7,7 @@
 #if defined(PASS_GBUFFER)
     layout(location = 0) in vec3 fs_in_normal;
     layout(location = 1) in vec2 fs_in_texCoords;
-#elif defined(PASS_MERGE)
+#elif defined(PASS_POST_PROCESS)
     layout(location = 0) in vec2 fs_in_texCoords;
 #endif
 
@@ -16,7 +16,7 @@
     layout(location = 0) out vec4 fs_out_albedo;
     layout(location = 1) out vec4 fs_out_normal;
     layout(location = 2) out vec4 fs_out_specular;
-#elif defined(PASS_MERGE)
+#elif defined(PASS_POST_PROCESS)
     layout(location = 0) out vec4 fs_out_merge_color;
 #endif
 
@@ -29,7 +29,7 @@ void main()
     fs_out_albedo = albedo * abs(sin(COMMON_ELAPSED_TIME));
     fs_out_normal = vec4(normalize(fs_in_normal), 1.f);
     fs_out_specular = vec4(lerp(vec2(1.f, 0.f), vec2(0.f, 1.f), fs_in_texCoords.x), 0.f, 1.f);
-#elif defined(PASS_MERGE)
+#elif defined(PASS_POST_PROCESS)
     vec2 uv = fs_in_texCoords * 2.f;
     
     if (gl_FragCoord.y >= COMMON_SCREEN_HEIGHT * 0.5f) {

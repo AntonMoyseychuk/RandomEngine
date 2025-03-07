@@ -8,36 +8,38 @@
 
 enum class RTTextureID : uint32_t
 {
-    RT_TEX_GBUFFER_ALBEDO,
-    RT_TEX_GBUFFER_NORMAL,
-    RT_TEX_GBUFFER_SPECULAR,
+    GBUFFER_ALBEDO,
+    GBUFFER_NORMAL,
+    GBUFFER_SPECULAR,
 
-    RT_TEX_COMMON_DEPTH,
+    COMMON_DEPTH,
 
-    RT_TEX_COUNT,
-    RT_TEX_INVALID,
+    COMMON_COLOR,
+
+    COUNT,
+    INVALID,
 };
 
 
 enum class RTFrameBufferID : uint32_t
 {
-    RT_FRAMEBUFFER_DEFAULT,
-    RT_FRAMEBUFFER_GBUFFER,
+    GBUFFER,
+    POST_PROCESS,
 
-    RT_FRAMEBUFFER_COUNT,
-    RT_FRAMEBUFFER_INVALID,
+    COUNT,
+    INVALID,
 };
 
 
 enum class FrameBufferAttachmentType : uint32_t
 {
-    TYPE_COLOR_ATTACHMENT,
-    TYPE_DEPTH_ATTACHMENT,
-    TYPE_STENCIL_ATTACHMENT,
-    TYPE_DEPTH_STENCIL_ATTACHMENT,
+    COLOR_ATTACHMENT,
+    DEPTH_ATTACHMENT,
+    STENCIL_ATTACHMENT,
+    DEPTH_STENCIL_ATTACHMENT,
 
-    TYPE_COUNT,
-    TYPE_INVALID
+    COUNT,
+    INVALID
 };
 
 
@@ -45,7 +47,7 @@ struct FrameBufferAttachment
 {
     Texture*                  pTexure;
     FrameBufferAttachmentType type;
-    uint32_t                  index; // Ignores if type is not TYPE_COLOR_ATTACHMENT
+    uint32_t                  index; // Ignores if type is not COLOR_ATTACHMENT
 };
 
 
@@ -120,7 +122,7 @@ private:
         uint32_t stencilAttachmentsCount : 1;
     } m_attachmentsState;
 
-    RTFrameBufferID m_ID = RTFrameBufferID::RT_FRAMEBUFFER_INVALID;
+    RTFrameBufferID m_ID = RTFrameBufferID::INVALID;
     uint32_t m_renderID = 0;
 };
 

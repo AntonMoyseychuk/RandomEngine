@@ -14,7 +14,7 @@
 #if defined(PASS_GBUFFER)
     layout(location = 0) out vec3 vs_out_normal;
     layout(location = 1) out vec2 vs_out_texCoords;
-#elif defined(PASS_MERGE)
+#elif defined(PASS_POST_PROCESS)
     layout(location = 0) out vec2 vs_out_texCoords;
 #endif
 
@@ -25,14 +25,14 @@ struct Vertex
     vec3 position;
     vec3 normal;
     vec2 texCoords;
-#elif defined(PASS_MERGE)
+#elif defined(PASS_POST_PROCESS)
     vec4 position;
     vec2 texCoords;
 #endif
 };
 
 
-#if defined(PASS_MERGE)
+#if defined(PASS_POST_PROCESS)
     Vertex vertices[6] = Vertex[6](
         Vertex(vec4(-1.0f, -1.0f, 0.5f, 1.0f), vec2(0.0f, 0.0f)),
         Vertex(vec4( 1.0f, -1.0f, 0.5f, 1.0f), vec2(1.0f, 0.0f)),

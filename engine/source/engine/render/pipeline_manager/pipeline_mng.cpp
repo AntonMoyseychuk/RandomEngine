@@ -283,7 +283,7 @@ void Pipeline::ClearFrameBuffer() noexcept
     ENG_ASSERT(IsValid(), "Pipeline is invalid");
 
     for (uint32_t colorAttachmentIdx = 0; colorAttachmentIdx < m_frameBufferColorAttachmentClearColors.size(); ++colorAttachmentIdx) {
-        const PipelineFrameBufferColorAttachmentClearColor& clearColor = m_frameBufferColorAttachmentClearColors[colorAttachmentIdx];
+        const FrameBufferColorAttachmentClearColor& clearColor = m_frameBufferColorAttachmentClearColors[colorAttachmentIdx];
         
         m_pFrameBuffer->ClearColor(colorAttachmentIdx, clearColor.r, clearColor.g, clearColor.b, clearColor.a);
     }
@@ -318,19 +318,17 @@ void Pipeline::Bind() noexcept
     {
         // TODO: FIX THIS SHIT!!!
 
-        if (m_pFrameBuffer->GetID() != RTFrameBufferID::RT_FRAMEBUFFER_DEFAULT) {
-            static constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
+        static constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
     
-            const uint32_t frameBufferColorAttachmentsCount = m_pFrameBuffer->GetColorAttachmentsCount();
-            ENG_ASSERT(frameBufferColorAttachmentsCount <= MAX_COLOR_ATTACHMENTS, "Invalid color attachments count");
+        const uint32_t frameBufferColorAttachmentsCount = m_pFrameBuffer->GetColorAttachmentsCount();
+        ENG_ASSERT(frameBufferColorAttachmentsCount <= MAX_COLOR_ATTACHMENTS, "Invalid color attachments count");
     
-            std::array<GLenum, MAX_COLOR_ATTACHMENTS> drawBuffers = { GL_NONE };
-            for (size_t i = 0; i < frameBufferColorAttachmentsCount; ++i) {
-                drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
-            }
-    
-            glDrawBuffers(frameBufferColorAttachmentsCount, drawBuffers.data());
+        std::array<GLenum, MAX_COLOR_ATTACHMENTS> drawBuffers = { GL_NONE };
+        for (size_t i = 0; i < frameBufferColorAttachmentsCount; ++i) {
+            drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
         }
+    
+        glDrawBuffers(frameBufferColorAttachmentsCount, drawBuffers.data());
     }
 }
 
@@ -343,14 +341,14 @@ uint64_t Pipeline::Hash() const noexcept
 
     ds::HashBuilder builder;
 
-    for (const PipelineFrameBufferColorAttachmentClearColor& color : m_frameBufferColorAttachmentClearColors) {
+    for (const FrameBufferColorAttachmentClearColor& color : m_frameBufferColorAttachmentClearColors) {
         builder.AddValue(color.r);
         builder.AddValue(color.g);
         builder.AddValue(color.b);
         builder.AddValue(color.a);
     }
 
-    for (const CompressedColorBlendAttachmentState& state : m_compressedColorBlendAttachmentStates) {
+    for (const CompressedColorAttachmentBlendState& state : m_compressedColorBlendAttachmentStates) {
         const uint32_t stateAsUInt32 = *reinterpret_cast<const uint32_t*>(&state);
         builder.AddValue(stateAsUInt32);
     }
@@ -412,7 +410,7 @@ void Pipeline::SetupColorBlending() noexcept
     bool isAnyBlendFactorConstant = false;
 
     for (uint32_t index = 0; index < m_compressedColorBlendAttachmentStates.size(); ++index) {
-        const CompressedColorBlendAttachmentState& state = m_compressedColorBlendAttachmentStates[index];
+        const CompressedColorAttachmentBlendState& state = m_compressedColorBlendAttachmentStates[index];
         
         const GLboolean rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
         const GLboolean gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
@@ -538,7 +536,7 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
             "pColorAttachmentClearColors is nullptr but colorAttachmentsCount is greater than 0");
     }
 
-    const PipelineFrameBufferClearValues& frameBufferClearValues = *createInfo.pFrameBufferClearValues;
+    const FrameBufferClearValues& frameBufferClearValues = *createInfo.pFrameBufferClearValues;
     m_frameBufferColorAttachmentClearColors.resize(frameBufferClearValues.colorAttachmentsCount);
 
     for (size_t i = 0; i < frameBufferClearValues.colorAttachmentsCount; ++i) {
@@ -548,10 +546,10 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     m_depthClearValue = frameBufferClearValues.depthClearValue;
     m_stencilClearValue = frameBufferClearValues.stencilClearValue;
 
-    const PipelineInputAssemblyStateCreateInfo& inputAssemblyState = *createInfo.pInputAssemblyState;
+    const InputAssemblyStateCreateInfo& inputAssemblyState = *createInfo.pInputAssemblyState;
     m_compressedGlobalState.primitiveTopology = static_cast<uint32_t>(inputAssemblyState.topology);
 
-    const PipelineRasterizationStateCreateInfo& rasterizationState = *createInfo.pRasterizationState;
+    const RasterizationStateCreateInfo& rasterizationState = *createInfo.pRasterizationState;
     m_compressedGlobalState.frontFace = static_cast<uint32_t>(rasterizationState.frontFace);
     m_compressedGlobalState.polygonMode = static_cast<uint32_t>(rasterizationState.polygonMode);
     m_compressedGlobalState.cullMode = static_cast<uint32_t>(rasterizationState.cullMode);
@@ -561,7 +559,7 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     m_depthBiasSlopeFactor = rasterizationState.depthBiasSlopeFactor;
     m_lineWidth = rasterizationState.lineWidth;
 
-    const PipelineDepthStencilStateCreateInfo& depthStencilState = *createInfo.pDepthStencilState;
+    const DepthStencilStateCreateInfo& depthStencilState = *createInfo.pDepthStencilState;
     m_compressedGlobalState.depthCompareFunc = static_cast<uint32_t>(depthStencilState.depthCompareFunc);
     m_compressedGlobalState.frontFaceStencilFailOp = static_cast<uint32_t>(depthStencilState.frontFaceStencilFailOp);
     m_compressedGlobalState.frontFaceStencilPassDepthPassOp = static_cast<uint32_t>(depthStencilState.frontFaceStencilPassDepthPassOp);
@@ -577,12 +575,12 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     m_stencilFrontMask = depthStencilState.stencilFrontMask;
     m_stencilBackMask = depthStencilState.stencilBackMask;
 
-    const PipelineColorBlendStateCreateInfo& colorBlendState = *createInfo.pColorBlendState;
+    const ColorBlendStateCreateInfo& colorBlendState = *createInfo.pColorBlendState;
     m_compressedColorBlendAttachmentStates.resize(colorBlendState.attachmentCount);
     
     for (size_t i = 0; i < colorBlendState.attachmentCount; ++i) {
-        CompressedColorBlendAttachmentState& compressedState = m_compressedColorBlendAttachmentStates[i];
-        const PipelineColorBlendAttachmentState& state = colorBlendState.pAttachmentStates[i];
+        CompressedColorAttachmentBlendState& compressedState = m_compressedColorBlendAttachmentStates[i];
+        const ColorBlendAttachmentState& state = colorBlendState.pAttachmentStates[i];
 
         ENG_ASSERT(state.attachmentIndex < powl(2, BITS_PER_COLOR_ATTACHMENT_INDEX), "Attachment index is greate than maximum value");
 
