@@ -153,6 +153,28 @@ class RenderTargetManager
     friend void engTerminateRenderTargetManager() noexcept;
     friend bool engIsRenderTargetManagerInitialized() noexcept;
 
+private:
+    struct RTTextureIntermediateCreateInfo
+    {
+        uint32_t format;
+        uint32_t width;
+        uint32_t height;
+        uint32_t mipsCount;
+
+        ds::StrID name;
+    };
+
+    using RTTextureCreateInfoArray = std::array<RTTextureIntermediateCreateInfo, size_t(RTTextureID::COUNT)>;
+
+    struct RTFrameBufferIntermediateCreateInfo
+    {
+        const FrameBufferAttachment* pAttachments;
+        uint32_t                     attachmentsCount;
+        ds::StrID                    name;
+    };
+
+    using RTFrameBufferCreateInfoArray = std::array<RTFrameBufferIntermediateCreateInfo, size_t(RTFrameBufferID::COUNT)>;
+
 public:
     static RenderTargetManager& GetInstance() noexcept;
 
@@ -182,14 +204,20 @@ private:
 
     void ClearFrameBuffersStorage() noexcept;
 
+    void PrepareRTTextureStorage(const RTTextureCreateInfoArray& rtTexDescs) noexcept;
+    void PrepareRTFrameBufferStorage(const RTFrameBufferCreateInfoArray& fbDescs) noexcept;
+
     void OnWindowResizedEvent(uint32_t width, uint32_t height) noexcept;
     void RecreateFrameBuffers(uint32_t width, uint32_t height) noexcept;
 
     bool IsInitialized() const noexcept { return m_isInitialized; }
 
 private:
-    std::vector<FrameBuffer> m_frameBufferStorage;
-    std::vector<Texture*> m_RTTextureStorage;
+    using RTFrameBufferStorage = std::array<FrameBuffer, size_t(RTFrameBufferID::COUNT)>;
+    using RTTexturePtrStorage = std::array<Texture*, size_t(RTTextureID::COUNT)>;
+
+    RTFrameBufferStorage m_frameBufferStorage;
+    RTTexturePtrStorage m_RTTextureStorage = { nullptr };
 
     EventListenerID m_frameBufferResizeEventListenerID;
 
