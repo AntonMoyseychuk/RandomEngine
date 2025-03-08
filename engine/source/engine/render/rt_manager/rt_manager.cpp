@@ -10,9 +10,62 @@
 #include "auto/registers_common.h"
 
 
+struct RTInternalDesc
+{
+    RTInternalDesc() = default;
+
+    RTInternalDesc(uint32_t format, uint32_t width, uint32_t height, uint32_t mipsCount, ds::StrID name)
+        : format(format), width(width), height(height), mipsCount(mipsCount), name(name) {}
+
+    uint32_t format;
+    uint32_t width;
+    uint32_t height;
+    uint32_t mipsCount;
+
+    ds::StrID name;
+};
+
+
+struct FrameBufferInternalDesc
+{
+    FrameBufferInternalDesc() = default;
+
+    FrameBufferInternalDesc(const FrameBufferAttachment* pAttachments, uint32_t attachmentsCount, ds::StrID name)
+        : pAttachments(pAttachments), attachmentsCount(attachmentsCount), name(name) {}
+
+    const FrameBufferAttachment* pAttachments;
+    uint32_t                     attachmentsCount;
+    ds::StrID                    name;
+};
+
+
 static std::unique_ptr<RenderTargetManager> pRenderTargetMngInst = nullptr;
 
-static int32_t MAX_COLOR_ATTACHMENTS = 0;
+
+static void PrepareRTTextureStorage(const std::array<RTInternalDesc, size_t(RTTextureID::COUNT)>& rtDescs, std::vector<Texture*>& outStorage) noexcept
+{
+    TextureManager& texManager = TextureManager::GetInstance();
+
+    outStorage.resize(rtDescs.size());
+
+    for (size_t rtIdx = 0; rtIdx < rtDescs.size(); ++rtIdx) {
+        const RTInternalDesc& rtDesc = rtDescs[rtIdx];
+
+        Texture2DCreateInfo texCreateInfo = {};
+        texCreateInfo.format = rtDesc.format;
+        texCreateInfo.width = rtDesc.width;
+        texCreateInfo.height = rtDesc.height;
+        texCreateInfo.mipmapsCount = rtDesc.mipsCount;
+    
+        Texture* pTex = texManager.RegisterTexture2D(rtDesc.name);
+        ENG_ASSERT(pTex, "Failed to register texture: {}", rtDesc.name.CStr());
+        pTex->Create(texCreateInfo);
+        ENG_ASSERT(pTex->IsValid(), "Failed to create texture: {}", rtDesc.name.CStr());
+    
+        outStorage[rtIdx] = pTex;
+    }
+    
+}
 
 
 static bool IsValidRenderTargetFrameBufferID(RTFrameBufferID ID) noexcept
@@ -210,6 +263,15 @@ ds::StrID FrameBuffer::GetDebugName() const noexcept
 }
 
 
+uint32_t FrameBuffer::GetAttachmentsCount() const noexcept
+{
+    uint32_t result = GetColorAttachmentsCount();
+    result += GetDepthAttachmentCount() + (HasMergedDepthStencilAttachment() ? 0 : GetStencilAttachmentCount());
+
+    return result;
+}
+
+
 bool FrameBuffer::Create(const FramebufferCreateInfo &createInfo) noexcept
 {
     ENG_ASSERT(!IsValid(), "Attempt to create already valid frame buffer: {}", m_dbgName.CStr());
@@ -223,13 +285,14 @@ void FrameBuffer::Destroy() noexcept
     glDeleteFramebuffers(1, &m_renderID);
 
 #if defined(ENG_DEBUG)
-    m_attachments.clear();
+    m_attachments.fill({nullptr, FrameBufferAttachmentType::INVALID, 0});
     m_dbgName = "_INVALID_";
 #endif
 
     m_attachmentsState.colorAttachmentsCount = 0;
     m_attachmentsState.depthAttachmentsCount = 0;
     m_attachmentsState.stencilAttachmentsCount = 0;
+    m_attachmentsState.hasMergedDepthStencilAttachement = 0;
 
     m_ID = RTFrameBufferID::INVALID;
     m_renderID = 0;
@@ -241,7 +304,7 @@ bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
     ENG_ASSERT_GRAPHICS_API(engIsTextureManagerInitialized(), "Texture manager must be initialized before framebuffers initializing");
     
     ENG_ASSERT_GRAPHICS_API(IsValidRenderTargetFrameBufferID(createInfo.ID), "Invalid frame buffer ID");
-    ENG_ASSERT_GRAPHICS_API(createInfo.attachmentsCount > 0 && createInfo.attachmentsCount <= (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid attachments count");
+    ENG_ASSERT_GRAPHICS_API(createInfo.attachmentsCount > 0 && createInfo.attachmentsCount <= GetMaxAttachmentsCount(), "Invalid attachments count");
     ENG_ASSERT_GRAPHICS_API(createInfo.pAttachments, "Attachements are nullptr (\'{}\')", m_dbgName.CStr());
 
     if (IsValid()) {
@@ -255,15 +318,11 @@ bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
 
     bool isFirstAttachment = true;
 
-#if defined(ENG_DEBUG)
-    m_attachments.reserve(createInfo.attachmentsCount);
-#endif
-
     static auto GetFrameBufferAttachmentGLType = [](const FrameBufferAttachment& attachment) -> GLenum
     {
         switch(attachment.type) {
             case FrameBufferAttachmentType::COLOR_ATTACHMENT:
-                ENG_ASSERT_GRAPHICS_API(attachment.index < (uint32_t)MAX_COLOR_ATTACHMENTS, "Invalid color attachment index");
+                ENG_ASSERT_GRAPHICS_API(attachment.index < GetMaxColorAttachmentsCount(), "Invalid color attachment index");
                 return GL_COLOR_ATTACHMENT0 + attachment.index;
             case FrameBufferAttachmentType::DEPTH_ATTACHMENT:
                 return GL_DEPTH_ATTACHMENT;
@@ -296,21 +355,27 @@ bool FrameBuffer::Recreate(const FramebufferCreateInfo& createInfo) noexcept
         }
 
     #if defined(ENG_DEBUG)
-        m_attachments.emplace_back(attachment);
+        m_attachments[attachmentIdx] = attachment;
     #endif
 
         const GLenum attachmentGLType = GetFrameBufferAttachmentGLType(attachment);
         ENG_ASSERT(attachmentGLType != GL_NONE, "Invalid frame buffer attachment type");
 
-        if (attachment.type == FrameBufferAttachmentType::COLOR_ATTACHMENT) {
-            ++m_attachmentsState.colorAttachmentsCount;
-        } else if (attachment.type == FrameBufferAttachmentType::DEPTH_STENCIL_ATTACHMENT) {
-            m_attachmentsState.depthAttachmentsCount = 1;
-            m_attachmentsState.stencilAttachmentsCount = 1;
-        } else if (attachment.type == FrameBufferAttachmentType::DEPTH_ATTACHMENT) {
-            m_attachmentsState.depthAttachmentsCount = 1;
-        } else if (attachment.type == FrameBufferAttachmentType::STENCIL_ATTACHMENT) {
-            m_attachmentsState.stencilAttachmentsCount = 1;
+        switch (attachment.type) {
+            case FrameBufferAttachmentType::COLOR_ATTACHMENT:
+                ++m_attachmentsState.colorAttachmentsCount;
+                break;
+            case FrameBufferAttachmentType::DEPTH_ATTACHMENT:
+                m_attachmentsState.depthAttachmentsCount = 1;
+                break;
+            case FrameBufferAttachmentType::STENCIL_ATTACHMENT:
+                m_attachmentsState.stencilAttachmentsCount = 1;
+                break;
+            case FrameBufferAttachmentType::DEPTH_STENCIL_ATTACHMENT:
+                m_attachmentsState.depthAttachmentsCount = 1;
+                m_attachmentsState.stencilAttachmentsCount = 1;
+                m_attachmentsState.hasMergedDepthStencilAttachement = true;
+                break;
         }
 
         glNamedFramebufferTexture(m_renderID, attachmentGLType, pTex->GetRenderID(), 0);
@@ -497,8 +562,6 @@ bool RenderTargetManager::Init() noexcept
     ENG_ASSERT(m_frameBufferResizeEventListenerID.IsValid(), "Invalid event listener ID");
     dispatcher.SetListenerDebugName(m_frameBufferResizeEventListenerID, "RT_MNG_FRAMEBUFF_RESIZE");
 
-    glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &MAX_COLOR_ATTACHMENTS);
-
     m_isInitialized = true;
 
     return true;
@@ -544,172 +607,56 @@ void RenderTargetManager::RecreateFrameBuffers(uint32_t width, uint32_t height) 
 {
     ClearFrameBuffersStorage();
 
-    TextureManager& texManager = TextureManager::GetInstance();
+    std::array<RTInternalDesc, size_t(RTTextureID::COUNT)> frameBufferAttachmentDescs;
 
-    m_RTTextureStorage.resize(static_cast<size_t>(RTTextureID::COUNT));
+    frameBufferAttachmentDescs[size_t(RTTextureID::GBUFFER_ALBEDO)]   = RTInternalDesc(resGetTexResourceFormat(GBUFFER_ALBEDO_TEX), width, height, 0, ds::StrID("_GBUFFER_ALBEDO_"));
+    frameBufferAttachmentDescs[size_t(RTTextureID::GBUFFER_NORMAL)]   = RTInternalDesc(resGetTexResourceFormat(GBUFFER_NORMAL_TEX), width, height, 0, ds::StrID("_GBUFFER_NORMAL_"));
+    frameBufferAttachmentDescs[size_t(RTTextureID::GBUFFER_SPECULAR)] = RTInternalDesc(resGetTexResourceFormat(GBUFFER_SPECULAR_TEX), width, height, 0, ds::StrID("_GBUFFER_SPECULAR_"));
+    
+    frameBufferAttachmentDescs[size_t(RTTextureID::COMMON_DEPTH)] = RTInternalDesc(resGetTexResourceFormat(COMMON_DEPTH_TEX), width, height, 0, ds::StrID("_COMMON_DEPTH_"));
+    
+    frameBufferAttachmentDescs[size_t(RTTextureID::COMMON_COLOR)] = RTInternalDesc(resGetTexResourceFormat(COMMON_COLOR_TEX), width, height, 0, ds::StrID("_COMMON_COLOR_"));
 
-    FrameBufferAttachment gbufferAlbedoColorAttachment = {};
+    PrepareRTTextureStorage(frameBufferAttachmentDescs, m_RTTextureStorage);
 
+    const auto PrepareFrameBufferStorage = [this](const std::array<FrameBufferInternalDesc, size_t(RTFrameBufferID::COUNT)>& fbDescs) -> void
     {
-        Texture2DCreateInfo gbufferAlbedoTextureCreateInfo = {};
-        gbufferAlbedoTextureCreateInfo.format = resGetTexResourceFormat(GBUFFER_ALBEDO_TEX);
-        gbufferAlbedoTextureCreateInfo.width = width;
-        gbufferAlbedoTextureCreateInfo.height = height;
-        gbufferAlbedoTextureCreateInfo.mipmapsCount = 0;
-        gbufferAlbedoTextureCreateInfo.inputData = {};
-        
-        ds::StrID gbufferAlbedoTexName = "__GBUFFER_ALBEDO__";
-        Texture* pGbufferAlbedoTex = texManager.RegisterTexture2D(gbufferAlbedoTexName);
-        ENG_ASSERT(pGbufferAlbedoTex, "Failed to register texture: {}", gbufferAlbedoTexName.CStr());
-        pGbufferAlbedoTex->Create(gbufferAlbedoTextureCreateInfo);
-        ENG_ASSERT(pGbufferAlbedoTex->IsValid(), "Failed to create texture: {}", gbufferAlbedoTexName.CStr());
-        
-        const size_t gbufferAlbedoTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_ALBEDO);
-        m_RTTextureStorage[gbufferAlbedoTexIdx] = pGbufferAlbedoTex;
+        m_frameBufferStorage.resize(fbDescs.size());
 
-        gbufferAlbedoColorAttachment.pTexure = pGbufferAlbedoTex;
-        gbufferAlbedoColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
-        gbufferAlbedoColorAttachment.index = 0;
-    }
+        for (size_t fbIdx = 0; fbIdx < fbDescs.size(); ++fbIdx) {
+            const FrameBufferInternalDesc& fbDesc = fbDescs[fbIdx];
 
-    FrameBufferAttachment gbufferNormalColorAttachment = {};
+            FramebufferCreateInfo fbCreateInfo = {};
+            fbCreateInfo.ID = static_cast<RTFrameBufferID>(fbIdx);
+            fbCreateInfo.pAttachments = fbDesc.pAttachments;
+            fbCreateInfo.attachmentsCount = fbDesc.attachmentsCount;
 
-    {
-        Texture2DCreateInfo gbufferNormalTextureCreateInfo = {};
-        gbufferNormalTextureCreateInfo.format = resGetTexResourceFormat(GBUFFER_NORMAL_TEX);
-        gbufferNormalTextureCreateInfo.width = width;
-        gbufferNormalTextureCreateInfo.height = height;
-        gbufferNormalTextureCreateInfo.mipmapsCount = 0;
-        gbufferNormalTextureCreateInfo.inputData = {};
+            FrameBuffer& frameBuffer = m_frameBufferStorage[fbIdx];
 
-        ds::StrID gbufferNormalTexName = "__GBUFFER_NORMAL__";
-        Texture* pGbufferNormalTex = texManager.RegisterTexture2D(gbufferNormalTexName);
-        ENG_ASSERT(pGbufferNormalTex, "Failed to register texture: {}", gbufferNormalTexName.CStr());
-        pGbufferNormalTex->Create(gbufferNormalTextureCreateInfo);
-        ENG_ASSERT(pGbufferNormalTex->IsValid(), "Failed to create texture: {}", gbufferNormalTexName.CStr());
+            if (!frameBuffer.Create(fbCreateInfo)) {
+                ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", fbDesc.name.CStr());
+            }
 
-        const size_t gbufferNormalTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_NORMAL);
-        m_RTTextureStorage[gbufferNormalTexIdx] = pGbufferNormalTex;
-
-        gbufferNormalColorAttachment.pTexure = pGbufferNormalTex;
-        gbufferNormalColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
-        gbufferNormalColorAttachment.index = 1;
-    }
-
-    FrameBufferAttachment gbufferSpecColorAttachment = {};
-
-    {
-        Texture2DCreateInfo gbufferSpecularTextureCreateInfo = {};
-        gbufferSpecularTextureCreateInfo.format = resGetTexResourceFormat(GBUFFER_SPECULAR_TEX);
-        gbufferSpecularTextureCreateInfo.width = width;
-        gbufferSpecularTextureCreateInfo.height = height;
-        gbufferSpecularTextureCreateInfo.mipmapsCount = 0;
-        gbufferSpecularTextureCreateInfo.inputData = {};
-
-        ds::StrID gbufferSpecularTexName = "__GBUFFER_SPECULAR__";
-        Texture* pGbufferSpecTex = texManager.RegisterTexture2D(gbufferSpecularTexName);
-        ENG_ASSERT(pGbufferSpecTex, "Failed to register texture: {}", gbufferSpecularTexName.CStr());
-        pGbufferSpecTex->Create(gbufferSpecularTextureCreateInfo);
-        ENG_ASSERT(pGbufferSpecTex->IsValid(), "Failed to create texture: {}", gbufferSpecularTexName.CStr());
-
-        const size_t gbufferSpecTexIdx = static_cast<size_t>(RTTextureID::GBUFFER_SPECULAR);
-        m_RTTextureStorage[gbufferSpecTexIdx] = pGbufferSpecTex;
-
-        gbufferSpecColorAttachment.pTexure = pGbufferSpecTex;
-        gbufferSpecColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
-        gbufferSpecColorAttachment.index = 2;
-    }
-
-    FrameBufferAttachment commonDepthAttachment = {};
-
-    {
-        Texture2DCreateInfo commonDepthTextureCreateInfo = {};
-        commonDepthTextureCreateInfo.format = resGetTexResourceFormat(COMMON_DEPTH_TEX);
-        commonDepthTextureCreateInfo.width = width;
-        commonDepthTextureCreateInfo.height = height;
-        commonDepthTextureCreateInfo.mipmapsCount = 0;
-        commonDepthTextureCreateInfo.inputData = {};
-
-        ds::StrID commonDepthTexName = "__COMMON_DEPTH__";
-        Texture* pCommonDepthTex = texManager.RegisterTexture2D(commonDepthTexName);
-        ENG_ASSERT(pCommonDepthTex, "Failed to register texture: {}", commonDepthTexName.CStr());
-        pCommonDepthTex->Create(commonDepthTextureCreateInfo);
-        ENG_ASSERT(pCommonDepthTex->IsValid(), "Failed to create texture: {}", commonDepthTexName.CStr());
-
-        const size_t commonDepthTexIdx = static_cast<size_t>(RTTextureID::COMMON_DEPTH);
-        m_RTTextureStorage[commonDepthTexIdx] = pCommonDepthTex;
-
-        commonDepthAttachment.pTexure = pCommonDepthTex;
-        commonDepthAttachment.type = FrameBufferAttachmentType::DEPTH_ATTACHMENT;
-    }
-
-    FrameBufferAttachment postProcColorAttachment = {};
-
-    {
-        Texture2DCreateInfo commonColorTextureCreateInfo = {};
-        commonColorTextureCreateInfo.format = resGetTexResourceFormat(COMMON_COLOR_TEX);
-        commonColorTextureCreateInfo.width = width;
-        commonColorTextureCreateInfo.height = height;
-        commonColorTextureCreateInfo.mipmapsCount = 0;
-        commonColorTextureCreateInfo.inputData = {};
-
-        ds::StrID commonColorTexName = "__COMMON_COLOR__";
-        Texture* pCommonColorTex = texManager.RegisterTexture2D(commonColorTexName);
-        ENG_ASSERT(pCommonColorTex, "Failed to register texture: {}", commonColorTexName.CStr());
-        pCommonColorTex->Create(commonColorTextureCreateInfo);
-        ENG_ASSERT(pCommonColorTex->IsValid(), "Failed to create texture: {}", commonColorTexName.CStr());
-
-        const size_t commonColorTexIdx = static_cast<size_t>(RTTextureID::COMMON_COLOR);
-        m_RTTextureStorage[commonColorTexIdx] = pCommonColorTex;
-
-        postProcColorAttachment.pTexure = pCommonColorTex;
-        postProcColorAttachment.type = FrameBufferAttachmentType::COLOR_ATTACHMENT;
-        postProcColorAttachment.index = 0;
-    }
-
-    m_frameBufferStorage.resize(static_cast<size_t>(RTFrameBufferID::COUNT));
-
-    {
-        FramebufferCreateInfo gbufferFrameBufferCreateInfo = {};
-        gbufferFrameBufferCreateInfo.ID = RTFrameBufferID::GBUFFER;
-
-        FrameBufferAttachment pAttachments[] = { 
-            gbufferAlbedoColorAttachment, gbufferNormalColorAttachment, gbufferSpecColorAttachment, commonDepthAttachment
-        };
-
-        gbufferFrameBufferCreateInfo.pAttachments = pAttachments;
-        gbufferFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
-
-        ds::StrID gbufferFrameBufferName = "__GBUFFER_FRAMEBUFFER__";
-        FrameBuffer& gbufferFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::GBUFFER)];
-
-        if (!gbufferFrameBuffer.Create(gbufferFrameBufferCreateInfo)) {
-            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", gbufferFrameBufferName.CStr());
+            frameBuffer.SetDebugName(fbDesc.name);
         }
+    };
 
-        gbufferFrameBuffer.SetDebugName(gbufferFrameBufferName);
-    }
+    std::array<FrameBufferInternalDesc, size_t(RTFrameBufferID::COUNT)> frameBufferDescs;
 
-    {
-        FramebufferCreateInfo postProcFrameBufferCreateInfo = {};
-        postProcFrameBufferCreateInfo.ID = RTFrameBufferID::POST_PROCESS;
+    FrameBufferAttachment pGBufferAttachments[] = { 
+        { m_RTTextureStorage[size_t(RTTextureID::GBUFFER_ALBEDO)], FrameBufferAttachmentType::COLOR_ATTACHMENT, 0 },
+        { m_RTTextureStorage[size_t(RTTextureID::GBUFFER_NORMAL)], FrameBufferAttachmentType::COLOR_ATTACHMENT, 1 },
+        { m_RTTextureStorage[size_t(RTTextureID::GBUFFER_SPECULAR)], FrameBufferAttachmentType::COLOR_ATTACHMENT, 2 },
+        { m_RTTextureStorage[size_t(RTTextureID::COMMON_DEPTH)], FrameBufferAttachmentType::DEPTH_ATTACHMENT, 0 },
+    };
+    frameBufferDescs[size_t(RTFrameBufferID::GBUFFER)] = FrameBufferInternalDesc(pGBufferAttachments, _countof(pGBufferAttachments), "_GBUFFER_");
 
-        FrameBufferAttachment pAttachments[] = { 
-            postProcColorAttachment
-        };
+    FrameBufferAttachment pPostProcessAttachments[] = { 
+        { m_RTTextureStorage[size_t(RTTextureID::COMMON_COLOR)], FrameBufferAttachmentType::COLOR_ATTACHMENT, 0 },
+    };
+    frameBufferDescs[size_t(RTFrameBufferID::POST_PROCESS)] = FrameBufferInternalDesc(pPostProcessAttachments, _countof(pPostProcessAttachments), "_POST_PROCESS_");
 
-        postProcFrameBufferCreateInfo.pAttachments = pAttachments;
-        postProcFrameBufferCreateInfo.attachmentsCount = _countof(pAttachments);
-
-        ds::StrID postProcFrameBufferName = "__POST_PROC_FRAMEBUFFER__";
-        FrameBuffer& postProcFrameBuffer = m_frameBufferStorage[static_cast<size_t>(RTFrameBufferID::POST_PROCESS)];
-
-        if (!postProcFrameBuffer.Create(postProcFrameBufferCreateInfo)) {
-            ENG_ASSERT_GRAPHICS_API_FAIL("Failed to initialize \'{}\' frame buffer", postProcFrameBufferName.CStr());
-        }
-
-        postProcFrameBuffer.SetDebugName(postProcFrameBufferName);
-    }
+    PrepareFrameBufferStorage(frameBufferDescs);
 }
 
 

@@ -21,7 +21,7 @@ enum class RTTextureID : uint32_t
 };
 
 
-enum class RTFrameBufferID : uint32_t
+enum class RTFrameBufferID : uint16_t
 {
     GBUFFER,
     POST_PROCESS,
@@ -64,6 +64,13 @@ class FrameBuffer
     friend class RenderTargetManager;
 
 public:
+    static constexpr size_t GetMaxColorAttachmentsCount() noexcept { return MAX_COLOR_ATTACHMENTS; }
+    static constexpr size_t GetMaxDepthAttachmentsCount() noexcept { return MAX_DEPTH_ATTACHMENTS; }
+    static constexpr size_t GetMaxStencilAttachmentsCount() noexcept { return MAX_STENCIL_ATTACHMENTS; }
+    static constexpr size_t GetMaxDepthStencilAttachmentsCount() noexcept { return MAX_DEPTH_STENCIL_ATTACHMENTS; }
+    static constexpr size_t GetMaxAttachmentsCount() noexcept { return MAX_ATTACHMENTS; }
+
+public:
     FrameBuffer() = default;
     ~FrameBuffer();
 
@@ -86,13 +93,15 @@ public:
     bool HasDepthAttachment() const noexcept { return GetDepthAttachmentCount() > 0; }
     bool HasStencilAttachment() const noexcept { return GetStencilAttachmentCount() > 0; }
 
+    bool HasMergedDepthStencilAttachment() const noexcept { return m_attachmentsState.hasMergedDepthStencilAttachement; }
+
     void SetDebugName(ds::StrID name) noexcept;
     ds::StrID GetDebugName() const noexcept;
     
     uint32_t GetColorAttachmentsCount() const noexcept { return m_attachmentsState.colorAttachmentsCount; }
     uint32_t GetDepthAttachmentCount() const noexcept { return m_attachmentsState.depthAttachmentsCount; }
     uint32_t GetStencilAttachmentCount() const noexcept { return m_attachmentsState.stencilAttachmentsCount; }
-    uint32_t GetAttachmentsCount() const noexcept { return GetColorAttachmentsCount() + GetDepthAttachmentCount() + GetStencilAttachmentCount(); }
+    uint32_t GetAttachmentsCount() const noexcept;
     
     RTFrameBufferID GetID() const noexcept { return m_ID; }
     uint32_t GetRenderID() const noexcept { return m_renderID; }
@@ -110,20 +119,31 @@ private:
     bool IsValidID() const noexcept;
 
 private:
+    static constexpr size_t MAX_COLOR_ATTACHMENTS         = 8;
+    static constexpr size_t MAX_DEPTH_ATTACHMENTS         = 1;
+    static constexpr size_t MAX_STENCIL_ATTACHMENTS       = 1;
+    static constexpr size_t MAX_DEPTH_STENCIL_ATTACHMENTS = 1;
+    static constexpr size_t MAX_ATTACHMENTS = MAX_COLOR_ATTACHMENTS + MAX_DEPTH_ATTACHMENTS + MAX_STENCIL_ATTACHMENTS;
+
+private:
+    struct AttachmentsState
+    {
+        uint16_t colorAttachmentsCount : 13;
+        uint16_t depthAttachmentsCount : 1;
+        uint16_t stencilAttachmentsCount : 1;
+        uint16_t hasMergedDepthStencilAttachement : 1;
+    };
+
+    static_assert(sizeof(AttachmentsState) == sizeof(uint16_t));
+
 #if defined(ENG_DEBUG)
-    std::vector<FrameBufferAttachment> m_attachments;
+    std::array<FrameBufferAttachment, MAX_ATTACHMENTS> m_attachments;
     ds::StrID m_dbgName = "_INVALID_";
 #endif
 
-    struct AttachmentsState
-    {
-        uint32_t colorAttachmentsCount : 30;
-        uint32_t depthAttachmentsCount : 1;
-        uint32_t stencilAttachmentsCount : 1;
-    } m_attachmentsState;
-
-    RTFrameBufferID m_ID = RTFrameBufferID::INVALID;
-    uint32_t m_renderID = 0;
+    uint32_t         m_renderID = 0;
+    AttachmentsState m_attachmentsState;
+    RTFrameBufferID  m_ID = RTFrameBufferID::INVALID;
 };
 
 
