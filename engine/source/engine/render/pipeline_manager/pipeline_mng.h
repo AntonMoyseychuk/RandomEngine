@@ -89,14 +89,17 @@ enum class PrimitiveTopology : uint32_t
 };
 
 
-enum class ColorComponentFlags : uint32_t
+struct ColorComponentFlags
 {
-    COLOR_COMPONENT_R_BIT = 0x1,
-    COLOR_COMPONENT_G_BIT = 0x2,
-    COLOR_COMPONENT_B_BIT = 0x4,
-    COLOR_COMPONENT_A_BIT = 0x8,
+    static constexpr uint32_t COLOR_COMPONENT_R_BIT = 0x1;
+    static constexpr uint32_t COLOR_COMPONENT_G_BIT = 0x2;
+    static constexpr uint32_t COLOR_COMPONENT_B_BIT = 0x4;
+    static constexpr uint32_t COLOR_COMPONENT_A_BIT = 0x8;
 
-    COLOR_COMPONENT_COUNT = 4
+    static constexpr uint32_t MASK_NONE = 0x0;
+    static constexpr uint32_t MASK_ALL = COLOR_COMPONENT_R_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_B_BIT | COLOR_COMPONENT_A_BIT;
+
+    uint32_t value = MASK_NONE;
 };
 
 
@@ -225,16 +228,16 @@ struct ColorBlendStateCreateInfo
 
 struct FrameBufferColorAttachmentClearColor
 {
-    float r, g, b, a;
+    float r, g, b, a; // range: [0 - 1]
 };
 
 
 struct FrameBufferClearValues
 {
     const FrameBufferColorAttachmentClearColor* pColorAttachmentClearColors;
-    uint32_t                                            colorAttachmentsCount;
-    float                                               depthClearValue;
-    int32_t                                             stencilClearValue;
+    uint32_t                                    colorAttachmentsCount;
+    float                                       depthClearValue;
+    int32_t                                     stencilClearValue;
 };
 
 
@@ -281,14 +284,14 @@ public:
     const ShaderProgram& GetShaderProgram() noexcept;
 
 private:
-    void SetupColorBlending() noexcept;
+    void SetupColorAttachments() noexcept;
+
     void SetupDepthTesting() noexcept;
     void SetupStencilTesting() noexcept;
 
 private:
     enum ColorAttachmentBlendStateBitsPerField : uint32_t
     {
-        BITS_PER_COLOR_ATTACHMENT_INDEX = 5,
         BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK = 4,
         BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR = 4,
         BITS_PER_COLOR_ATTACHMENT_BLEND_OP = 3,
@@ -302,7 +305,6 @@ private:
 
     struct CompressedColorAttachmentBlendState
     {
-        uint32_t attachmentIndex : BITS_PER_COLOR_ATTACHMENT_INDEX;
         uint32_t colorWriteMask : BITS_PER_COLOR_ATTACHMENT_COLOR_WRITE_MASK;
         uint32_t srcRGBBlendFactor : BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR;
         uint32_t dstRGBBlendFactor : BITS_PER_COLOR_ATTACHMENT_BLEND_FACTOR;
@@ -311,6 +313,7 @@ private:
         uint32_t rgbBlendOp : BITS_PER_COLOR_ATTACHMENT_BLEND_OP;
         uint32_t alphaBlendOp : BITS_PER_COLOR_ATTACHMENT_BLEND_OP;
         uint32_t blendEnable : 1;
+        uint32_t _PADDING : 5;
     };
 
     static_assert(sizeof(CompressedColorAttachmentBlendState) == sizeof(uint32_t));
@@ -341,9 +344,28 @@ private:
 
     static_assert(sizeof(CompressedGlobalState) == sizeof(uint64_t));
 
+    struct CompressedClearColor
+    {
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
+        uint8_t a = 0;
+    };
+
+    static_assert(sizeof(CompressedClearColor) == sizeof(uint32_t));
+
+    struct CompressedColorAttachmentState
+    {
+        CompressedClearColor                clearColor;
+        CompressedColorAttachmentBlendState blendState;
+    };
+
+    static_assert(sizeof(CompressedColorAttachmentState) == sizeof(uint64_t));
+
 private:
-    std::vector<FrameBufferColorAttachmentClearColor> m_frameBufferColorAttachmentClearColors;
-    std::vector<CompressedColorAttachmentBlendState> m_compressedColorBlendAttachmentStates;
+    using CompressedColorAttachmentStateStorage = std::array<CompressedColorAttachmentState, FrameBuffer::GetMaxColorAttachmentsCount()>;
+
+    CompressedColorAttachmentStateStorage m_frameBufferColorAttachmentStates;
 
     float m_blendConstants[4] = { 0.f };
 

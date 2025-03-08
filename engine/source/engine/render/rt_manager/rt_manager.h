@@ -216,8 +216,8 @@ private:
     using RTFrameBufferStorage = std::array<FrameBuffer, size_t(RTFrameBufferID::COUNT)>;
     using RTTexturePtrStorage = std::array<Texture*, size_t(RTTextureID::COUNT)>;
 
-    RTFrameBufferStorage m_frameBufferStorage;
-    RTTexturePtrStorage m_RTTextureStorage = { nullptr };
+    RTFrameBufferStorage m_frameBufferStorage = { };
+    RTTexturePtrStorage m_RTTextureStorage    = { nullptr };
 
     EventListenerID m_frameBufferResizeEventListenerID;
 

@@ -250,6 +250,17 @@ void RenderSystem::RunColorPass() noexcept
         gBufferDepthStencilState.stencilTestEnable = false;
 
         ColorBlendStateCreateInfo gBufferColorBlendState = {};
+        
+        ColorBlendAttachmentState gBufferAlbedoBlendState = {};
+        gBufferAlbedoBlendState.colorWriteMask.value = ColorComponentFlags::MASK_ALL;
+        ColorBlendAttachmentState gBufferNormalBlendState = {};
+        gBufferNormalBlendState.colorWriteMask.value = ColorComponentFlags::MASK_ALL;
+        ColorBlendAttachmentState gBufferSpecularBlendState = {};
+        gBufferSpecularBlendState.colorWriteMask.value = ColorComponentFlags::MASK_ALL;
+        
+        ColorBlendAttachmentState gBufferColorAttachmentsBlendStates[] = { gBufferAlbedoBlendState, gBufferNormalBlendState, gBufferSpecularBlendState };
+        gBufferColorBlendState.pAttachmentStates = gBufferColorAttachmentsBlendStates;
+        gBufferColorBlendState.attachmentCount = _countof(gBufferColorAttachmentsBlendStates);
 
         FrameBufferClearValues gBufferFrameBufferClearValues = {};
         const FrameBufferColorAttachmentClearColor pGBufferColorAttachmentClearColors[] = {
@@ -290,6 +301,13 @@ void RenderSystem::RunColorPass() noexcept
         postProcDepthStencilState.stencilTestEnable = false;
 
         ColorBlendStateCreateInfo postProcColorBlendState = {};
+
+        ColorBlendAttachmentState postProcColorBlendAttachmentState = {};
+        postProcColorBlendAttachmentState.colorWriteMask.value = ColorComponentFlags::MASK_ALL;
+
+        ColorBlendAttachmentState postProcColorAttachmentsBlendStates[] = { postProcColorBlendAttachmentState };
+        postProcColorBlendState.pAttachmentStates = postProcColorAttachmentsBlendStates;
+        postProcColorBlendState.attachmentCount = _countof(postProcColorAttachmentsBlendStates);
 
         FrameBufferClearValues postProcFrameBufferClearValues = {};
         const FrameBufferColorAttachmentClearColor pPostProcColorAttachmentClearColors[] = {

@@ -222,8 +222,7 @@ static void SetupFaceCulling(CullMode mode) noexcept
 
 Pipeline::Pipeline(Pipeline &&other) noexcept
 {
-    std::swap(m_frameBufferColorAttachmentClearColors, other.m_frameBufferColorAttachmentClearColors);
-    std::swap(m_compressedColorBlendAttachmentStates, other.m_compressedColorBlendAttachmentStates);
+    std::swap(m_frameBufferColorAttachmentStates, other.m_frameBufferColorAttachmentStates);
     std::swap(m_blendConstants[0], other.m_blendConstants[0]);
     std::swap(m_blendConstants[1], other.m_blendConstants[1]);
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
@@ -251,8 +250,7 @@ Pipeline &Pipeline::operator=(Pipeline &&other) noexcept
 {
     Destroy();
 
-    std::swap(m_frameBufferColorAttachmentClearColors, other.m_frameBufferColorAttachmentClearColors);
-    std::swap(m_compressedColorBlendAttachmentStates, other.m_compressedColorBlendAttachmentStates);
+    std::swap(m_frameBufferColorAttachmentStates, other.m_frameBufferColorAttachmentStates);
     std::swap(m_blendConstants[0], other.m_blendConstants[0]);
     std::swap(m_blendConstants[1], other.m_blendConstants[1]);
     std::swap(m_blendConstants[2], other.m_blendConstants[2]);
@@ -282,10 +280,17 @@ void Pipeline::ClearFrameBuffer() noexcept
 {
     ENG_ASSERT(IsValid(), "Pipeline is invalid");
 
-    for (uint32_t colorAttachmentIdx = 0; colorAttachmentIdx < m_frameBufferColorAttachmentClearColors.size(); ++colorAttachmentIdx) {
-        const FrameBufferColorAttachmentClearColor& clearColor = m_frameBufferColorAttachmentClearColors[colorAttachmentIdx];
+    static constexpr float BIT8_TO_FLOAT_COEF = 1.f / 255.f;
+
+    for (uint32_t colorAttachmentIdx = 0; colorAttachmentIdx < m_frameBufferColorAttachmentStates.size(); ++colorAttachmentIdx) {
+        const CompressedClearColor& clearColor = m_frameBufferColorAttachmentStates[colorAttachmentIdx].clearColor;
         
-        m_pFrameBuffer->ClearColor(colorAttachmentIdx, clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+        const float r = BIT8_TO_FLOAT_COEF * clearColor.r;
+        const float g = BIT8_TO_FLOAT_COEF * clearColor.g;
+        const float b = BIT8_TO_FLOAT_COEF * clearColor.b;
+        const float a = BIT8_TO_FLOAT_COEF * clearColor.a;
+
+        m_pFrameBuffer->ClearColor(colorAttachmentIdx, r, g, b, a);
     }
 
     m_pFrameBuffer->ClearDepthStencil(m_depthClearValue, m_stencilClearValue);
@@ -299,6 +304,10 @@ void Pipeline::Bind() noexcept
     m_pFrameBuffer->Bind();
     m_pShaderProgram->Bind();
 
+    SetupColorAttachments();
+    SetupDepthTesting();
+    SetupStencilTesting();
+
     const CompressedGlobalState& state = m_compressedGlobalState;
 
     const GLenum frontFace = state.frontFace == uint64_t(FrontFace::FRONT_FACE_CLOCKWISE) ? GL_CW : GL_CCW;
@@ -306,29 +315,8 @@ void Pipeline::Bind() noexcept
 
     SetupFaceCulling(static_cast<CullMode>(state.cullMode));
 
-    SetupDepthTesting();
-    SetupStencilTesting();
-    SetupColorBlending();
-
     if (state.polygonMode == uint64_t(PolygonMode::POLYGON_MODE_LINE)) {
         glLineWidth(m_lineWidth);
-    }
-
-
-    {
-        // TODO: FIX THIS SHIT!!!
-
-        static constexpr uint32_t MAX_COLOR_ATTACHMENTS = 8;
-    
-        const uint32_t frameBufferColorAttachmentsCount = m_pFrameBuffer->GetColorAttachmentsCount();
-        ENG_ASSERT(frameBufferColorAttachmentsCount <= MAX_COLOR_ATTACHMENTS, "Invalid color attachments count");
-    
-        std::array<GLenum, MAX_COLOR_ATTACHMENTS> drawBuffers = { GL_NONE };
-        for (size_t i = 0; i < frameBufferColorAttachmentsCount; ++i) {
-            drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
-        }
-    
-        glDrawBuffers(frameBufferColorAttachmentsCount, drawBuffers.data());
     }
 }
 
@@ -341,15 +329,13 @@ uint64_t Pipeline::Hash() const noexcept
 
     ds::HashBuilder builder;
 
-    for (const FrameBufferColorAttachmentClearColor& color : m_frameBufferColorAttachmentClearColors) {
-        builder.AddValue(color.r);
-        builder.AddValue(color.g);
-        builder.AddValue(color.b);
-        builder.AddValue(color.a);
-    }
+    for (const CompressedColorAttachmentState& state : m_frameBufferColorAttachmentStates) {
+        builder.AddValue(state.clearColor.r);
+        builder.AddValue(state.clearColor.g);
+        builder.AddValue(state.clearColor.b);
+        builder.AddValue(state.clearColor.a);
 
-    for (const CompressedColorAttachmentBlendState& state : m_compressedColorBlendAttachmentStates) {
-        const uint32_t stateAsUInt32 = *reinterpret_cast<const uint32_t*>(&state);
+        const uint32_t stateAsUInt32 = *reinterpret_cast<const uint32_t*>(&state.blendState);
         builder.AddValue(stateAsUInt32);
     }
 
@@ -400,38 +386,35 @@ const ShaderProgram& Pipeline::GetShaderProgram() noexcept
 }
 
 
-void Pipeline::SetupColorBlending() noexcept
+void Pipeline::SetupColorAttachments() noexcept
 {
-    static constexpr uint32_t colorMaskRBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_R_BIT);
-    static constexpr uint32_t colorMaskGBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_G_BIT);
-    static constexpr uint32_t colorMaskBBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_B_BIT);
-    static constexpr uint32_t colorMaskABit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_A_BIT);
-
     bool isAnyBlendFactorConstant = false;
 
-    for (uint32_t index = 0; index < m_compressedColorBlendAttachmentStates.size(); ++index) {
-        const CompressedColorAttachmentBlendState& state = m_compressedColorBlendAttachmentStates[index];
+    const uint32_t realFBColorAttachementsCount = m_pFrameBuffer->GetColorAttachmentsCount();
+
+    for (uint32_t index = 0; index < realFBColorAttachementsCount; ++index) {
+        const CompressedColorAttachmentBlendState& blendState = m_frameBufferColorAttachmentStates[index].blendState;
         
-        const GLboolean rMask = state.colorWriteMask & colorMaskRBit ? GL_TRUE : GL_FALSE;
-        const GLboolean gMask = state.colorWriteMask & colorMaskGBit ? GL_TRUE : GL_FALSE;
-        const GLboolean bMask = state.colorWriteMask & colorMaskBBit ? GL_TRUE : GL_FALSE;
-        const GLboolean aMask = state.colorWriteMask & colorMaskABit ? GL_TRUE : GL_FALSE;
+        const GLboolean rMask = (blendState.colorWriteMask & ColorComponentFlags::COLOR_COMPONENT_R_BIT) != 0 ? GL_TRUE : GL_FALSE;
+        const GLboolean gMask = (blendState.colorWriteMask & ColorComponentFlags::COLOR_COMPONENT_G_BIT) != 0 ? GL_TRUE : GL_FALSE;
+        const GLboolean bMask = (blendState.colorWriteMask & ColorComponentFlags::COLOR_COMPONENT_B_BIT) != 0 ? GL_TRUE : GL_FALSE;
+        const GLboolean aMask = (blendState.colorWriteMask & ColorComponentFlags::COLOR_COMPONENT_A_BIT) != 0 ? GL_TRUE : GL_FALSE;
 
-        glColorMaski(state.attachmentIndex, rMask, gMask, bMask, aMask);
+        glColorMaski(index, rMask, gMask, bMask, aMask);
 
-        if (state.blendEnable) {
-            glEnablei(GL_BLEND, state.attachmentIndex);
+        if (blendState.blendEnable) {
+            glEnablei(GL_BLEND, index);
 
-            const GLenum srcRGBBlendFactor = CompressedBlendFactorToGLEnum(state.srcRGBBlendFactor);
-            const GLenum dstRGBBlendFactor = CompressedBlendFactorToGLEnum(state.dstRGBBlendFactor);
-            const GLenum srcAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.srcAlphaBlendFactor);
-            const GLenum dstAlphaBlendFactor = CompressedBlendFactorToGLEnum(state.dstAlphaBlendFactor);
+            const GLenum srcRGBBlendFactor = CompressedBlendFactorToGLEnum(blendState.srcRGBBlendFactor);
+            const GLenum dstRGBBlendFactor = CompressedBlendFactorToGLEnum(blendState.dstRGBBlendFactor);
+            const GLenum srcAlphaBlendFactor = CompressedBlendFactorToGLEnum(blendState.srcAlphaBlendFactor);
+            const GLenum dstAlphaBlendFactor = CompressedBlendFactorToGLEnum(blendState.dstAlphaBlendFactor);
 
-            const GLenum rgbBlendOp = CompressedBlendOpToGLEnum(state.rgbBlendOp);
-            const GLenum alphaBlendOp = CompressedBlendOpToGLEnum(state.alphaBlendOp);
+            const GLenum rgbBlendOp = CompressedBlendOpToGLEnum(blendState.rgbBlendOp);
+            const GLenum alphaBlendOp = CompressedBlendOpToGLEnum(blendState.alphaBlendOp);
 
-            glBlendEquationSeparatei(state.attachmentIndex, rgbBlendOp, alphaBlendOp);
-            glBlendFuncSeparatei(state.attachmentIndex, srcRGBBlendFactor, dstRGBBlendFactor, srcAlphaBlendFactor, dstAlphaBlendFactor);
+            glBlendEquationSeparatei(index, rgbBlendOp, alphaBlendOp);
+            glBlendFuncSeparatei(index, srcRGBBlendFactor, dstRGBBlendFactor, srcAlphaBlendFactor, dstAlphaBlendFactor);
 
             isAnyBlendFactorConstant = isAnyBlendFactorConstant
                 || IsBlendFactorConstant(srcRGBBlendFactor)
@@ -439,7 +422,7 @@ void Pipeline::SetupColorBlending() noexcept
                 || IsBlendFactorConstant(srcAlphaBlendFactor)
                 || IsBlendFactorConstant(dstAlphaBlendFactor);
         } else {
-            glDisablei(GL_BLEND, state.attachmentIndex);
+            glDisablei(GL_BLEND, index);
         }
     }
 
@@ -458,6 +441,13 @@ void Pipeline::SetupColorBlending() noexcept
     } else {
         glDisable(GL_COLOR_LOGIC_OP);
     }
+
+    std::array<GLenum, FrameBuffer::GetMaxColorAttachmentsCount()> drawColorBuffers = { GL_NONE };
+    for (size_t i = 0; i < realFBColorAttachementsCount; ++i) {
+        drawColorBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
+    }
+    
+    glDrawBuffers(realFBColorAttachementsCount, drawColorBuffers.data());
 }
 
 
@@ -525,22 +515,42 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     ENG_ASSERT(createInfo.pFrameBuffer && createInfo.pFrameBuffer->IsValid(), "Invalid frame buffer");
     ENG_ASSERT(createInfo.pShaderProgram && createInfo.pShaderProgram->IsValid(), "Invalid shader program");
 
-    if (createInfo.pColorBlendState->attachmentCount > 0) {
-        ENG_ASSERT(createInfo.pColorBlendState->pAttachmentStates, "pAttachmentStates is nullptr but attachmentCount is greater than 0");
-        ENG_ASSERT(createInfo.pFrameBuffer->GetAttachmentsCount() == createInfo.pColorBlendState->attachmentCount, 
-            "Frame buffer attachments count is not equal to pColorBlendState->attachmentCount");
-    }
-
-    if (createInfo.pFrameBufferClearValues->colorAttachmentsCount > 0) {
-        ENG_ASSERT(createInfo.pFrameBufferClearValues->pColorAttachmentClearColors, 
-            "pColorAttachmentClearColors is nullptr but colorAttachmentsCount is greater than 0");
-    }
-
     const FrameBufferClearValues& frameBufferClearValues = *createInfo.pFrameBufferClearValues;
-    m_frameBufferColorAttachmentClearColors.resize(frameBufferClearValues.colorAttachmentsCount);
+    const ColorBlendStateCreateInfo& colorBlendState = *createInfo.pColorBlendState;
 
-    for (size_t i = 0; i < frameBufferClearValues.colorAttachmentsCount; ++i) {
-        m_frameBufferColorAttachmentClearColors[i] = frameBufferClearValues.pColorAttachmentClearColors[i];
+    ENG_ASSERT(frameBufferClearValues.pColorAttachmentClearColors, "frameBufferClearValues.pColorAttachmentClearColors is nullptr");
+    ENG_ASSERT(colorBlendState.pAttachmentStates, "colorBlendState.pAttachmentStates is nullptr");
+
+    const uint32_t frameBufferColorAttachmentsCount = createInfo.pFrameBuffer->GetColorAttachmentsCount();
+
+    ENG_ASSERT(frameBufferClearValues.colorAttachmentsCount == frameBufferColorAttachmentsCount &&
+        colorBlendState.attachmentCount == frameBufferColorAttachmentsCount, "Clear colors count must be equal to blend states count and equal to frame buffer color attachments count");
+    
+    for (size_t index = 0; index < frameBufferColorAttachmentsCount; ++index) {
+        const FrameBufferColorAttachmentClearColor& inputClearColor = frameBufferClearValues.pColorAttachmentClearColors[index];
+        CompressedClearColor& internalClearColor = m_frameBufferColorAttachmentStates[index].clearColor;
+
+        internalClearColor.r = std::clamp(inputClearColor.r, 0.f, 1.f) * 255.f;
+        internalClearColor.g = std::clamp(inputClearColor.g, 0.f, 1.f) * 255.f;
+        internalClearColor.b = std::clamp(inputClearColor.b, 0.f, 1.f) * 255.f;
+        internalClearColor.a = std::clamp(inputClearColor.a, 0.f, 1.f) * 255.f;
+
+        const ColorBlendAttachmentState& inputBlendState = colorBlendState.pAttachmentStates[index];
+        CompressedColorAttachmentBlendState& internalBlendState = m_frameBufferColorAttachmentStates[index].blendState;
+
+        const uint32_t writeMask = inputBlendState.colorWriteMask.value;
+        internalBlendState.colorWriteMask |= (writeMask & ColorComponentFlags::COLOR_COMPONENT_R_BIT);
+        internalBlendState.colorWriteMask |= (writeMask & ColorComponentFlags::COLOR_COMPONENT_G_BIT);
+        internalBlendState.colorWriteMask |= (writeMask & ColorComponentFlags::COLOR_COMPONENT_B_BIT);
+        internalBlendState.colorWriteMask |= (writeMask & ColorComponentFlags::COLOR_COMPONENT_A_BIT);
+        
+        internalBlendState.srcRGBBlendFactor   = static_cast<uint32_t>(inputBlendState.srcRGBBlendFactor);
+        internalBlendState.dstRGBBlendFactor   = static_cast<uint32_t>(inputBlendState.dstRGBBlendFactor);
+        internalBlendState.rgbBlendOp          = static_cast<uint32_t>(inputBlendState.rgbBlendOp);
+        internalBlendState.srcAlphaBlendFactor = static_cast<uint32_t>(inputBlendState.srcAlphaBlendFactor);
+        internalBlendState.dstAlphaBlendFactor = static_cast<uint32_t>(inputBlendState.dstAlphaBlendFactor);
+        internalBlendState.alphaBlendOp        = static_cast<uint32_t>(inputBlendState.alphaBlendOp);
+        internalBlendState.blendEnable         = inputBlendState.blendEnable;
     }
 
     m_depthClearValue = frameBufferClearValues.depthClearValue;
@@ -575,36 +585,6 @@ bool Pipeline::Create(const PipelineCreateInfo &createInfo) noexcept
     m_stencilFrontMask = depthStencilState.stencilFrontMask;
     m_stencilBackMask = depthStencilState.stencilBackMask;
 
-    const ColorBlendStateCreateInfo& colorBlendState = *createInfo.pColorBlendState;
-    m_compressedColorBlendAttachmentStates.resize(colorBlendState.attachmentCount);
-    
-    for (size_t i = 0; i < colorBlendState.attachmentCount; ++i) {
-        CompressedColorAttachmentBlendState& compressedState = m_compressedColorBlendAttachmentStates[i];
-        const ColorBlendAttachmentState& state = colorBlendState.pAttachmentStates[i];
-
-        ENG_ASSERT(state.attachmentIndex < powl(2, BITS_PER_COLOR_ATTACHMENT_INDEX), "Attachment index is greate than maximum value");
-
-        compressedState.attachmentIndex = state.attachmentIndex;
-
-        const uint32_t writeMask = static_cast<uint32_t>(state.colorWriteMask);
-        static constexpr uint32_t writeMaskRBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_R_BIT);
-        static constexpr uint32_t writeMaskGBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_G_BIT);
-        static constexpr uint32_t writeMaskBBit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_B_BIT);
-        static constexpr uint32_t writeMaskABit = static_cast<uint32_t>(ColorComponentFlags::COLOR_COMPONENT_A_BIT);
-        compressedState.colorWriteMask |= (writeMask & writeMaskRBit);
-        compressedState.colorWriteMask |= (writeMask & writeMaskGBit);
-        compressedState.colorWriteMask |= (writeMask & writeMaskBBit);
-        compressedState.colorWriteMask |= (writeMask & writeMaskABit);
-        
-        compressedState.srcRGBBlendFactor = static_cast<uint32_t>(state.srcRGBBlendFactor);
-        compressedState.dstRGBBlendFactor = static_cast<uint32_t>(state.dstRGBBlendFactor);
-        compressedState.rgbBlendOp = static_cast<uint32_t>(state.rgbBlendOp);
-        compressedState.srcAlphaBlendFactor = static_cast<uint32_t>(state.srcAlphaBlendFactor);
-        compressedState.dstAlphaBlendFactor = static_cast<uint32_t>(state.dstAlphaBlendFactor);
-        compressedState.alphaBlendOp = static_cast<uint32_t>(state.alphaBlendOp);
-        compressedState.blendEnable = state.blendEnable;
-    }
-
     m_blendConstants[0] = colorBlendState.blendConstants[0];
     m_blendConstants[1] = colorBlendState.blendConstants[1];
     m_blendConstants[2] = colorBlendState.blendConstants[2];
@@ -625,8 +605,7 @@ void Pipeline::Destroy()
         return;
     }
 
-    m_frameBufferColorAttachmentClearColors.clear();
-    m_compressedColorBlendAttachmentStates.clear();
+    m_frameBufferColorAttachmentStates.fill({});
     m_blendConstants[0] = 0.f;
     m_blendConstants[1] = 0.f;
     m_blendConstants[2] = 0.f;
