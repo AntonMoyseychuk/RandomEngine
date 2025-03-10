@@ -27,14 +27,17 @@ namespace ds
 
                 newStrBufLocation.offset = lastStrBufLocation.offset + lastStrBufLocation.length;
             }
+
+            const uint64_t newSize = newStrBufLocation.offset + newStrBufLocation.length;
             
-            if (newStrBufLocation.offset + newStrBufLocation.length > m_storage.size()) {
+            if (newSize > m_storage.size()) {
                 ENG_ASSERT_FAIL("StrID storage overflow, think about increasing the size of the storage buffer");
-                m_storage.resize(m_storage.size() * 2ull);
+                m_storage.resize(newSize * 2ull);
             }
 
             std::copy_n(str.begin(), newStrBufLocation.length - 1, m_storage.begin() + newStrBufLocation.offset);
 
+            m_size = newSize;
             m_lastAllocatedID = id;
         }
 

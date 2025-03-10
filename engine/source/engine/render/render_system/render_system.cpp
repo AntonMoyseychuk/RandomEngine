@@ -480,6 +480,12 @@ void RenderSystem::RunColorPass() noexcept
         return;
     }
 
+    static bool isStrIDMemLoged = false;
+    if (!isStrIDMemLoged) {
+        ENG_LOG_INFO("StrID memory: {}/{} KB", ds::StrID::GetStorageSize() / 1024.f, ds::StrID::GetStorageCapacity() / 1024.f);
+        isStrIDMemLoged = true;
+    }
+
     const float elapsedTime = timer.GetElapsedTimeInSec();
     const float deltaTime = timer.GetDeltaTimeInSec();
 
@@ -580,6 +586,7 @@ void RenderSystem::RunColorPass() noexcept
 
     {
         const FrameBuffer* pPostProcFrameBuffer = rtManager.GetFrameBuffer(RTFrameBufferID::POST_PROCESS);
+        
         glBlitNamedFramebuffer(pPostProcFrameBuffer->GetRenderID(), 0, 0, 0, window.GetWidth(), window.GetHeight(),
             0, 0, window.GetWidth(), window.GetHeight(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
     }

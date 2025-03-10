@@ -26,17 +26,22 @@ namespace ds
         using StringType = std::basic_string<ElementType, std::char_traits<ElementType>, std::allocator<ElementType>>;
 
     public:
-        StrIDDataStorage();
-
         uint64_t Store(const StringViewType& str) noexcept;
         uint64_t Store(const ElementType* str)    noexcept { return Store(StringViewType(str)); }
         uint64_t Store(const StringType& str)     noexcept { return Store(StringViewType(str)); }
 
         const ElementType* Load(uint64_t id) const noexcept;
 
-        bool IsExist(uint64_t id) const noexcept { return m_strBufLocations.find(id) != m_strBufLocations.cend(); }
+        bool IsExist(uint64_t id) const noexcept { return m_strBufLocations.find(id) != m_strBufLocations.cend(); } 
+
+        uint64_t GetCapacity() const noexcept { return m_storage.capacity(); }
+        uint64_t GetSize() const noexcept { return m_size; }
 
     private:
+        StrIDDataStorage();    
+    
+    private:
+
         static inline constexpr uint64_t INVALID_ID_HASH = std::numeric_limits<uint64_t>::max();
         static inline constexpr size_t PREALLOCATED_IDS_COUNT = 8192ull;
         
@@ -59,6 +64,8 @@ namespace ds
 
         std::unordered_map<uint64_t, StringBufLocation, StringIdHasher> m_strBufLocations;
         std::vector<ElementType> m_storage;
+        
+        uint64_t m_size = 0;
         uint64_t m_lastAllocatedID = INVALID_ID_HASH;
     };
 
@@ -73,6 +80,10 @@ namespace ds
 
     private:
         using StrIDDataStorageType = StrIDDataStorage<ElementType>;
+
+    public:
+        static uint64_t GetStorageCapacity() noexcept { return s_storage.GetCapacity(); }
+        static uint64_t GetStorageSize() noexcept { return s_storage.GetSize(); }
 
     public:
         StrIDImpl() = default;
