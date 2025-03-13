@@ -121,16 +121,13 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    ProgramID AllocateProgramID() noexcept;
-    void DeallocateProgramID(ProgramID ID) noexcept;
-
     bool IsInitialized() const noexcept;
 
 private:
     std::vector<ShaderProgram> m_shaderProgramsStorage;
     
-    std::deque<ProgramID> m_programIDFreeList;
-    ProgramID m_nextAllocatedID = ProgramID(0);
+    using ProgramIDPool = ds::BaseIDPool<ProgramID>;
+    ProgramIDPool m_IDPool;
 
     bool m_isInitialized = false;
 };

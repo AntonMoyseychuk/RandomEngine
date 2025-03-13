@@ -175,9 +175,6 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    CameraID AllocateCameraID() noexcept;
-    void DeallocateCameraID(CameraID ID) noexcept;
-
     template <typename EventType>
     uint32_t GetCameraEventListenerIndex(const Camera& cam) const noexcept;
 
@@ -197,8 +194,8 @@ private:
     std::vector<Camera> m_camerasStorage;
     std::vector<CameraEventListenersStorage> m_cameraEventListenersStorage;
 
-    std::deque<CameraID> m_cameraIDFreeList;
-    CameraID m_nextAllocatedID = CameraID{0};
+    using CameraIDPool = ds::BaseIDPool<CameraID>;
+    CameraIDPool m_cameraIDPool;
     
     bool m_isInitialized = false;
 };

@@ -616,8 +616,6 @@ void Pipeline::Destroy()
 
     memset(&m_compressedGlobalState, 0, sizeof(m_compressedGlobalState));
 
-    m_ID.Invalidate();
-
     m_depthBiasConstantFactor = 0.f;
     m_depthBiasClamp = 0.f;
     m_depthBiasSlopeFactor = 0.f;
@@ -638,7 +636,9 @@ PipelineManager& PipelineManager::GetInstance() noexcept
 
 Pipeline* PipelineManager::RegisterPipeline() noexcept
 {
-    const PipelineID pipelineID = AllocatePipelineID();
+    const PipelineID pipelineID = m_IDPool.Allocate();
+    ENG_ASSERT(pipelineID.Value() < m_pipelineStorage.size(), "Pipeline storage overflow");
+
     Pipeline* pPipeline = &m_pipelineStorage[pipelineID.Value()];
 
     ENG_ASSERT(!pPipeline->IsValid(), "Valid graphics pipeline was returned during registration");
@@ -660,9 +660,7 @@ void PipelineManager::UnregisterPipeline(Pipeline* pPipeline) noexcept
         pPipeline->Destroy();
     }
 
-    DeallocatePipelineID(pPipeline->m_ID);
-
-    pPipeline->m_ID.Invalidate();
+    m_IDPool.Deallocate(pPipeline->m_ID);
 }
 
 
@@ -673,6 +671,7 @@ bool PipelineManager::Init() noexcept
     }
 
     m_pipelineStorage.resize(ENG_MAX_PIPELINES_COUNT);
+    m_IDPool.Reset();
 
 #if defined(ENG_USE_INVERTED_Z)
     glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
@@ -686,37 +685,10 @@ bool PipelineManager::Init() noexcept
 
 void PipelineManager::Terminate() noexcept
 {
-    for (Pipeline& pipeline : m_pipelineStorage) {
-        pipeline.Destroy();
-    }
+    m_pipelineStorage.clear();
+    m_IDPool.Reset();
 
     m_isInitialized = false;
-}
-
-
-PipelineID PipelineManager::AllocatePipelineID() noexcept
-{
-    if (m_pipelineIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedID.Value() < m_pipelineStorage.size() - 1, "Pipeline storage overflow");
-
-        const PipelineID pipelineID = m_nextAllocatedID;
-        m_nextAllocatedID = PipelineID(m_nextAllocatedID.Value() + 1);
-
-        return pipelineID;
-    }
-
-    const PipelineID pipelineID = m_pipelineIDFreeList.front();
-    m_pipelineIDFreeList.pop_front();
-        
-    return pipelineID;
-}
-
-
-void PipelineManager::DeallocatePipelineID(PipelineID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_pipelineIDFreeList.cbegin(), m_pipelineIDFreeList.cend(), ID) == m_pipelineIDFreeList.cend()) {
-        m_pipelineIDFreeList.emplace_back(ID);
-    }
 }
 
 

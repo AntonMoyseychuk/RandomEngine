@@ -42,13 +42,13 @@ class EventListenerID : public ds::BaseID<uint64_t>
 {
     friend class EventDispatcher;
 
-    using BaseType = ds::BaseID<InternalType>;
+    using BaseType = ds::BaseID<StorageType>;
 
 public:
     EventListenerID() = default;
     explicit EventListenerID(std::type_index eventTypeIndex);
-    EventListenerID(InternalType ID, std::type_index eventTypeIndex);
-    EventListenerID(InternalType ID, uint64_t eventTypeIndexHash);
+    EventListenerID(StorageType ID, std::type_index eventTypeIndex);
+    EventListenerID(StorageType ID, uint64_t eventTypeIndexHash);
     
     uint64_t TypeIndexHash() const noexcept { return m_eventTypeIndexHash; }
 

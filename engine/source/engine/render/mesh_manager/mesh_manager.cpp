@@ -288,12 +288,11 @@ MeshDataManager::~MeshDataManager()
 MeshVertexLayout* MeshDataManager::RegisterVertexLayout(const MeshVertexLayoutCreateInfo& createInfo) noexcept
 {
     const uint64_t createInfoHash = amHash(createInfo);
-
     ENG_ASSERT(FindVertexLayoutByHash(createInfoHash) == nullptr, "Attempt to register already registred vertex layout");
 
-    ENG_ASSERT(m_nextAllocatedVertLayoutID.Value() < m_vertexLayoutStorage.size() - 1, "Vertex buffer layout storage overflow");
-
-    const MeshVertexLayoutID layoutID = AllocateVertexLayoutID();
+    const MeshVertexLayoutID layoutID = m_vertLayoutIDPool.Allocate();
+    ENG_ASSERT(layoutID.Value() < m_vertexLayoutStorage.size(), "Vertex buffer layout storage overflow");
+    
     MeshVertexLayout* pLayout = &m_vertexLayoutStorage[layoutID.Value()];
 
     pLayout->m_hash = createInfoHash;
@@ -319,11 +318,10 @@ void MeshDataManager::UnregisterVertexLayout(MeshVertexLayout* pLayout) noexcept
         pLayout->Destroy();
     }
 
-    DeallocateVertexLayoutID(pLayout->m_ID);
     m_vertexLayoutHashToStorageIndexMap.erase(pLayout->m_hash);
-
-    pLayout->m_ID.Invalidate();
     pLayout->m_hash = UINT64_MAX;
+    
+    m_vertLayoutIDPool.Deallocate(pLayout->m_ID);
 }
 
 
@@ -331,7 +329,9 @@ MeshGPUBufferData* MeshDataManager::RegisterGPUBufferData(ds::StrID name) noexce
 {
     ENG_ASSERT(GetGPUBufferDataByName(name) == nullptr, "Attempt to register already registred mesh GPU buffer data: {}", name.CStr());
 
-    const MeshGPUBufferDataID dataID = AllocateGPUBufferDataID();
+    const MeshGPUBufferDataID dataID = m_bufferDataIDPool.Allocate();
+    ENG_ASSERT(dataID.Value() < m_GPUBufferDataStorage.size(), "GPU buffer data storage overflow");
+
     const uint64_t index = dataID.Value();
 
     MeshGPUBufferData* pData = &m_GPUBufferDataStorage[index];
@@ -365,11 +365,10 @@ void MeshDataManager::UnregisterGPUBufferData(MeshGPUBufferData* pData) noexcept
         pData->Destroy();
     }
 
-    DeallocateGPUBufferDataID(pData->m_ID);
     m_GPUBufferDataNameToStorageIndexMap.erase(pData->m_name);
-
     pData->m_name = "_INVALID_";
-    pData->m_ID.Invalidate();
+
+    m_bufferDataIDPool.Deallocate(pData->m_ID);
 }
 
 
@@ -385,8 +384,8 @@ bool MeshDataManager::Init() noexcept
     m_vertexLayoutHashToStorageIndexMap.reserve(MAX_VERT_BUFF_LAYOUT_COUNT);
     m_GPUBufferDataNameToStorageIndexMap.reserve(MAX_GPU_BUFF_DATA_COUNT);
 
-    m_nextAllocatedVertLayoutID = MeshVertexLayoutID(0);
-    m_nextAllocatedGPUBufDataID = MeshGPUBufferDataID(0);
+    m_vertLayoutIDPool.Reset();
+    m_bufferDataIDPool.Reset();
 
     m_isInitialized = true;
 
@@ -402,11 +401,8 @@ void MeshDataManager::Terminate() noexcept
     m_vertexLayoutHashToStorageIndexMap.clear();
     m_GPUBufferDataNameToStorageIndexMap.clear();
 
-    m_meshVertexLayoutIDFreeList.clear();
-    m_meshGPUBufferDataIDFreeList.clear();
-    
-    m_nextAllocatedVertLayoutID = MeshVertexLayoutID(0);
-    m_nextAllocatedGPUBufDataID = MeshGPUBufferDataID(0);
+    m_vertLayoutIDPool.Reset();
+    m_bufferDataIDPool.Reset();
 
     m_isInitialized = false;
 }
@@ -416,62 +412,6 @@ MeshVertexLayout *MeshDataManager::FindVertexLayoutByHash(uint64_t hash) noexcep
 {
     const auto indexIt = m_vertexLayoutHashToStorageIndexMap.find(hash);
     return indexIt != m_vertexLayoutHashToStorageIndexMap.cend() ? &m_vertexLayoutStorage[indexIt->second] : nullptr;
-}
-
-
-MeshVertexLayoutID MeshDataManager::AllocateVertexLayoutID() noexcept
-{
-    if (m_meshVertexLayoutIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedVertLayoutID.Value() < m_vertexLayoutStorage.size() - 1, "Vertex buffer layout storage overflow");
-
-        const MeshVertexLayoutID layoutID = m_nextAllocatedVertLayoutID;
-        m_nextAllocatedVertLayoutID = BufferID(m_nextAllocatedVertLayoutID.Value() + 1);
-
-        return layoutID;
-    }
-
-    const MeshVertexLayoutID layoutID = m_meshVertexLayoutIDFreeList.front();
-    m_meshVertexLayoutIDFreeList.pop_front();
-        
-    return layoutID;
-}
-
-
-void MeshDataManager::DeallocateVertexLayoutID(MeshVertexLayoutID ID) noexcept
-{
-    if (ID < m_nextAllocatedVertLayoutID && 
-        std::find(m_meshVertexLayoutIDFreeList.cbegin(), m_meshVertexLayoutIDFreeList.cend(), ID) == m_meshVertexLayoutIDFreeList.cend())
-    {
-        m_meshVertexLayoutIDFreeList.emplace_back(ID);
-    }
-}
-
-
-MeshGPUBufferDataID MeshDataManager::AllocateGPUBufferDataID() noexcept
-{
-    if (m_meshGPUBufferDataIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedVertLayoutID.Value() < m_vertexLayoutStorage.size() - 1, "Vertex buffer layout storage overflow");
-
-        const MeshGPUBufferDataID gpuBuffDataID = m_nextAllocatedGPUBufDataID;
-        m_nextAllocatedGPUBufDataID = MeshGPUBufferDataID(m_nextAllocatedGPUBufDataID.Value() + 1);
-
-        return gpuBuffDataID;
-    }
-
-    const MeshGPUBufferDataID gpuBuffDataID = m_meshGPUBufferDataIDFreeList.front();
-    m_meshGPUBufferDataIDFreeList.pop_front();
-        
-    return gpuBuffDataID;
-}
-
-
-void MeshDataManager::DeallocateGPUBufferDataID(MeshGPUBufferDataID ID) noexcept
-{
-    if (ID < m_nextAllocatedGPUBufDataID && 
-        std::find(m_meshGPUBufferDataIDFreeList.cbegin(), m_meshGPUBufferDataIDFreeList.cend(), ID) == m_meshGPUBufferDataIDFreeList.cend())
-    {
-        m_meshGPUBufferDataIDFreeList.emplace_back(ID);
-    }
 }
 
 
@@ -593,7 +533,7 @@ void MeshObj::Destroy() noexcept
 
     glDeleteVertexArrays(1, &m_vaoRenderID);
     m_vaoRenderID = 0;
-    m_ID.Invalidate();
+    
     m_name = "_INVALID_";
     m_pVertexLayout = nullptr;
     m_pBufferData = nullptr;
@@ -642,9 +582,9 @@ MeshObj* MeshManager::RegisterMeshObj(ds::StrID name) noexcept
 {
     ENG_ASSERT(GetMeshObjByName(name) == nullptr, "Attempt to create already valid mesh object: {}", name.CStr());
 
-    ENG_ASSERT(m_nextAllocatedID.Value() < m_meshObjStorage.size() - 1, "Mesh objects storage overflow");
-
-    const MeshID meshID = AllocateMeshID();
+    const MeshID meshID = m_IDPool.Allocate();
+    ENG_ASSERT(meshID.Value() < m_meshObjStorage.size(), "Mesh objects storage overflow");
+    
     const uint64_t index = meshID.Value();
 
     MeshObj* pMeshObj = &m_meshObjStorage[index];
@@ -679,12 +619,10 @@ void MeshManager::UnregisterMeshObj(MeshObj* pObj)
         pObj->Destroy();
     }
 
-    DeallocateMeshID(pObj->m_ID);
-
     m_meshNameToStorageIndexMap.erase(pObj->m_name);
 
     pObj->m_name = "_INVALID_";
-    pObj->m_ID.Invalidate();
+    m_IDPool.Deallocate(pObj->m_ID);
 }
 
 
@@ -708,7 +646,7 @@ bool MeshManager::Init() noexcept
     m_meshObjStorage.resize(MAX_MESH_OBJ_COUNT);
     m_meshNameToStorageIndexMap.reserve(MAX_MESH_OBJ_COUNT);
 
-    m_nextAllocatedID = MeshID(0);
+    m_IDPool.Reset();
 
     int32_t maxVertexAttribsCount = 0;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttribsCount);
@@ -724,39 +662,13 @@ bool MeshManager::Init() noexcept
 void MeshManager::Terminate() noexcept
 {
     m_meshObjStorage.clear();
-
     m_meshNameToStorageIndexMap.clear();
 
-    m_meshIDFreeList.clear();
-    m_nextAllocatedID = MeshID(0);
+    m_IDPool.Reset();
 
     engTerminateMeshDataManager();
 
     m_isInitialized = false;
-}
-
-
-MeshID MeshManager::AllocateMeshID() noexcept
-{
-    if (m_meshIDFreeList.empty()) {
-        const MeshID meshID = m_nextAllocatedID;
-        m_nextAllocatedID = MeshID(m_nextAllocatedID.Value() + 1);
-
-        return meshID;
-    }
-
-    const MeshID meshID = m_meshIDFreeList.front();
-    m_meshIDFreeList.pop_front();
-        
-    return meshID;
-}
-
-
-void MeshManager::DeallocateMeshID(MeshID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_meshIDFreeList.cbegin(), m_meshIDFreeList.cend(), ID) == m_meshIDFreeList.cend()) {
-        m_meshIDFreeList.emplace_back(ID);
-    }
 }
 
 

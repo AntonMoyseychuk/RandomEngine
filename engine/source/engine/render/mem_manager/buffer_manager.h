@@ -149,16 +149,13 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    BufferID AllocateBufferID() noexcept;
-    void DeallocateBufferID(BufferID ID) noexcept;
-
     bool IsInitialized() const noexcept;
 
 private:
     std::vector<MemoryBuffer> m_buffersStorage;
 
-    std::deque<BufferID> m_memBufferIDFreeList;
-    BufferID m_nextAllocatedID = BufferID{0};
+    using BufferIDPool = ds::BaseIDPool<BufferID>;
+    BufferIDPool m_IDPool;
 
     bool m_isInitialized = false;
 };

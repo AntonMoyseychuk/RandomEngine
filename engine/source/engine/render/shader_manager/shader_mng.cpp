@@ -416,7 +416,9 @@ ShaderManager::~ShaderManager()
 
 ShaderProgram* ShaderManager::RegisterShaderProgram() noexcept
 {
-    const ProgramID programID = AllocateProgramID();
+    const ProgramID programID = m_IDPool.Allocate();
+    ENG_ASSERT(programID.Value() < m_shaderProgramsStorage.size(), "Shader storage overflow");
+    
     ShaderProgram* pProgram = &m_shaderProgramsStorage[programID.Value()];
 
     ENG_ASSERT(!pProgram->IsValid(), "Valid shader program was returned during registration");
@@ -438,9 +440,7 @@ void ShaderManager::UnregisterShaderProgram(ShaderProgram* pProgram) noexcept
         pProgram->Destroy();
     }
 
-    DeallocateProgramID(pProgram->m_ID);
-
-    pProgram->m_ID.Invalidate();
+    m_IDPool.Deallocate(pProgram->m_ID);
 }
 
 
@@ -451,6 +451,7 @@ bool ShaderManager::Init() noexcept
     }
 
     m_shaderProgramsStorage.resize(ENG_MAX_SHADER_PROGRAMS_COUNT);
+    m_IDPool.Reset();
     m_isInitialized = true;
 
     return true;
@@ -460,9 +461,7 @@ bool ShaderManager::Init() noexcept
 void ShaderManager::Terminate() noexcept
 {
     m_shaderProgramsStorage.clear();
-    m_programIDFreeList.clear();
-
-    m_nextAllocatedID = ProgramID(0);
+    m_IDPool.Reset();
 
     m_isInitialized = false;
 }
@@ -471,32 +470,6 @@ void ShaderManager::Terminate() noexcept
 bool ShaderManager::IsInitialized() const noexcept
 {
     return m_isInitialized;
-}
-
-
-ProgramID ShaderManager::AllocateProgramID() noexcept
-{
-    if (m_programIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedID.Value() < m_shaderProgramsStorage.size() - 1, "Shader storage overflow");
-
-        ProgramID programID = m_nextAllocatedID;
-        m_nextAllocatedID = ProgramID(m_nextAllocatedID.Value() + 1);
-
-        return programID;
-    }
-
-    ProgramID programID = m_programIDFreeList.front();
-    m_programIDFreeList.pop_front();
-        
-    return programID;
-}
-
-
-void ShaderManager::DeallocateProgramID(ProgramID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_programIDFreeList.cbegin(), m_programIDFreeList.cend(), ID) == m_programIDFreeList.cend()) {
-        m_programIDFreeList.emplace_back(ID);
-    }
 }
 
 

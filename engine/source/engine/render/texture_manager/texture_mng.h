@@ -185,9 +185,6 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    TextureID AllocateTextureID() noexcept;
-    void DeallocateTextureID(TextureID ID) noexcept;
-
     void InitializeSamplers() noexcept;
     void DestroySamplers() noexcept;
 
@@ -199,9 +196,8 @@ private:
 
     std::unordered_map<ds::StrID, uint64_t> m_textureNameToStorageIndexMap;
 
-    std::deque<TextureID> m_textureIDFreeList;
-
-    TextureID m_nextAllocatedID = TextureID{0};
+    using TextureIDPool = ds::BaseIDPool<TextureID>;
+    TextureIDPool m_IDPool;
 
     bool m_isInitialized = false;
 };

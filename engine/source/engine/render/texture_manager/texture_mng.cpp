@@ -495,8 +495,10 @@ TextureManager::~TextureManager()
 Texture* TextureManager::RegisterTexture2D(ds::StrID name) noexcept
 {
     ENG_ASSERT(GetTextureByName(name) == nullptr, "Attempt to register already registered 2D texture: {}", name.CStr());
-
-    const TextureID textureID = AllocateTextureID();
+    
+    const TextureID textureID = m_IDPool.Allocate();
+    ENG_ASSERT(textureID.Value() < m_texturesStorage.size(), "Texture storage overflow");
+    
     const uint64_t index = textureID.Value();
 
     Texture* pTex = &m_texturesStorage[index];
@@ -538,12 +540,10 @@ void TextureManager::UnregisterTexture(Texture* pTex) noexcept
         pTex->Destroy();
     }
 
-    DeallocateTextureID(pTex->m_ID);
-
     m_textureNameToStorageIndexMap.erase(pTex->m_name);
-
+    
     pTex->m_name = "_INVALID_";
-    pTex->m_ID.Invalidate();
+    m_IDPool.Deallocate(pTex->m_ID);
 }
 
 
@@ -570,7 +570,7 @@ bool TextureManager::Init() noexcept
 
     InitializeSamplers();
 
-    m_nextAllocatedID = TextureID(0);
+    m_IDPool.Reset();
 
     m_isInitialized = true;
 
@@ -581,42 +581,13 @@ bool TextureManager::Init() noexcept
 void TextureManager::Terminate() noexcept
 {
     m_texturesStorage.clear();
-
     m_textureNameToStorageIndexMap.clear();
-
-    m_textureIDFreeList.clear();
 
     DestroySamplers();
 
-    m_nextAllocatedID = TextureID(0);
+    m_IDPool.Reset();
 
     m_isInitialized = false;
-}
-
-
-TextureID TextureManager::AllocateTextureID() noexcept
-{
-    if (m_textureIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedID.Value() < m_texturesStorage.size() - 1, "Texture storage overflow");
-
-        const TextureID textureID = m_nextAllocatedID;
-        m_nextAllocatedID = TextureID(m_nextAllocatedID.Value() + 1);
-
-        return textureID;
-    }
-
-    const TextureID textureID = m_textureIDFreeList.front();
-    m_textureIDFreeList.pop_front();
-        
-    return textureID;
-}
-
-
-void TextureManager::DeallocateTextureID(TextureID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_textureIDFreeList.cbegin(), m_textureIDFreeList.cend(), ID) == m_textureIDFreeList.cend()) {
-        m_textureIDFreeList.emplace_back(ID);
-    }
 }
 
 

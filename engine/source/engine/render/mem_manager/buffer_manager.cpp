@@ -258,7 +258,9 @@ MemoryBufferManager::~MemoryBufferManager()
 
 MemoryBuffer* MemoryBufferManager::RegisterBuffer() noexcept
 {
-    const BufferID bufferID = AllocateBufferID();
+    const BufferID bufferID = m_IDPool.Allocate();
+    ENG_ASSERT(bufferID.Value() < m_buffersStorage.size(), "Memory buffer storage overflow");
+    
     MemoryBuffer* pBuffer = &m_buffersStorage[bufferID.Value()];
 
     ENG_ASSERT(!pBuffer->IsValid(), "Valid buffer was returned during registration");
@@ -280,9 +282,7 @@ void MemoryBufferManager::UnregisterBuffer(MemoryBuffer* pBuffer)
         pBuffer->Destroy();
     }
 
-    DeallocateBufferID(pBuffer->m_ID);
-
-    pBuffer->m_ID.Invalidate();
+    m_IDPool.Deallocate(pBuffer->m_ID);
 }
 
 
@@ -293,7 +293,7 @@ bool MemoryBufferManager::Init() noexcept
     }
 
     m_buffersStorage.resize(MAX_MEM_BUFFER_COUNT);
-    m_nextAllocatedID = BufferID(0);
+    m_IDPool.Reset();
     m_isInitialized = true;
 
     return true;
@@ -303,35 +303,8 @@ bool MemoryBufferManager::Init() noexcept
 void MemoryBufferManager::Terminate() noexcept
 {
     m_buffersStorage.clear();
-    m_memBufferIDFreeList.clear();
-    m_nextAllocatedID = BufferID(0);
+    m_IDPool.Reset();
     m_isInitialized = false;
-}
-
-
-BufferID MemoryBufferManager::AllocateBufferID() noexcept
-{
-    if (m_memBufferIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedID.Value() < m_buffersStorage.size() - 1, "Memory buffer storage overflow");
-
-        const BufferID bufferID = m_nextAllocatedID;
-        m_nextAllocatedID = BufferID(m_nextAllocatedID.Value() + 1);
-
-        return bufferID;
-    }
-
-    const BufferID bufferID = m_memBufferIDFreeList.front();
-    m_memBufferIDFreeList.pop_front();
-        
-    return bufferID;
-}
-
-
-void MemoryBufferManager::DeallocateBufferID(BufferID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_memBufferIDFreeList.cbegin(), m_memBufferIDFreeList.cend(), ID) == m_memBufferIDFreeList.cend()) {
-        m_memBufferIDFreeList.emplace_back(ID);
-    }
 }
 
 

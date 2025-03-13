@@ -10,6 +10,7 @@ static std::unique_ptr<CameraManager> pCameraMngInst = nullptr;
 
 
 #define ASSERT_CAMERA_MNG_INIT_STATUS() ENG_ASSERT(engIsCameraManagerInitialized(), "Camera manager is not initialized")
+#define ASSERT_CAMERA_REGISTER_STATUS(pCam) ENG_ASSERT(pCam->IsRegistered(), "Camera is not registered")
 
 
 Camera::~Camera()
@@ -42,6 +43,8 @@ void Camera::Destroy() noexcept
 
 void Camera::SetPerspProjection() noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!IsPerspProj()) {
         m_flags.set(FLAG_IS_ORTHO_PROJ, false);
         RequestRecalcProjMatrix();
@@ -51,6 +54,8 @@ void Camera::SetPerspProjection() noexcept
 
 void Camera::SetOrthoProjection() noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!IsOrthoProj()) {
         m_flags.set(FLAG_IS_ORTHO_PROJ, true);
         RequestRecalcProjMatrix();
@@ -60,6 +65,8 @@ void Camera::SetOrthoProjection() noexcept
 
 void Camera::SetFovDegress(float degrees) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_fovDegrees, degrees)) {
         ENG_ASSERT(camIsFovDegreesValid(degrees), "degress can't be multiple of PI or less than zero");
 
@@ -71,6 +78,8 @@ void Camera::SetFovDegress(float degrees) noexcept
 
 void Camera::SetAspectRatio(float aspect) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_aspectRatio, aspect)) {
         ENG_ASSERT(aspect > M3D_EPS, "aspect can't be less or equal to zero");
 
@@ -82,6 +91,7 @@ void Camera::SetAspectRatio(float aspect) noexcept
 
 void Camera::SetAspectRatio(uint32_t width, uint32_t height) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
     ENG_ASSERT(height != 0, "height can't be equal to zero");
 
     const float aspectRatio = float(width) / float(height);
@@ -91,6 +101,8 @@ void Camera::SetAspectRatio(uint32_t width, uint32_t height) noexcept
 
 void Camera::SetZNear(float zNear) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_zNear, zNear)) {
         ENG_ASSERT(abs(m_zFar - zNear) > M3D_EPS, "Can't set Z Near equal to Z Far");
     
@@ -102,6 +114,8 @@ void Camera::SetZNear(float zNear) noexcept
 
 void Camera::SetZFar(float zFar) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_zFar, zFar)) {
         ENG_ASSERT(abs(zFar - m_zNear) > M3D_EPS, "Can't set Z Far equal to Z Near");
     
@@ -113,6 +127,8 @@ void Camera::SetZFar(float zFar) noexcept
 
 void Camera::SetOrthoLeft(float left) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_left, left)) {
         ENG_ASSERT(abs(m_right - left) > M3D_EPS, "Can't set left equal to right");
     
@@ -124,6 +140,8 @@ void Camera::SetOrthoLeft(float left) noexcept
 
 void Camera::SetOrthoRight(float right) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_right, right)) {
         ENG_ASSERT(abs(right - m_left) > M3D_EPS, "Can't set right equal to left");
     
@@ -135,6 +153,8 @@ void Camera::SetOrthoRight(float right) noexcept
 
 void Camera::SetOrthoTop(float top) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_top, top)) {
         ENG_ASSERT(abs(top - m_bottom) > M3D_EPS, "Can't set top equal to bottom");
     
@@ -146,6 +166,8 @@ void Camera::SetOrthoTop(float top) noexcept
 
 void Camera::SetOrthoBottom(float bottom) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_bottom, bottom)) {
         ENG_ASSERT(abs(m_top - bottom) > M3D_EPS, "Can't set bottom equal to top");
     
@@ -157,6 +179,8 @@ void Camera::SetOrthoBottom(float bottom) noexcept
 
 void Camera::Move(const glm::vec3& offset) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amIsZero(offset)) {
         m_position += offset;
         RequestRecalcViewMatrix();
@@ -166,6 +190,8 @@ void Camera::Move(const glm::vec3& offset) noexcept
 
 void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amIsZero(distance)) {
         ENG_ASSERT(amIsNormalized(dir), "dir must be normalized vector");
     
@@ -177,6 +203,8 @@ void Camera::MoveAlongDir(const glm::vec3& dir, float distance) noexcept
 
 void Camera::Rotate(const glm::quat& rotation) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(rotation, M3D_QUAT_IDENTITY)) {
         ENG_ASSERT(amIsNormalized(rotation), "rotation quaternion must be normalized");
 
@@ -188,6 +216,8 @@ void Camera::Rotate(const glm::quat& rotation) noexcept
 
 void Camera::RotateAxis(const glm::vec3 &axis, float degrees) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amIsZero(degrees)) {
         m_rotation = glm::normalize(glm::angleAxis(glm::radians(degrees), axis) * m_rotation);
         RequestRecalcViewMatrix();
@@ -197,6 +227,8 @@ void Camera::RotateAxis(const glm::vec3 &axis, float degrees) noexcept
 
 void Camera::RotatePitchYawRoll(float pitchDegrees, float yawDegrees, float rollDegrees) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amIsZero(glm::vec3(pitchDegrees, yawDegrees, rollDegrees))) {
         const glm::quat rotPitch = glm::angleAxis(glm::radians(pitchDegrees), M3D_AXIS_X);
         const glm::quat rotYaw   = glm::angleAxis(glm::radians(yawDegrees),   M3D_AXIS_Y);
@@ -210,6 +242,8 @@ void Camera::RotatePitchYawRoll(float pitchDegrees, float yawDegrees, float roll
 
 void Camera::SetRotation(const glm::quat& rotation) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+
     if (!amAreEqual(m_rotation, rotation)) {
         m_rotation = rotation;
         RequestRecalcViewMatrix();
@@ -219,6 +253,8 @@ void Camera::SetRotation(const glm::quat& rotation) noexcept
 
 void Camera::SetPosition(const glm::vec3& position) noexcept
 {
+    ASSERT_CAMERA_REGISTER_STATUS(this);
+    
     if (!amAreEqual(m_position, position)) {
         m_position = position;
         RequestRecalcViewMatrix();
@@ -293,7 +329,9 @@ CameraManager::~CameraManager()
 
 Camera* CameraManager::RegisterCamera() noexcept
 {
-    const CameraID camID = AllocateCameraID();
+    const CameraID camID = m_cameraIDPool.Allocate();
+    ENG_ASSERT(camID.Value() < m_camerasStorage.size(), "Memory buffer storage overflow");
+
     Camera* pCam = &m_camerasStorage[camID.Value()];
 
     ENG_ASSERT(!pCam->IsRegistered(), "Already registered camera was returned during registration");
@@ -311,9 +349,7 @@ void CameraManager::UnregisterCamera(Camera* pCam) noexcept
     }
 
     pCam->Destroy();
-    DeallocateCameraID(pCam->m_ID);
-
-    pCam->m_ID.Invalidate();
+    m_cameraIDPool.Deallocate(pCam->m_ID);
 }
 
 
@@ -334,7 +370,7 @@ bool CameraManager::Init() noexcept
     m_camerasStorage.resize(MAX_CAM_COUNT);
     m_cameraEventListenersStorage.resize(MAX_CAM_COUNT);
 
-    m_nextAllocatedID = CameraID(0);
+    m_cameraIDPool.Reset();
 
     m_isInitialized = true;
 
@@ -351,38 +387,11 @@ void CameraManager::Terminate() noexcept
         }
     }
     m_cameraEventListenersStorage.clear();
+    
     m_camerasStorage.clear();
-
-    m_cameraIDFreeList.clear();
-    m_nextAllocatedID = CameraID(0);
+    m_cameraIDPool.Reset();
     
     m_isInitialized = false;
-}
-
-
-CameraID CameraManager::AllocateCameraID() noexcept
-{
-    if (m_cameraIDFreeList.empty()) {
-        ENG_ASSERT(m_nextAllocatedID.Value() < m_camerasStorage.size() - 1, "Memory buffer storage overflow");
-
-        const CameraID camID = m_nextAllocatedID;
-        m_nextAllocatedID = CameraID(m_nextAllocatedID.Value() + 1);
-
-        return camID;
-    }
-
-    const CameraID camID = m_cameraIDFreeList.front();
-    m_cameraIDFreeList.pop_front();
-        
-    return camID;
-}
-
-
-void CameraManager::DeallocateCameraID(CameraID ID) noexcept
-{
-    if (ID < m_nextAllocatedID && std::find(m_cameraIDFreeList.cbegin(), m_cameraIDFreeList.cend(), ID) == m_cameraIDFreeList.cend()) {
-        m_cameraIDFreeList.emplace_back(ID);
-    }
 }
 
 

@@ -186,12 +186,6 @@ private:
 
     MeshVertexLayout* FindVertexLayoutByHash(uint64_t hash) noexcept;
 
-    MeshVertexLayoutID AllocateVertexLayoutID() noexcept;
-    void DeallocateVertexLayoutID(MeshVertexLayoutID ID) noexcept;
-
-    MeshGPUBufferDataID AllocateGPUBufferDataID() noexcept;
-    void DeallocateGPUBufferDataID(MeshGPUBufferDataID ID) noexcept;
-
 private:
     std::vector<MeshVertexLayout> m_vertexLayoutStorage;
     std::vector<MeshGPUBufferData> m_GPUBufferDataStorage;
@@ -199,11 +193,11 @@ private:
     std::unordered_map<uint64_t, uint64_t> m_vertexLayoutHashToStorageIndexMap;
     std::unordered_map<ds::StrID, uint64_t> m_GPUBufferDataNameToStorageIndexMap;
 
-    std::deque<MeshVertexLayoutID> m_meshVertexLayoutIDFreeList;
-    std::deque<MeshGPUBufferDataID> m_meshGPUBufferDataIDFreeList;
+    using MeshVertexLayoutIDPool = ds::BaseIDPool<MeshVertexLayoutID>;
+    using MeshGPUBufferDataIDPool = ds::BaseIDPool<MeshGPUBufferDataID>;
     
-    MeshVertexLayoutID m_nextAllocatedVertLayoutID = MeshVertexLayoutID{0};
-    MeshGPUBufferDataID m_nextAllocatedGPUBufDataID = MeshGPUBufferDataID{0};
+    MeshVertexLayoutIDPool m_vertLayoutIDPool;
+    MeshGPUBufferDataIDPool m_bufferDataIDPool;
 
     bool m_isInitialized = false;
 };
@@ -281,15 +275,12 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    MeshID AllocateMeshID() noexcept;
-    void DeallocateMeshID(MeshID ID) noexcept;
-
 private:
     std::vector<MeshObj> m_meshObjStorage;
     std::unordered_map<ds::StrID, uint64_t> m_meshNameToStorageIndexMap;
 
-    std::deque<MeshID> m_meshIDFreeList;
-    MeshID m_nextAllocatedID = MeshID{0};
+    using MeshIDPool = ds::BaseIDPool<MeshID>;
+    MeshIDPool m_IDPool;
 
     bool m_isInitialized = false;
 };

@@ -413,17 +413,13 @@ private:
     bool Init() noexcept;
     void Terminate() noexcept;
 
-    PipelineID AllocatePipelineID() noexcept;
-    void DeallocatePipelineID(PipelineID ID) noexcept;
-
     bool IsInitialized() const noexcept { return m_isInitialized; }
 
 private:
     std::vector<Pipeline> m_pipelineStorage;
 
-    std::deque<PipelineID> m_pipelineIDFreeList;
-
-    PipelineID m_nextAllocatedID = PipelineID{0};
+    using PipelineIDPool = ds::BaseIDPool<PipelineID>;
+    PipelineIDPool m_IDPool;
 
     bool m_isInitialized = false;
 };
