@@ -49,7 +49,7 @@ namespace ds
     template <typename BaseIDType>
     class BaseIDPool
     {
-        static_assert(std::is_same_v<BaseIDType, BaseID<BaseIDType::StorageType>>);
+        static_assert(std::is_same_v<BaseIDType, BaseID<typename BaseIDType::StorageType>>);
     public:
         using IDType = BaseIDType;
 
@@ -58,6 +58,9 @@ namespace ds
         void Deallocate(IDType& ID) noexcept;
 
         void Reset() noexcept;
+
+        const IDType& GetMaxAllocatedID() const noexcept { return m_nextAllocatedID; }
+        bool IsAllocated(const IDType& ID) const noexcept { return ID < m_nextAllocatedID && m_idFreeList.find(ID) == m_idFreeList.cend(); }
 
     private:
         std::deque<IDType> m_idFreeList;
