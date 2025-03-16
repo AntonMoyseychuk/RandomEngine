@@ -493,10 +493,10 @@ bool RenderTargetManager::Init() noexcept
         return true;
     }
 
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
 
     m_frameBufferResizeEventListenerID = dispatcher.Subscribe<EventFramebufferResized>([this](const void* pEvent) {
-        const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+        const EventFramebufferResized& event = es::EventCast<EventFramebufferResized>(pEvent);
         const uint32_t width = event.GetWidth();
         const uint32_t height = event.GetHeight();
         
@@ -504,9 +504,6 @@ bool RenderTargetManager::Init() noexcept
             OnWindowResizedEvent(width, height);
         }
     });
-
-    ENG_ASSERT(m_frameBufferResizeEventListenerID.IsValid(), "Invalid event listener ID");
-    dispatcher.SetListenerDebugName(m_frameBufferResizeEventListenerID, "RT_MNG_FRAMEBUFF_RESIZE");
 
     m_isInitialized = true;
 
@@ -518,10 +515,9 @@ void RenderTargetManager::Terminate() noexcept
 {
     ClearFrameBuffersStorage();
 
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
     dispatcher.Unsubscribe(m_frameBufferResizeEventListenerID);
-    m_frameBufferResizeEventListenerID.Invalidate();
-
+    
     m_isInitialized = false;
 }
 

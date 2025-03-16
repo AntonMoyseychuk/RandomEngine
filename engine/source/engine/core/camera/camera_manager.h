@@ -159,7 +159,7 @@ public:
     void Update(float dt) noexcept;
 
     template <typename EventType>
-    void SubscribeCamera(const Camera& cam, const EventListener::CallbackType& callback) noexcept;
+    void SubscribeCamera(const Camera& cam, const es::ListenerCallback& callback) noexcept;
 
     template <typename EventType>
     void UnsubscribeCamera(const Camera& cam) noexcept;
@@ -183,13 +183,7 @@ private:
     static inline constexpr uint32_t MAX_CAM_COUNT = 8;
 
 private:
-    struct CameraEventListenerDesc
-    {
-        EventListenerID ID;
-        uint64_t eventTypeHash = UINT64_MAX;
-    };
-
-    using CameraEventListenersStorage = std::array<CameraEventListenerDesc, MAX_CAM_EVENT_LISTENERS_COUNT>;
+    using CameraEventListenersStorage = std::array<es::ListenerID, MAX_CAM_EVENT_LISTENERS_COUNT>;
 
     std::vector<Camera> m_camerasStorage;
     std::vector<CameraEventListenersStorage> m_cameraEventListenersStorage;

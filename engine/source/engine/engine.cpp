@@ -161,7 +161,7 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
     }
 
     // Notify all subscribed systems to resized their resources
-    EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pMainWindow->GetFramebufferWidth(), m_pMainWindow->GetFramebufferHeight());
+    es::EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pMainWindow->GetFramebufferWidth(), m_pMainWindow->GetFramebufferHeight());
 
     m_isInitialized = true;
 

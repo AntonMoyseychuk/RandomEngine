@@ -9,132 +9,152 @@
 
 #include "utils/debug/assertion.h"
 #include "utils/data_structures/base_id.h"
-#include "utils/data_structures/strid.h"
 
 #include "core.h"
 
 
-template<typename T>
-class Event
+namespace es
 {
-public:
-    using EventType = T;
+    class ListenerID
+    {
+        friend class EventDispatcher;
 
-public:
-    static const std::type_info& GetTypeID() noexcept { return TYPE_ID; }
+    public:
+        using UnderlyingType = uint32_t;
 
-public:
-    template <typename... Args>
-    Event(Args&&... args)
-        : m_event{std::forward<Args>(args)...} {}
+    public:
+        ListenerID();
+        ListenerID(UnderlyingType eventTypeIndex, UnderlyingType storageIndex);
 
-    const EventType& Get() const noexcept { return m_event; }
+        UnderlyingType GetEventTypeIndex() const noexcept { return m_eventTypeIndex; }
+        UnderlyingType GetStorageIndex() const noexcept { return m_storageIndex; }
+        
+        void Invalidate() noexcept;
+        bool IsValid() const noexcept { return m_eventTypeIndex != INVALID_EVENT_TYPE_IDX && m_storageIndex != INVALID_STORAGE_IDX; }
 
-private:
-    static inline const std::type_info& TYPE_ID = typeid(EventType);
+        bool operator==(const ListenerID& other) const noexcept { return m_eventTypeIndex == other.m_eventTypeIndex && m_storageIndex == other.m_storageIndex; }
+        bool operator!=(const ListenerID& other) const noexcept { return !operator==(other); }
+        bool operator>(const ListenerID& other) const noexcept { return m_eventTypeIndex > other.m_eventTypeIndex && m_storageIndex > other.m_storageIndex; }
+        bool operator<(const ListenerID& other) const noexcept { return m_eventTypeIndex < other.m_eventTypeIndex && m_storageIndex < other.m_storageIndex; }
+        bool operator<=(const ListenerID& other) const noexcept { return operator<(other) || operator==(other); }
+        bool operator>=(const ListenerID& other) const noexcept { return operator>(other) || operator==(other); }
 
-private:
-    EventType m_event;
-};
+    private:
+        template<uint32_t BASE, uint32_t POWER>
+        struct ConstexprPow
+        {
+            static constexpr uint32_t value = BASE * ConstexprPow<BASE, POWER - 1>::value;
+        };
 
+        template<uint32_t BASE>
+        struct ConstexprPow<BASE, 0>
+        {
+            static constexpr uint32_t value = 1;
+        };
 
-class EventListenerID : public ds::BaseID<uint64_t>
-{
-    friend class EventDispatcher;
-
-    using BaseType = ds::BaseID<StorageType>;
-
-public:
-    EventListenerID() = default;
-    explicit EventListenerID(std::type_index eventTypeIndex);
-    EventListenerID(StorageType ID, std::type_index eventTypeIndex);
-    EventListenerID(StorageType ID, uint64_t eventTypeIndexHash);
+    private:
+        static inline constexpr uint32_t BITS_PER_EVENT_TYPE_IDX = 10;
+        static inline constexpr uint32_t BITS_PER_STORAGE_IDX = 22;
     
-    uint64_t TypeIndexHash() const noexcept { return m_eventTypeIndexHash; }
+    public:
+        static inline constexpr UnderlyingType MAX_EVENT_TYPE_IDX = ConstexprPow<2, BITS_PER_EVENT_TYPE_IDX>::value - 1;
+        static inline constexpr UnderlyingType MAX_STORAGE_IDX = ConstexprPow<2, BITS_PER_STORAGE_IDX>::value - 1;
+        
+    private:
+        static inline constexpr UnderlyingType INVALID_EVENT_TYPE_IDX = MAX_EVENT_TYPE_IDX;
+        static inline constexpr UnderlyingType INVALID_STORAGE_IDX = MAX_STORAGE_IDX;
 
-    void Invalidate() noexcept;
-    bool IsValid() const noexcept { return BaseType::IsValid() && m_eventTypeIndexHash != UINT64_MAX; }
-
-    uint64_t Hash() const noexcept;
-
-    bool operator==(const EventListenerID& other) const noexcept { return BaseType::operator==(other) && m_eventTypeIndexHash == other.m_eventTypeIndexHash; }
-    bool operator!=(const EventListenerID& other) const noexcept { return BaseType::operator!=(other) && m_eventTypeIndexHash != other.m_eventTypeIndexHash; }
-    bool operator>(const EventListenerID& other) const noexcept { return BaseType::operator>(other) && m_eventTypeIndexHash > other.m_eventTypeIndexHash; }
-    bool operator<(const EventListenerID& other) const noexcept { return BaseType::operator<(other) && m_eventTypeIndexHash < other.m_eventTypeIndexHash; }
-    bool operator<=(const EventListenerID& other) const noexcept { return BaseType::operator<=(other) && m_eventTypeIndexHash <= other.m_eventTypeIndexHash; }
-    bool operator>=(const EventListenerID& other) const noexcept { return BaseType::operator>=(other) && m_eventTypeIndexHash >= other.m_eventTypeIndexHash; }
-
-private:
-    uint64_t m_eventTypeIndexHash = UINT64_MAX;
-};
+    private:
+        struct {
+            UnderlyingType m_eventTypeIndex : BITS_PER_EVENT_TYPE_IDX;
+            UnderlyingType m_storageIndex : BITS_PER_STORAGE_IDX;
+        };
+    };
 
 
-class EventListener
-{
-    friend class EventDispatcher;
+    using ListenerCallback = std::function<void(const void* pEvent)>;
 
-public:
-    using CallbackType = std::function<void(const void* pEvent)>;
+    class ListenersStorage
+    {
+        friend class EventDispatcher;
+        
+    public:
+        void Reserve(uint64_t capacity) noexcept { m_storage.reserve(capacity); }
 
-public:
-    EventListener() = default;
-    EventListener(EventListenerID ID, const CallbackType& callback);
+        uint64_t Add(const ListenerCallback& callback) noexcept;
+        void Remove(uint64_t index) noexcept;
 
-    void SetDebugName(ds::StrID name) noexcept;
-    ds::StrID GetDebugName() const noexcept;
+        void Notify(const void* pEvent) noexcept;
 
-    const EventListenerID& GetID() const noexcept { return m_ID; }
-    bool IsValid() const noexcept { return m_ID.IsValid() && m_callback; }
+        void Reset() noexcept;
 
-    void Invalidate() noexcept;
+        uint64_t GetSize() const noexcept { return m_storage.size(); }
+        uint64_t GetCapacity() noexcept { return m_storage.capacity(); }
 
-private:
-    void Excecute(const void* pEvent) const noexcept;
+    private:
+    static inline constexpr uint64_t MAX_LISTENERS_STORAGE_CAPACITY = ListenerID::MAX_STORAGE_IDX + 1;
+        static inline const ListenerCallback DEFAULT_EVENT_CALLBACK = [](const void*) -> void {}; 
 
-private:
-#if defined(ENG_DEBUG)
-    ds::StrID m_dbgName = "";
-#endif
-    EventListenerID m_ID;
-    CallbackType m_callback;
-};
+    private:
+        using ListenerIndex = ds::BaseID<ListenerID::UnderlyingType>;
+        using ListenerIndexPool = ds::BaseIDPool<ListenerIndex>;
+
+        std::vector<ListenerCallback> m_storage;
+        ListenerIndexPool m_idxPool;
+    };
 
 
-class EventDispatcher
-{
-public:
-    static EventDispatcher& GetInstance();
+    class EventDispatcher
+    {
+    public:
+        static EventDispatcher& GetInstance();
 
-public:
-    EventDispatcher(const EventDispatcher& dispatcher) = delete;
-    EventDispatcher& operator=(const EventDispatcher& dispatcher) = delete;
-    EventDispatcher(EventDispatcher&& dispatcher) noexcept = delete;
-    EventDispatcher& operator=(EventDispatcher&& dispatcher) noexcept = delete;
-
-    template <typename EventType>
-    EventListenerID Subscribe(const EventListener::CallbackType& eventCallback) noexcept;
+        template <typename EventType>
+        static uint64_t GetEventTypeIndex() noexcept
+        {
+            static uint64_t index = AllocateEventTypeIndex();
+            return index;
+        }
     
-    void Unsubscribe(EventListenerID listenerID) noexcept;
+    public:
+        EventDispatcher(const EventDispatcher& dispatcher) = delete;
+        EventDispatcher& operator=(const EventDispatcher& dispatcher) = delete;
+        EventDispatcher(EventDispatcher&& dispatcher) noexcept = delete;
+        EventDispatcher& operator=(EventDispatcher&& dispatcher) noexcept = delete;
+    
+        template <typename EventType>
+        ListenerID Subscribe(const ListenerCallback& listenerCallback) noexcept;
+        
+        void Unsubscribe(ListenerID& listenerID) noexcept;
 
-    template<typename EventType, typename... Args>
-    void Notify(Args&&... args) noexcept;
+        template<typename EventType, typename... Args>
+        void Notify(Args&&... args) noexcept;
 
-    void SetListenerDebugName(const EventListenerID& listenerID, ds::StrID name) noexcept;
+        void Reset() noexcept;
 
-private:
-    EventDispatcher();
+    private:
+        EventDispatcher();
 
-private:
-    std::unordered_map<uint64_t, std::vector<EventListener>> m_listenersMap; 
-};
+        static uint64_t AllocateEventTypeIndex() noexcept
+        {
+            static uint64_t index = 0;
+            return index++;
+        }
+
+    private:
+        static inline constexpr uint64_t MAX_EVENT_TYPES_COUNT = ListenerID::MAX_EVENT_TYPE_IDX + 1;
+
+    private:
+        std::array<ListenersStorage, MAX_EVENT_TYPES_COUNT> m_storages;
+    };
 
 
-template<typename T>
-inline const T& CastEventTo(const void* pEvent) noexcept
-{
-    ENG_ASSERT(pEvent != nullptr, "pEvent is nullptr");
-    return *reinterpret_cast<const T*>(pEvent);
+    template<typename T>
+    inline const T& EventCast(const void* pEvent) noexcept
+    {
+        ENG_ASSERT(pEvent != nullptr, "pEvent is nullptr");
+        return *reinterpret_cast<const T*>(pEvent);
+    }
 }
-
 
 #include "event_dispatcher.hpp"

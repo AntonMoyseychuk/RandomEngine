@@ -380,10 +380,11 @@ bool CameraManager::Init() noexcept
 
 void CameraManager::Terminate() noexcept
 {
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    for (const CameraEventListenersStorage& storage : m_cameraEventListenersStorage) {
-        for (const CameraEventListenerDesc& desc : storage) {
-            dispatcher.Unsubscribe(desc.ID);
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+    
+    for (CameraEventListenersStorage& storage : m_cameraEventListenersStorage) {
+        for (es::ListenerID& ID : storage) {
+            dispatcher.Unsubscribe(ID);
         }
     }
     m_cameraEventListenersStorage.clear();

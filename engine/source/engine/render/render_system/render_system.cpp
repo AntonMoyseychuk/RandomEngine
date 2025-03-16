@@ -458,7 +458,7 @@ void RenderSystem::RunColorPass() noexcept
         pMainCam->SetFovDegress(90.f);
 
         cameraManager.SubscribeCamera<EventFramebufferResized>(*pMainCam, [](const void* pEvent) {
-            const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
+            const EventFramebufferResized& event = es::EventCast<EventFramebufferResized>(pEvent);
             const uint32_t width = event.GetWidth();
             const uint32_t height = event.GetHeight();
     

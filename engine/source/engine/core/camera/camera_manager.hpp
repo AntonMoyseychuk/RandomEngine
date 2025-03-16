@@ -1,35 +1,22 @@
 template <typename EventType>
-inline void CameraManager::SubscribeCamera(const Camera &cam, const EventListener::CallbackType& callback) noexcept
+inline void CameraManager::SubscribeCamera(const Camera &cam, const es::ListenerCallback& callback) noexcept
 {
     if (IsCameraSubscribed<EventType>(cam)) {
         return;
     }
 
-    CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetID().Value()];
-    CameraEventListenerDesc* pDesc = nullptr;
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
 
-    for (CameraEventListenerDesc& desc : listenersStorage) {
-        if (!desc.ID.IsValid()) {
-            pDesc = &desc;
-            break;
+    CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetID().Value()];
+
+    for (es::ListenerID& ID : listenersStorage) {
+        if (!ID.IsValid()) {
+            ID = dispatcher.Subscribe<EventType>(callback);
+            return;
         }
     }
 
-    if (pDesc) {
-        EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-
-        const type_info& typeID = Event<EventType>::GetTypeID();
-        
-        pDesc->eventTypeHash = typeID.hash_code();
-        pDesc->ID = dispatcher.Subscribe<EventType>(callback);
-        
-    #if defined(ENG_DEBUG)
-        char debugName[512];
-        sprintf_s(debugName, "_cam_%d_%s_callback_", cam.GetID().Value(), typeID.name());
-
-        dispatcher.SetListenerDebugName(pDesc->ID, debugName);
-    #endif
-    }
+    ENG_ASSERT_FAIL("Failed to subscribe camera");
 }
 
 
@@ -41,12 +28,10 @@ inline void CameraManager::UnsubscribeCamera(const Camera &cam) noexcept
         return;
     }
 
-    CameraEventListenerDesc& desc = m_cameraEventListenersStorage[cam.GetIndex()][cameraEventListenerIndex];
+    es::ListenerID& ID = m_cameraEventListenersStorage[cam.GetIndex()][cameraEventListenerIndex];
 
-    EventDispatcher::GetInstance().Unsubscribe(desc.ID);
-
-    desc.ID.Invalidate();
-    desc.eventTypeHash = UINT64_MAX;
+    Window::EventDispatcher* pDispatcher = WindowSystem::GetInstance().GetWindowByTag(WINDOW_TAG_MAIN)->GetEventDispatcher();
+    pDispatcher->Unsubscribe(desc.ID);
 }
 
 
@@ -64,13 +49,13 @@ inline uint32_t CameraManager::GetCameraEventListenerIndex(const Camera &cam) co
         return MAX_CAM_EVENT_LISTENERS_COUNT;
     }
 
-    const CameraEventListenersStorage& listenersStorage = m_cameraEventListenersStorage[cam.GetID().Value()];
-    
-    const uint64_t eventTypeHash = Event<EventType>::GetTypeID().hash_code();
-    
-    const auto listenerIt = std::find_if(listenersStorage.cbegin(), listenersStorage.cend(), [eventTypeHash](const CameraEventListenerDesc& desc) {
-        return desc.eventTypeHash == eventTypeHash;
+    const CameraEventListenersStorage& storage = m_cameraEventListenersStorage[cam.GetID().Value()];
+
+    const auto eventTypeIdx = es::EventDispatcher::GetEventTypeIndex<EventType>();
+
+    const auto listenerIt = std::find_if(storage.cbegin(), storage.cend(), [eventTypeIdx](const es::ListenerID& ID) {
+        return ID.GetEventTypeIndex() == eventTypeIdx;
     });
 
-    return listenerIt != listenersStorage.cend() ? std::distance(listenersStorage.cbegin(), listenerIt) : MAX_CAM_EVENT_LISTENERS_COUNT;
+    return listenerIt != storage.cend() ? std::distance(storage.cbegin(), listenerIt) : MAX_CAM_EVENT_LISTENERS_COUNT;
 }

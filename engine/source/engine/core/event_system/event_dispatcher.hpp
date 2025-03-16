@@ -1,44 +1,25 @@
-template <typename EventType>
-EventListenerID EventDispatcher::Subscribe(const EventListener::CallbackType& eventCallback) noexcept
+namespace es
 {
-    const std::type_index eventTypeIndex = Event<EventType>::GetTypeID();
-    EventListenerID listenerID(eventTypeIndex);
-    
-    std::vector<EventListener>& listenersCollection = m_listenersMap[listenerID.TypeIndexHash()];
+    template <typename EventType>
+    inline ListenerID EventDispatcher::Subscribe(const ListenerCallback& listenerCallback) noexcept
+    {
+        static const auto eventTypeIndex = GetEventTypeIndex<EventType>();
+        ENG_ASSERT(eventTypeIndex < m_storages.size(), "Event dispatcher available event types count overflow");
 
-    if (listenersCollection.capacity() == 0) {
-        static constexpr size_t LISTENERS_RESERVE_COUNT = 64ull;
-        listenersCollection.reserve(LISTENERS_RESERVE_COUNT);
-    }
-    
-    for (uint64_t i = 0; i < listenersCollection.size(); ++i) {
-        if (!listenersCollection[i].IsValid()) {
-            listenerID.SetValue(i);
-            break;
-        }
-    }
-    
-    if (listenerID.IsValid()) {
-        listenersCollection[listenerID.Value()] = EventListener(listenerID, eventCallback);
-    } else {
-        listenerID.SetValue(listenersCollection.size());
-        listenersCollection.emplace_back(listenerID, eventCallback);
+        ListenersStorage& listenersStorage = m_storages[eventTypeIndex];
+        const auto callbackStorageIndex = listenersStorage.Add(listenerCallback);
+
+        return ListenerID(eventTypeIndex, callbackStorageIndex);
     }
 
-    return listenerID;
-}
 
+    template <typename EventType, typename... Args>
+    inline void EventDispatcher::Notify(Args&&... args) noexcept
+    {
+        static const auto eventTypeIndex = GetEventTypeIndex<EventType>();
+        ENG_ASSERT(eventTypeIndex < m_storages.size(), "Event dispatcher available event types count overflow");
 
-template <typename EventType, typename... Args>
-inline void EventDispatcher::Notify(Args &&...args) noexcept
-{
-    auto listenersCollectionIt = m_listenersMap.find(Event<EventType>::GetTypeID().hash_code());
-        
-    if (listenersCollectionIt != m_listenersMap.cend()) {
-        EventType event(std::forward<Args>(args)...);
-        
-        for (EventListener& listener : listenersCollectionIt->second) {
-            listener.Excecute(&event);
-        }
+        const EventType event(std::forward<Args>(args)...);
+        m_storages[eventTypeIndex].Notify(&event);
     }
 }

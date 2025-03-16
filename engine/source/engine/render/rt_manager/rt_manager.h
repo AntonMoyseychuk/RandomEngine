@@ -219,7 +219,7 @@ private:
     RTFrameBufferStorage m_frameBufferStorage = { };
     RTTexturePtrStorage m_RTTextureStorage    = { nullptr };
 
-    EventListenerID m_frameBufferResizeEventListenerID;
+    es::ListenerID m_frameBufferResizeEventListenerID;
 
     bool m_isInitialized = false;
 };

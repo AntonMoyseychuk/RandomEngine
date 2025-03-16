@@ -3,7 +3,6 @@
 #include "window_system_events.h"
 
 #include <bitset>
-#include <array>
 
 
 enum class KeyboardKey : uint8_t
@@ -167,6 +166,17 @@ struct CursorPositon
 };
 
 
+namespace detail
+{
+    // Represents es::ListenerID, needs to avoid including event_dispatcher.h in this file
+    struct WinSysEventListenerIDDataHandler
+    {
+        uint32_t typeIndex;
+        uint32_t storageIndex;
+    };
+}
+
+
 class Input
 {
     friend class Window;
@@ -223,34 +233,19 @@ private:
     void OnMouseButtonEvent(MouseButton button, MouseButtonState state) noexcept;
     void OnMouseMoveEvent(double xpos, double ypos) noexcept;
     void OnWheelEvent(float xOffset, float yOffset) noexcept;
-
-    template <typename EventT, typename ListenerT>
-    void SubscribeEventListener(InputEventIndex idx, const ListenerT& listener, const char* pDbgName)
-    {
-        EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-
-        const EventListenerID listenerID = dispatcher.Subscribe<EventT>(listener);
-        dispatcher.SetListenerDebugName(listenerID, pDbgName);
-
-        m_inputListenersIDDescs[idx].id = listenerID.Value();
-        m_inputListenersIDDescs[idx].typeIndexHash = listenerID.TypeIndexHash();
-    }
+    
 
 private:
-    struct InputEventListenerDesc
-    {
-        uint64_t id;
-        uint64_t typeIndexHash;
-    };
-
     std::array<KeyState, static_cast<size_t>(KeyboardKey::KEY_COUNT)> m_keyStates;
-    std::array<InputEventListenerDesc, InputEventIndex::IDX_COUNT> m_inputListenersIDDescs;
+    std::array<detail::WinSysEventListenerIDDataHandler, InputEventIndex::IDX_COUNT> m_inputListenersIDHandlers;
 
     CursorPositon m_prevCursorPosition;
     CursorPositon m_currCursorPosition;
 
     float m_mouseWheelDX = 0.f;
     float m_mouseWheelDY = 0.f;
+
+    Window* m_pOwnerWindow = nullptr;
     
     std::array<MouseButtonState, static_cast<size_t>(MouseButton::BUTTON_COUNT)> m_mouseButtonStates;
     bool m_isIntialized = false;
@@ -347,15 +342,9 @@ private:
         IDX_COUNT,
     };
 
-    struct WindowEventListenerDesc
-    {
-        uint64_t id;
-        uint64_t typeIndexHash;
-    };
-
     Input m_input;
 
-    std::array<WindowEventListenerDesc, WindowEventIndex::IDX_COUNT> m_windowEventListenersIDDescs;
+    std::array<detail::WinSysEventListenerIDDataHandler, WindowEventIndex::IDX_COUNT> m_windowEventListenersIDHandlers;
 
     void* m_pNativeWindow = nullptr;
 

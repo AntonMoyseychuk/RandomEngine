@@ -59,8 +59,10 @@ namespace ds
 
         void Reset() noexcept;
 
-        const IDType& GetMaxAllocatedID() const noexcept { return m_nextAllocatedID; }
-        bool IsAllocated(const IDType& ID) const noexcept { return ID < m_nextAllocatedID && m_idFreeList.find(ID) == m_idFreeList.cend(); }
+        const IDType& GetNextIDValue() const noexcept { return m_nextAllocatedID; }
+
+        bool IsAnyAllocated() const noexcept;
+        bool IsAllocated(const IDType& ID) const noexcept;
 
     private:
         std::deque<IDType> m_idFreeList;

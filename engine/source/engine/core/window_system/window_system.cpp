@@ -168,71 +168,85 @@ static MouseButton GLFWButtonToCustomMouseButton(int32_t glfwButton) noexcept
 }
 
 
+static detail::WinSysEventListenerIDDataHandler ListenerIDToWinSysEventListenerIDDataHandler(es::ListenerID ID) noexcept
+{
+    detail::WinSysEventListenerIDDataHandler handler = {};
+    handler.typeIndex = ID.GetEventTypeIndex();
+    handler.storageIndex = ID.GetStorageIndex();
+
+    return handler;
+};
+
+
 bool Input::Init(Window* pWindow) noexcept
 {
     if (!(pWindow && pWindow->IsInitialized())) {
         ENG_LOG_WINDOW_WARN("pWindow is invalid");
         return false;
     }
-    
-    const EventListener::CallbackType mousePressedListener = [this](const void* pEvent) {
-        const EventMousePressed& event = CastEventTo<EventMousePressed>(pEvent);
+
+    m_pOwnerWindow = pWindow;
+
+    const es::ListenerCallback mousePressedListener = [this](const void* pEvent) {
+        const EventMousePressed& event = es::EventCast<EventMousePressed>(pEvent);
         OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_PRESSED);
     };
 
-    const EventListener::CallbackType mouseReleasedListener = [this](const void* pEvent) {
-        const EventMouseReleased& event = CastEventTo<EventMouseReleased>(pEvent);
+    const es::ListenerCallback mouseReleasedListener = [this](const void* pEvent) {
+        const EventMouseReleased& event = es::EventCast<EventMouseReleased>(pEvent);
         OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_RELEASED);
     };
 
-    const EventListener::CallbackType mouseHoldListener = [this](const void* pEvent) {
-        const EventMouseHold& event = CastEventTo<EventMouseHold>(pEvent);
+    const es::ListenerCallback mouseHoldListener = [this](const void* pEvent) {
+        const EventMouseHold& event = es::EventCast<EventMouseHold>(pEvent);
         OnMouseButtonEvent(GLFWButtonToCustomMouseButton(event.GetButton()), MouseButtonState::STATE_HOLD);
     };
 
-    const EventListener::CallbackType keyPressedListener = [this](const void* pEvent) {
-        const EventKeyPressed& event = CastEventTo<EventKeyPressed>(pEvent);
+    const es::ListenerCallback keyPressedListener = [this](const void* pEvent) {
+        const EventKeyPressed& event = es::EventCast<EventKeyPressed>(pEvent);
         OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_PRESSED);
     };
 
-    const EventListener::CallbackType keyReleasedListener = [this](const void* pEvent) {
-        const EventKeyReleased& event = CastEventTo<EventKeyReleased>(pEvent);
+    const es::ListenerCallback keyReleasedListener = [this](const void* pEvent) {
+        const EventKeyReleased& event = es::EventCast<EventKeyReleased>(pEvent);
         OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_RELEASED);
     };
 
-    const EventListener::CallbackType keyHoldListener = [this](const void* pEvent) {
-        const EventKeyHold& event = CastEventTo<EventKeyHold>(pEvent);
+    const es::ListenerCallback keyHoldListener = [this](const void* pEvent) {
+        const EventKeyHold& event = es::EventCast<EventKeyHold>(pEvent);
         OnKeyEvent(GLFWKeyToCustomKey(event.GetKey()), KeyState::STATE_HOLD);
     };
 
-    const EventListener::CallbackType wheelListener = [this](const void* pEvent) {
-        const EventMouseWheel& event = CastEventTo<EventMouseWheel>(pEvent);
+    const es::ListenerCallback wheelListener = [this](const void* pEvent) {
+        const EventMouseWheel& event = es::EventCast<EventMouseWheel>(pEvent);
         OnWheelEvent(event.GetDX(), event.GetDY());
     };
 
-    const EventListener::CallbackType cursorMovedListener = [this](const void* pEvent) {
-        const EventCursorMoved& event = CastEventTo<EventCursorMoved>(pEvent);
+    const es::ListenerCallback cursorMovedListener = [this](const void* pEvent) {
+        const EventCursorMoved& event = es::EventCast<EventCursorMoved>(pEvent);
         OnMouseMoveEvent(event.GetX(), event.GetY());
     };
 
-    const EventListener::CallbackType cursorLeavedListener = [](const void* pEvent) {};
-    const EventListener::CallbackType cursorEnteredListener = [](const void* pEvent) {};
+    const es::ListenerCallback cursorLeavedListener = [](const void* pEvent) {};
+    const es::ListenerCallback cursorEnteredListener = [](const void* pEvent) {};
 
-    SubscribeEventListener<EventCursorMoved>(IDX_CURSOR_MOVED, cursorMovedListener, "WINDOW_SYS_CURSOR_MOVE");
-    SubscribeEventListener<EventCursorLeaved>(IDX_CURSOR_LEAVED, cursorLeavedListener, "WINDOW_SYS_CURSOR_LEAVE");
-    SubscribeEventListener<EventCursorEntered>(IDX_CURSOR_ENTERED, cursorEnteredListener, "WINDOW_SYS_CURSOR_ENTER");
-    SubscribeEventListener<EventMousePressed>(IDX_MOUSE_PRESSED, mousePressedListener, "WINDOW_SYS_MOUSE_PRESS");
-    SubscribeEventListener<EventMouseReleased>(IDX_MOUSE_RELEASED, mouseReleasedListener, "WINDOW_SYS_MOUSE_RELEASE");
-    SubscribeEventListener<EventMouseHold>(IDX_MOUSE_HOLD, mouseHoldListener, "WINDOW_SYS_MOUSE_HOLD");
-    SubscribeEventListener<EventMouseWheel>(IDX_MOUSE_WHEEL, wheelListener, "WINDOW_SYS_MOUSE_WHEEL");
-    SubscribeEventListener<EventKeyPressed>(IDX_KEY_PRESSED, keyPressedListener, "WINDOW_SYS_KEY_PRESS");
-    SubscribeEventListener<EventKeyReleased>(IDX_KEY_RELEASED, keyReleasedListener, "WINDOW_SYS_KEY_RELEASE");
-    SubscribeEventListener<EventKeyHold>(IDX_KEY_HOLD, keyHoldListener, "WINDOW_SYS_KEY_HOLD");
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
+    m_inputListenersIDHandlers[IDX_CURSOR_MOVED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventCursorMoved>(cursorMovedListener));
+    m_inputListenersIDHandlers[IDX_CURSOR_LEAVED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventCursorLeaved>(cursorLeavedListener));
+    m_inputListenersIDHandlers[IDX_CURSOR_ENTERED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventCursorEntered>(cursorEnteredListener));
+    m_inputListenersIDHandlers[IDX_MOUSE_PRESSED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventMousePressed>(mousePressedListener));
+    m_inputListenersIDHandlers[IDX_MOUSE_RELEASED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventMouseReleased>(mouseReleasedListener));
+    m_inputListenersIDHandlers[IDX_MOUSE_HOLD] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventMouseHold>(mouseHoldListener));
+    m_inputListenersIDHandlers[IDX_MOUSE_WHEEL] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventMouseWheel>(wheelListener));
+    m_inputListenersIDHandlers[IDX_KEY_PRESSED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventKeyPressed>(keyPressedListener));
+    m_inputListenersIDHandlers[IDX_KEY_RELEASED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventKeyReleased>(keyReleasedListener));
+    m_inputListenersIDHandlers[IDX_KEY_HOLD] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventKeyHold>(keyHoldListener));
     
-    GLFWwindow* pNativeWindow = static_cast<GLFWwindow*>(pWindow->GetNativeWindow());
+    GLFWwindow* pNativeWindow = static_cast<GLFWwindow*>(m_pOwnerWindow->GetNativeWindow());
 
     glfwSetKeyCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
         
         switch (action) {
             case GLFW_PRESS:
@@ -250,12 +264,13 @@ bool Input::Init(Window* pWindow) noexcept
     });
 
     glfwSetCursorPosCallback(pNativeWindow, [](GLFWwindow* pWindow, double xpos, double ypos){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
         dispatcher.Notify<EventCursorMoved>((float)xpos, (float)ypos);
     });
 
     glfwSetCursorEnterCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t entered){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
 
         if (entered) {
             dispatcher.Notify<EventCursorEntered>();
@@ -266,7 +281,7 @@ bool Input::Init(Window* pWindow) noexcept
     
     
     glfwSetMouseButtonCallback(pNativeWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
         
         switch (action) {
             case GLFW_PRESS:
@@ -284,7 +299,8 @@ bool Input::Init(Window* pWindow) noexcept
     });
 
     glfwSetScrollCallback(pNativeWindow, [](GLFWwindow* pWindow, double xoffset, double yoffset){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
         dispatcher.Notify<EventMouseWheel>((float)xoffset, (float)yoffset);
     });
 
@@ -296,19 +312,23 @@ bool Input::Init(Window* pWindow) noexcept
 
 void Input::Destroy() noexcept
 {
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-
-    for (InputEventListenerDesc& desc : m_inputListenersIDDescs) {
-        dispatcher.Unsubscribe(EventListenerID(desc.id, desc.typeIndexHash));
-        desc = {};
-    }
-
     m_keyStates = {};
     m_prevCursorPosition = {};
     m_currCursorPosition = {};
     m_mouseButtonStates = {};
     m_mouseWheelDX = 0.f;
     m_mouseWheelDY = 0.f;
+
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
+    for (detail::WinSysEventListenerIDDataHandler& handler : m_inputListenersIDHandlers) {
+        es::ListenerID ID(handler.typeIndex, handler.storageIndex);
+        
+        dispatcher.Unsubscribe(ID);
+        handler = {};
+    }
+
+    m_pOwnerWindow = nullptr;
 
     m_isIntialized = false;
 }
@@ -379,130 +399,6 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     ASSERT_WINDOW_SYSTEM_INIT_STATUS();
     ENG_ASSERT_WINDOW(createInfo.pTitle != nullptr, "Window title is nullptr");
 
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowResized>(
-            [this](const void* pEvent) {
-                const EventWindowResized& event = CastEventTo<EventWindowResized>(pEvent);
-                
-                m_windowWidth = event.GetWidth();
-                m_windowHeight = event.GetHeight();
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_RESIZED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_RESIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowMinimized>(
-            [this](const void* pEvent) {
-                m_state.set(STATE_BIT_MINIMIZED);
-                m_state.reset(STATE_BIT_MAXIMIZED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MINIMIZED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MINIMIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MINIMIZED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowMaximized>(
-            [this](const void* pEvent) {
-                m_state.set(STATE_BIT_MAXIMIZED);
-                m_state.reset(STATE_BIT_MINIMIZED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_MAXIMIZED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MAXIMIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_MAXIMIZED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowSizeRestored>(
-            [this](const void* pEvent) {
-                m_state.reset(STATE_BIT_MAXIMIZED);
-                m_state.reset(STATE_BIT_MINIMIZED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_SIZE_RESTORED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_SIZE_RESTORED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_SIZE_RESTORED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowClosed>(
-            [this](const void* pEvent) {
-                m_state.set(STATE_BIT_OPENED, false);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_CLOSED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_CLOSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_CLOSED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowFocused>(
-            [this](const void* pEvent) {
-                m_state.set(STATE_BIT_FOCUSED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_FOCUSED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FOCUSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FOCUSED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-    
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventWindowUnfocused>(
-            [this](const void* pEvent) {
-                m_state.reset(STATE_BIT_FOCUSED);
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_SYS_UNFOCUSED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_UNFOCUSED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_UNFOCUSED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-    {
-        const EventListenerID listenerID = dispatcher.Subscribe<EventFramebufferResized>(
-            [this](const void* pEvent) {
-                const EventFramebufferResized& event = CastEventTo<EventFramebufferResized>(pEvent);
-                
-                m_framebufferWidth = event.GetWidth();
-                m_framebufferHeight = event.GetHeight();
-            }
-        );
-
-        ENG_ASSERT(listenerID.IsValid(), "Invalid event listener ID");
-        dispatcher.SetListenerDebugName(listenerID, "WINDOW_FRAMEBUFFER_RESIZED");
-
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].id = listenerID.Value();
-        m_windowEventListenersIDDescs[WindowEventIndex::IDX_FRAMEBUFFER_RESIZED].typeIndexHash = listenerID.TypeIndexHash();
-    }
-
-
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -528,13 +424,76 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     glfwMakeContextCurrent(pGLFWWindow);
     glfwSwapInterval(createInfo.enableVSync);
 
+    glfwSetWindowUserPointer(pGLFWWindow, this);
+
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_RESIZED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowResized>(
+        [this](const void* pEvent) {
+            const EventWindowResized& event = es::EventCast<EventWindowResized>(pEvent);
+            
+            m_windowWidth = event.GetWidth();
+            m_windowHeight = event.GetHeight();
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_MINIMIZED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowMinimized>(
+        [this](const void* pEvent) {
+            m_state.set(STATE_BIT_MINIMIZED);
+            m_state.reset(STATE_BIT_MAXIMIZED);
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_MAXIMIZED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowMaximized>(
+        [this](const void* pEvent) {
+            m_state.set(STATE_BIT_MAXIMIZED);
+            m_state.reset(STATE_BIT_MINIMIZED);
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_SIZE_RESTORED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowSizeRestored>(
+        [this](const void* pEvent) {
+            m_state.reset(STATE_BIT_MAXIMIZED);
+            m_state.reset(STATE_BIT_MINIMIZED);
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_CLOSED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowClosed>(
+        [this](const void* pEvent) {
+            m_state.reset(STATE_BIT_OPENED);
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_FOCUSED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowFocused>(
+        [this](const void* pEvent) {
+            m_state.set(STATE_BIT_FOCUSED);
+        }
+    ));
+    
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_UNFOCUSED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventWindowUnfocused>(
+        [this](const void* pEvent) {
+            m_state.reset(STATE_BIT_FOCUSED);
+        }
+    ));
+
+    m_windowEventListenersIDHandlers[WindowEventIndex::IDX_FRAMEBUFFER_RESIZED] = ListenerIDToWinSysEventListenerIDDataHandler(dispatcher.Subscribe<EventFramebufferResized>(
+        [this](const void* pEvent) {
+            const EventFramebufferResized& event = es::EventCast<EventFramebufferResized>(pEvent);
+            
+            m_framebufferWidth = event.GetWidth();
+            m_framebufferHeight = event.GetHeight();
+        }
+    ));
+
     glfwSetWindowCloseCallback(pGLFWWindow, [](GLFWwindow* pWindow){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
         dispatcher.Notify<EventWindowClosed>();
     });
 
     glfwSetWindowIconifyCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t iconified){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+        
         if (iconified) {
             dispatcher.Notify<EventWindowMinimized>();
         } else {
@@ -543,7 +502,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     });
 
     glfwSetWindowMaximizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t maximized){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+        
         if (maximized) {
             dispatcher.Notify<EventWindowMaximized>();
         } else {
@@ -552,7 +512,8 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     });
 
     glfwSetWindowFocusCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t focused){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+        
         if (focused) {
             dispatcher.Notify<EventWindowFocused>();
         } else {
@@ -561,12 +522,14 @@ bool Window::Init(const WindowCreateInfo& createInfo) noexcept
     });
 
     glfwSetWindowSizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
         dispatcher.Notify<EventWindowResized>(width, height);
     });
 
     glfwSetFramebufferSizeCallback(pGLFWWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height){
-        static EventDispatcher& dispatcher = EventDispatcher::GetInstance();
+        static es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+
         dispatcher.Notify<EventFramebufferResized>(width, height);
     });
 
@@ -587,10 +550,12 @@ void Window::Destroy() noexcept
     
     m_input.Destroy();
 
-    EventDispatcher& dispatcher = EventDispatcher::GetInstance();
-    for (WindowEventListenerDesc& desc : m_windowEventListenersIDDescs) {
-        dispatcher.Unsubscribe(EventListenerID(desc.id, desc.typeIndexHash));
-        desc = {};
+    es::EventDispatcher& dispatcher = es::EventDispatcher::GetInstance();
+    for (detail::WinSysEventListenerIDDataHandler& handler : m_windowEventListenersIDHandlers) {
+        es::ListenerID ID(handler.typeIndex, handler.storageIndex);
+
+        dispatcher.Unsubscribe(ID);
+        handler = {};
     }
 
     glfwDestroyWindow(static_cast<GLFWwindow*>(m_pNativeWindow));

@@ -34,4 +34,18 @@ namespace ds
         m_idFreeList.clear();
         m_nextAllocatedID.SetValue(0);
     }
+
+
+    template <typename BaseIDType>
+    inline bool BaseIDPool<BaseIDType>::IsAnyAllocated() const noexcept
+    {
+        return m_nextAllocatedID > IDType{0} && m_idFreeList.size() < m_nextAllocatedID.Value();
+    }
+
+
+    template <typename BaseIDType>
+    inline bool BaseIDPool<BaseIDType>::IsAllocated(const IDType& ID) const noexcept
+    {
+        return ID < m_nextAllocatedID && std::find(m_idFreeList.cbegin(), m_idFreeList.cend(), ID) == m_idFreeList.cend();
+    }
 }
