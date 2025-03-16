@@ -26,9 +26,8 @@ void Application::Terminate() noexcept
 void Application::Run() noexcept
 {
     Engine& engine = Engine::GetInstance();
-    Window& window = engine.GetMainWindow();
-
-    while(!window.IsClosed()) {
+    
+    while(engine.IsRunning()) {
         engine.Update(); // In other thread may be ?...
 
         engine.BeginFrame();

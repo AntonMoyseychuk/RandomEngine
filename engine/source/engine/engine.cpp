@@ -2,6 +2,7 @@
 
 #include "engine/engine.h"
 #include "core/event_system/event_dispatcher.h"
+#include "core/window_system/window_system.h"
 
 #include "render/render_system/render_system.h"
 #include "core/camera/camera_manager.h"
@@ -9,11 +10,11 @@
 #include "utils/debug/assertion.h"
 
 
-#define ENG_CHECK_WINDOW_INITIALIZATION(pWindow) ENG_ASSERT(pWindow && pWindow->IsInitialized(), "Window is nullptr or not initialized");
-#define ENG_CHECK_REND_SYS_INITIALIZATION()      ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
+#define ENG_CHECK_REND_SYS_INITIALIZATION() ENG_ASSERT(engIsRenderSystemInitialized(), "Render system is not initialized");
 
 
 static std::unique_ptr<Engine> pEngineInst = nullptr;
+static Window* pMainWindowInst = nullptr;
 
 
 Engine& Engine::GetInstance() noexcept
@@ -54,8 +55,7 @@ void Engine::Terminate() noexcept
 
 Engine::~Engine()
 {
-    m_pMainWindow = nullptr;
-
+    pMainWindowInst = nullptr;
     engTerminateRenderSystem();
     engTerminateCameraManager();
     engTerminateWindowSystem();    
@@ -65,39 +65,27 @@ Engine::~Engine()
 
 void Engine::Update() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
-    
-    m_pMainWindow->Update();
-    
+    pMainWindowInst->Update();
     CameraManager::GetInstance().Update(1.f);
 }
 
 
 void Engine::BeginFrame() noexcept
 {
-    ENG_CHECK_REND_SYS_INITIALIZATION();
-
     RenderSystem::GetInstance().BeginFrame();
 }
 
 
 void Engine::EndFrame() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
-    ENG_CHECK_REND_SYS_INITIALIZATION();
-
     RenderSystem::GetInstance().EndFrame();
-
-    m_pMainWindow->SwapBuffers();
+    pMainWindowInst->SwapBuffers();
 }
 
 
 void Engine::RenderFrame() noexcept
 {
-    ENG_CHECK_WINDOW_INITIALIZATION(m_pMainWindow);
-    ENG_CHECK_REND_SYS_INITIALIZATION();
-
-    if (m_pMainWindow->IsMinimized()) {
+    if (pMainWindowInst->IsMinimized()) {
         return;
     }
 
@@ -117,16 +105,15 @@ void Engine::RenderFrame() noexcept
 }
 
 
-bool Engine::IsInitialized() const noexcept
+bool Engine::IsRunning() const noexcept
 {
-    return m_isInitialized;
+    return pMainWindowInst && !pMainWindowInst->IsClosed();
 }
 
 
-Window& Engine::GetMainWindow() noexcept
+bool Engine::IsInitialized() const noexcept
 {
-    ENG_ASSERT(engIsWindowSystemInitialized(), "Window system is not initialized");
-    return *m_pMainWindow;
+    return m_isInitialized;
 }
 
 
@@ -138,17 +125,15 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
         return;
     }
 
-    WindowSystem& windowSys = WindowSystem::GetInstance();
-
     WindowCreateInfo mainWindowCreateInfo = {};
     mainWindowCreateInfo.pTitle = title;
     mainWindowCreateInfo.width = width;
     mainWindowCreateInfo.height = height;
     mainWindowCreateInfo.enableVSync = enableVSync;
 
-    m_pMainWindow = windowSys.CreateWindow(WINDOW_TAG_MAIN, mainWindowCreateInfo);
+    pMainWindowInst = WindowSystem::GetInstance().CreateWindow(WINDOW_TAG_MAIN, mainWindowCreateInfo);
 
-    if (!(m_pMainWindow && m_pMainWindow->IsInitialized())) {
+    if (!(pMainWindowInst && pMainWindowInst->IsInitialized())) {
         return;
     }
 
@@ -161,11 +146,11 @@ Engine::Engine(const char* title, uint32_t width, uint32_t height, bool enableVS
     }
 
     // Notify all subscribed systems to resized their resources
-    es::EventDispatcher::GetInstance().Notify<EventFramebufferResized>(m_pMainWindow->GetFramebufferWidth(), m_pMainWindow->GetFramebufferHeight());
+    es::EventDispatcher::GetInstance().Notify<EventFramebufferResized>(pMainWindowInst->GetFramebufferWidth(), pMainWindowInst->GetFramebufferHeight());
 
     m_isInitialized = true;
 
-    m_pMainWindow->Show();
+    pMainWindowInst->Show();
 }
 
 

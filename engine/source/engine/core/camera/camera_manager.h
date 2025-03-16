@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/event_system/event_dispatcher.h"
-#include "engine/window_system/window_system_events.h"
 
 #include "utils/data_structures/strid.h"
 #include "utils/data_structures/base_id.h"

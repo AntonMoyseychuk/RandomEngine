@@ -1,8 +1,7 @@
 #include "pch.h"
+#include "window_system.h"
 
-#include "engine/window_system/window_system.h"
 #include "engine/core/event_system/event_dispatcher.h"
-
 #include "engine/utils/debug/assertion.h"
 
 #include <GLFW/glfw3.h>

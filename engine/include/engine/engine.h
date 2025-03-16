@@ -1,7 +1,5 @@
 #pragma once
 
-#include "window_system/window_system.h"
-
 #include <memory>
 #include <cstdint>
 
@@ -27,9 +25,8 @@ public:
     
     void RenderFrame() noexcept;
 
+    bool IsRunning() const noexcept;
     bool IsInitialized() const noexcept;
-
-    Window& GetMainWindow() noexcept;
     
 private:
     Engine(const char* title, uint32_t width, uint32_t height, bool enableVSync);
@@ -38,7 +35,6 @@ private:
     Engine& operator=(Engine&& other) noexcept = default;
 
 private:
-    Window* m_pMainWindow = nullptr;
     bool m_isInitialized = false;
 };
 

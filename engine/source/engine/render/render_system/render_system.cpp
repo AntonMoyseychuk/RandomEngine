@@ -11,6 +11,7 @@
 #include "render/mesh_manager/mesh_manager.h"
 
 #include "core/camera/camera_manager.h"
+#include "core/window_system/window_system.h"
 
 #include "utils/file/file.h"
 #include "utils/debug/assertion.h"
