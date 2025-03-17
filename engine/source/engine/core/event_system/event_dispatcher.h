@@ -74,35 +74,6 @@ namespace es
 
     using ListenerCallback = std::function<void(const void* pEvent)>;
 
-    class ListenersStorage
-    {
-        friend class EventDispatcher;
-        
-    public:
-        void Reserve(uint64_t capacity) noexcept { m_storage.reserve(capacity); }
-
-        uint64_t Add(const ListenerCallback& callback) noexcept;
-        void Remove(uint64_t index) noexcept;
-
-        void Notify(const void* pEvent) noexcept;
-
-        void Reset() noexcept;
-
-        uint64_t GetSize() const noexcept { return m_storage.size(); }
-        uint64_t GetCapacity() noexcept { return m_storage.capacity(); }
-
-    private:
-    static inline constexpr uint64_t MAX_LISTENERS_STORAGE_CAPACITY = ListenerID::MAX_STORAGE_IDX + 1;
-        static inline const ListenerCallback DEFAULT_EVENT_CALLBACK = [](const void*) -> void {}; 
-
-    private:
-        using ListenerIndex = ds::BaseID<ListenerID::UnderlyingType>;
-        using ListenerIndexPool = ds::BaseIDPool<ListenerIndex>;
-
-        std::vector<ListenerCallback> m_storage;
-        ListenerIndexPool m_idxPool;
-    };
-
 
     class EventDispatcher
     {
@@ -110,11 +81,7 @@ namespace es
         static EventDispatcher& GetInstance();
 
         template <typename EventType>
-        static uint64_t GetEventTypeIndex() noexcept
-        {
-            static uint64_t index = AllocateEventTypeIndex();
-            return index;
-        }
+        static uint64_t GetEventTypeIndex() noexcept;
     
     public:
         EventDispatcher(const EventDispatcher& dispatcher) = delete;
@@ -133,13 +100,40 @@ namespace es
         void Reset() noexcept;
 
     private:
+        static uint64_t AllocateEventTypeIndex() noexcept;
+
+    private:
         EventDispatcher();
 
-        static uint64_t AllocateEventTypeIndex() noexcept
+    private:
+        class ListenersStorage
         {
-            static uint64_t index = 0;
-            return index++;
-        }
+            friend class EventDispatcher;
+            
+        public:
+            void Reserve(uint64_t capacity) noexcept { m_storage.reserve(capacity); }
+
+            uint64_t Add(const ListenerCallback& callback) noexcept;
+            void Remove(uint64_t index) noexcept;
+
+            void Notify(const void* pEvent) noexcept;
+
+            void Reset() noexcept;
+
+            uint64_t GetSize() const noexcept { return m_storage.size(); }
+            uint64_t GetCapacity() noexcept { return m_storage.capacity(); }
+
+        private:
+            static inline constexpr uint64_t MAX_LISTENERS_STORAGE_CAPACITY = ListenerID::MAX_STORAGE_IDX + 1;
+            static inline const ListenerCallback DEFAULT_EVENT_CALLBACK = [](const void*) -> void {}; 
+
+        private:
+            using ListenerIndex = ds::BaseID<ListenerID::UnderlyingType>;
+            using ListenerIndexPool = ds::BaseIDPool<ListenerIndex>;
+
+            std::vector<ListenerCallback> m_storage;
+            ListenerIndexPool m_idxPool;
+        };
 
     private:
         static inline constexpr uint64_t MAX_EVENT_TYPES_COUNT = ListenerID::MAX_EVENT_TYPE_IDX + 1;

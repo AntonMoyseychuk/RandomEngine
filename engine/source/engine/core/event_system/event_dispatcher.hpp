@@ -1,5 +1,20 @@
 namespace es
 {
+    inline uint64_t EventDispatcher::AllocateEventTypeIndex() noexcept
+    {
+        static uint64_t index = 0;
+        return index++;
+    }
+
+
+    template <typename EventType>
+    inline uint64_t EventDispatcher::GetEventTypeIndex() noexcept
+    {
+        static const uint64_t index = AllocateEventTypeIndex();
+        return index;
+    }
+
+
     template <typename EventType>
     inline ListenerID EventDispatcher::Subscribe(const ListenerCallback& listenerCallback) noexcept
     {

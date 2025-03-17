@@ -24,27 +24,30 @@ namespace es
     }
 
 
-    uint64_t ListenersStorage::Add(const ListenerCallback& callback) noexcept
+    uint64_t EventDispatcher::ListenersStorage::Add(const ListenerCallback& callback) noexcept
     {
         ENG_ASSERT(bool(callback), "Invalid callback");
 
         const uint64_t idx = m_idxPool.Allocate().Value();
         ENG_ASSERT(idx < MAX_LISTENERS_STORAGE_CAPACITY, "Listeners limit has been reached");
 
-        if (idx >= m_storage.capacity()) {
-            ENG_LOG_WARN("Event dispatcher: listeners storage ({}) reallocation", idx);
-            m_storage.emplace_back(callback);
-        } else if (idx >= m_storage.size()) {
-            m_storage.emplace_back(callback);
-        } else {
-            m_storage[idx] = callback;
+        const size_t storageCapacity = m_storage.capacity();
+
+        if (idx >= storageCapacity) {
+            m_storage.reserve(storageCapacity * 2ULL);
         }
+
+        if (idx >= m_storage.size()) {
+            m_storage.resize(idx + 1);
+        }
+
+        m_storage[idx] = callback;
         
         return idx;
     }
 
 
-    void ListenersStorage::Remove(uint64_t index) noexcept
+    void EventDispatcher::ListenersStorage::Remove(uint64_t index) noexcept
     {
         ListenerIndex listenerIdx(index);
 
@@ -62,7 +65,7 @@ namespace es
     }
 
 
-    void ListenersStorage::Notify(const void* pEvent) noexcept
+    void EventDispatcher::ListenersStorage::Notify(const void* pEvent) noexcept
     {
         ENG_ASSERT(pEvent, "pEvent is nullptr");
 
@@ -72,7 +75,7 @@ namespace es
     }
 
 
-    inline void ListenersStorage::Reset() noexcept
+    void EventDispatcher::ListenersStorage::Reset() noexcept
     {
         m_storage.clear();
         m_idxPool.Reset();
