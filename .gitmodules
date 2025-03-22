@@ -7,3 +7,6 @@
 [submodule "engine/thirdparty/log_system"]
 	path = engine/thirdparty/log_system
 	url = https://github.com/AntonMoyseychuk/log_system.git
+[submodule "engine/tools/shadergen/thirdparty/log_system"]
+	path = engine/tools/shadergen/thirdparty/log_system
+	url = https://github.com/AntonMoyseychuk/log_system.git

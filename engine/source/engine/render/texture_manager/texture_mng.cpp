@@ -6,7 +6,7 @@
 
 #include "render/platform/OpenGL/opengl_driver.h"
 
-#include "auto/registers_common.h"
+#include "auto/auto_registers_common.h"
 
 
 struct TextureSamplerStateCreateInfo

@@ -13,6 +13,10 @@ static constexpr const char* ENG_LOGGER_PATTERN = "[%l] [%n] [%H:%M:%S:%e]: %^%v
 void engInitLogSystem() noexcept
 {
 #if defined(ENG_LOGGING_ENABLED)
+    if (engIsLogSystemInitialized()) {
+        return;
+    }
+
     if (!logg::InitLogSystem()) {
         puts(ENG_MAKE_COLORED_TEXT(ENG_OUTPUT_COLOR_RED_ASCII_CODE, "Unexpected problems occurred during the initialization of the log system.\n"));
         return;
