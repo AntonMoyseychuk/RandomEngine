@@ -19,7 +19,7 @@ set(ENGINE_SHADERS_INCLUDE_DIR ${ENGINE_SHADERS_DIR}/include)
 set(ENGINE_THIRDPARTY_DIR ${ENGINE_DIR}/thirdparty)
 set(ENGINE_THIRDPARTY_GLFW_DIR ${ENGINE_THIRDPARTY_DIR}/glfw)
 set(ENGINE_THIRDPARTY_GLAD_DIR ${ENGINE_THIRDPARTY_DIR}/glad)
-set(ENGINE_THIRDPARTY_SPDLOG_DIR ${ENGINE_THIRDPARTY_DIR}/spdlog)
+set(ENGINE_THIRDPARTY_LOG_SYS_DIR ${ENGINE_THIRDPARTY_DIR}/log_system)
 set(ENGINE_THIRDPARTY_GLM ${ENGINE_THIRDPARTY_DIR}/glm)
 
 
@@ -29,7 +29,7 @@ set(ENGINE_SHADERGEN_DIR ${ENGINE_TOOLS_DIR}/shadergen)
 
 add_subdirectory(${ENGINE_THIRDPARTY_GLFW_DIR})
 add_subdirectory(${ENGINE_THIRDPARTY_GLAD_DIR})
-add_subdirectory(${ENGINE_THIRDPARTY_SPDLOG_DIR})
+add_subdirectory(${ENGINE_THIRDPARTY_LOG_SYS_DIR})
 add_subdirectory(${ENGINE_THIRDPARTY_GLM})
 
 add_subdirectory(${ENGINE_SHADERGEN_DIR})
@@ -104,12 +104,9 @@ target_include_directories(engine
 
     PRIVATE ${GLFW_INCLUDE_DIRS}
     PRIVATE ${GLAD_INCLUDE_DIRS}
-    PRIVATE ${spdlog_INCLUDE_DIRS})
+    PRIVATE ${ENGINE_THIRDPARTY_LOG_SYS_DIR}/include)
 
-target_link_directories(engine PRIVATE ${spdlog_LIBRARY_DIRS})
-
-target_link_libraries(engine PRIVATE glfw glad spdlog glm::glm)
-
+target_link_libraries(engine PRIVATE glfw glad glm::glm log_system)
 
 target_compile_definitions(engine 
     PRIVATE ENG_ENGINE_DIR="${ENGINE_DIR}"

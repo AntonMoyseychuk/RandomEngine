@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core.h"
-#include "utils/log_system/log_system.h"
+#include "log_system/log_system.h"
 
 
 #define ENG_OUTPUT_COLOR_RESET_ASCII_CODE      "\033[0m"
