@@ -1,19 +1,33 @@
 #pragma once
 
-#include "logger.h"
+#include "eng_log_sys.h"
 
 
-void AssertImpl(bool condition, Logger::Type loggerType, const char* file, const char* function, uint32_t line, const char* conditionStr, const char* message);
-
+namespace detail
+{
+    template <typename LoggerTag, typename... Args>
+    void AssertImpl(const char* pFile, uint64_t line, std::string_view format, Args&&... args) noexcept;
+}
 
 #if defined(ENG_ASSERTION_ENABLED)
-    #define ENG_ASSERT(condition, formatt, ...)              AssertImpl(condition, Logger::Type::APPLICATION, __FILE__, __FUNCTION__, __LINE__, "condtion: " #condition, fmt::format(formatt, __VA_ARGS__).c_str())
-    #define ENG_ASSERT_GRAPHICS_API(condition, formatt, ...) AssertImpl(condition, Logger::Type::GRAPHICS_API, __FILE__, __FUNCTION__, __LINE__, "condtion: " #condition, fmt::format(formatt, __VA_ARGS__).c_str())
-    #define ENG_ASSERT_WINDOW(condition, formatt, ...)       AssertImpl(condition, Logger::Type::WINDOW_SYSTEM, __FILE__, __FUNCTION__, __LINE__, "condtion: " #condition, fmt::format(formatt, __VA_ARGS__).c_str())
+    #define ENG_ASSERT(condition, format, ...) \
+        if (!(condition)) { \
+            detail::AssertImpl<EngineGeneralLoggerTag>(__FILE__, __LINE__, format, __VA_ARGS__); \
+        }
 
-    #define ENG_ASSERT_FAIL(formatt, ...)              ENG_ASSERT(false, formatt, __VA_ARGS__)
-    #define ENG_ASSERT_GRAPHICS_API_FAIL(formatt, ...) ENG_ASSERT_GRAPHICS_API(false, formatt, __VA_ARGS__)
-    #define ENG_ASSERT_WINDOW_FAIL(formatt, ...)       ENG_ASSERT_WINDOW(false, formatt, __VA_ARGS__)
+    #define ENG_ASSERT_GRAPHICS_API(condition, format, ...) \
+        if (!(condition)) { \
+            detail::AssertImpl<EngineGraphicsApiLoggerTag>(__FILE__, __LINE__, format, __VA_ARGS__); \
+        }
+
+    #define ENG_ASSERT_WINDOW(condition, format, ...) \
+        if (!(condition)) { \
+            detail::AssertImpl<EngineWindowLoggerTag>(__FILE__, __LINE__, format, __VA_ARGS__); \
+        }
+    
+    #define ENG_ASSERT_FAIL(format, ...)              ENG_ASSERT(false, format, __VA_ARGS__)
+    #define ENG_ASSERT_GRAPHICS_API_FAIL(format, ...) ENG_ASSERT_GRAPHICS_API(false, format, __VA_ARGS__)
+    #define ENG_ASSERT_WINDOW_FAIL(format, ...)       ENG_ASSERT_WINDOW(false, format, __VA_ARGS__)
 #else
     #define ENG_ASSERT(condition, formatt, ...)
     #define ENG_ASSERT_GRAPHICS_API(condition, formatt, ...)
@@ -23,3 +37,20 @@ void AssertImpl(bool condition, Logger::Type loggerType, const char* file, const
     #define ENG_ASSERT_GRAPHICS_API_FAIL(formatt, ...)
     #define ENG_ASSERT_WINDOW_FAIL(formatt, ...)
 #endif
+
+
+namespace detail
+{
+    template <typename LoggerTag, typename... Args>
+    inline void AssertImpl(const char* pFile, uint64_t line, std::string_view format, Args &&...args) noexcept
+    {
+        logg::Logger* pLogger = engGetTagedLogger<LoggerTag>();
+
+        static constexpr uint64_t MAX_FORMAT_LENGTH = 1024;
+        char pNewFormat[MAX_FORMAT_LENGTH] = { 0 };
+        sprintf_s(pNewFormat, "%s%s%s [{}:{}]", ENG_OUTPUT_COLOR_RED_ASCII_CODE, format.data(), ENG_OUTPUT_COLOR_RESET_ASCII_CODE);
+
+        pLogger->Error(pNewFormat, std::forward<Args>(args)..., pFile, line);
+        ENG_DEBUG_BREAK();
+    }
+}
