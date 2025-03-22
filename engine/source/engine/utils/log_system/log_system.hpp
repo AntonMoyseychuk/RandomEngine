@@ -1,6 +1,22 @@
 namespace logg
 {
     template <typename... Args>
+    inline void Logger::Trace(std::string_view format, Args &&...args) noexcept
+    {
+        assert(IsValid());
+        m_pSpdLoggerInst->trace(format, std::forward<Args>(args)...);
+    }
+
+
+    template <typename... Args>
+    inline void Logger::Debug(std::string_view format, Args &&...args) noexcept
+    {
+        assert(IsValid());
+        m_pSpdLoggerInst->debug(format, std::forward<Args>(args)...);
+    }
+
+
+    template <typename... Args>
     inline void Logger::Info(std::string_view format, Args &&...args) noexcept
     {
         assert(IsValid());
@@ -22,10 +38,18 @@ namespace logg
         assert(IsValid());
         m_pSpdLoggerInst->error(format, std::forward<Args>(args)...);
     }
+
+
+    template <typename... Args>
+    inline void Logger::Critical(std::string_view format, Args &&...args) noexcept
+    {
+        assert(IsValid());
+        m_pSpdLoggerInst->critical(format, std::forward<Args>(args)...);
+    }
     
     
     template <typename TAG>
-    inline Logger* LogSystem::CreateLogger(const LoggerCreateInfo &createInfo) noexcept
+    inline Logger* LogSystem::CreateLogger(const std::string& name) noexcept
     {
         if (!IsInitialized()) {
             return nullptr;
@@ -38,7 +62,7 @@ namespace logg
         
         pLogger->SetIndex(index);
         
-        if (pLogger->Create(createInfo)) {
+        if (pLogger->Create(name)) {
             return pLogger;
         }
 

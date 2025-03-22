@@ -48,9 +48,9 @@ namespace detail
 
         static constexpr uint64_t MAX_FORMAT_LENGTH = 1024;
         char pNewFormat[MAX_FORMAT_LENGTH] = { 0 };
-        sprintf_s(pNewFormat, "%s%s%s [{}:{}]", ENG_OUTPUT_COLOR_RED_ASCII_CODE, format.data(), ENG_OUTPUT_COLOR_RESET_ASCII_CODE);
+        sprintf_s(pNewFormat, "%s [{}:{}]", format.data());
 
-        pLogger->Error(pNewFormat, std::forward<Args>(args)..., pFile, line);
+        pLogger->Critical(pNewFormat, std::forward<Args>(args)..., pFile, line);
         ENG_DEBUG_BREAK();
     }
 }

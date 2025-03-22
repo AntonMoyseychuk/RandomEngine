@@ -101,8 +101,6 @@ void RenderSystem::RunColorPass() noexcept
     static Camera* pMainCam = nullptr;
 
     if (!isInitialized) {
-        srand(time(0));
-
         static constexpr const char* SHADER_INCLUDE_DIR = ENG_ENGINE_DIR "/source/shaders/include";
         static const char* GBUFFER_DEFINES[] = {
         #if defined(ENG_DEBUG)

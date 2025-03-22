@@ -8,20 +8,26 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 
 
 namespace logg
 {
-    struct LoggerCreateInfo
-    {
-        std::string name;
-        std::string pattern;
-    };
-
-
     class Logger
     {
         friend class LogSystem;
+
+    public:
+        enum class Level
+        {
+            TRACE,
+            DEBUG,
+            INFO,
+            WARN,
+            ERROR,
+            CRITICAL,
+            OFF
+        };
 
     public:
         Logger() = default;
@@ -36,6 +42,13 @@ namespace logg
         bool IsValid() const noexcept;
 
         void SetPattern(std::string pattern) noexcept;
+        void SetLevel(Level level) noexcept;
+
+        template <typename... Args>
+        void Trace(std::string_view format, Args&&... args) noexcept;
+
+        template <typename... Args>
+        void Debug(std::string_view format, Args&&... args) noexcept;
 
         template <typename... Args>
         void Info(std::string_view format, Args&&... args) noexcept;
@@ -46,8 +59,11 @@ namespace logg
         template <typename... Args>
         void Error(std::string_view format, Args&&... args) noexcept;
 
+        template <typename... Args>
+        void Critical(std::string_view format, Args&&... args) noexcept;
+
     private:
-        bool Create(const LoggerCreateInfo& createInfo) noexcept;
+        bool Create(const std::string& name) noexcept;
         void Destroy() noexcept;
 
         void SetIndex(uint64_t index) noexcept { m_index = index; }
@@ -81,7 +97,7 @@ namespace logg
         LogSystem& operator=(LogSystem&& other) noexcept = delete;
 
         template <typename TAG>
-        Logger* CreateLogger(const LoggerCreateInfo& createInfo) noexcept;
+        Logger* CreateLogger(const std::string& name) noexcept;
 
         void DestroyLogger(Logger& logger) noexcept;
 

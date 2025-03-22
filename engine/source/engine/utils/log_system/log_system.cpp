@@ -5,8 +5,22 @@
 
 namespace logg
 {
-    static constexpr uint64_t MAX_LOGGERS_COUNT = 32;
+    static spdlog::level::level_enum LoggerLevelToSPDLogLevel(Logger::Level level)
+    {
+        switch(level) {
+            case Logger::Level::TRACE: return spdlog::level::trace;
+            case Logger::Level::DEBUG: return spdlog::level::debug;
+            case Logger::Level::INFO: return spdlog::level::info;
+            case Logger::Level::WARN: return spdlog::level::warn;
+            case Logger::Level::ERROR: return spdlog::level::err;
+            case Logger::Level::CRITICAL: return spdlog::level::critical;
+            case Logger::Level::OFF: return spdlog::level::off;
+            default: return spdlog::level::critical;
+        }
+    }
 
+
+    static constexpr uint64_t MAX_LOGGERS_COUNT = 32;
     std::unique_ptr<LogSystem> pLogSystemInst = nullptr;
 
 
@@ -29,21 +43,25 @@ namespace logg
         }
     }
 
+    
+    void Logger::SetLevel(Level level) noexcept
+    {
+        if (IsValid()) {
+            m_pSpdLoggerInst->set_level(LoggerLevelToSPDLogLevel(level));
+        }
+    }
 
-    bool Logger::Create(const LoggerCreateInfo& createInfo) noexcept
+
+    bool Logger::Create(const std::string& name) noexcept
     {
         if (IsValid()) {
             return true;
         }
 
         assert(m_index != INVALID_IDX);
+        m_pSpdLoggerInst = spdlog::stdout_color_mt(name);
 
-        m_pSpdLoggerInst = spdlog::stdout_color_mt(createInfo.name);
-        assert(m_pSpdLoggerInst != nullptr);
-
-        m_pSpdLoggerInst->set_pattern(createInfo.pattern);
-
-        return true;
+        return m_pSpdLoggerInst != nullptr;
     }
     
     

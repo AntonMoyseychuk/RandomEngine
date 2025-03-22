@@ -4,33 +4,33 @@
 #include <cstdio>
 
 
-#define AM_MAKE_COLORED_TEXT(color, text) color text ENG_OUTPUT_COLOR_RESET_ASCII_CODE
+#define ENG_MAKE_COLORED_TEXT(color, text) color text ENG_OUTPUT_COLOR_RESET_ASCII_CODE
 
 
-static constexpr const char* LOGGER_PATTERN = "[%^%L%$] [%n] [%H:%M:%S:%e]: %v";
+static constexpr const char* ENG_LOGGER_PATTERN = "[%l] [%n] [%H:%M:%S:%e]: %^%v%$";
 
 
 void engInitLogSystem() noexcept
 {
 #if defined(ENG_LOGGING_ENABLED)
     if (!logg::InitLogSystem()) {
-        puts(AM_MAKE_COLORED_TEXT(ENG_OUTPUT_COLOR_RED_ASCII_CODE, "Unexpected problems occurred during the initialization of the log system.\n"));
+        puts(ENG_MAKE_COLORED_TEXT(ENG_OUTPUT_COLOR_RED_ASCII_CODE, "Unexpected problems occurred during the initialization of the log system.\n"));
         return;
     }
 
     logg::LogSystem& logSystemInst = logg::LogSystem::GetInstance();
-
-    logg::LoggerCreateInfo loggerCreateInfo = {};
-    loggerCreateInfo.pattern = LOGGER_PATTERN;
     
-    loggerCreateInfo.name = "CORE";
-    logSystemInst.CreateLogger<EngineGeneralLoggerTag>(loggerCreateInfo);
+    logg::Logger* pCoreLogger = logSystemInst.CreateLogger<EngineGeneralLoggerTag>("CORE");
+    pCoreLogger->SetPattern(ENG_LOGGER_PATTERN);
+    pCoreLogger->SetLevel(logg::Logger::Level::TRACE);
 
-    loggerCreateInfo.name = "WINDOW";
-    logSystemInst.CreateLogger<EngineWindowLoggerTag>(loggerCreateInfo);
+    logg::Logger* pWndLogger = logSystemInst.CreateLogger<EngineWindowLoggerTag>("WINDOW");
+    pWndLogger->SetPattern(ENG_LOGGER_PATTERN);
+    pWndLogger->SetLevel(logg::Logger::Level::TRACE);
 
-    loggerCreateInfo.name = "OPEN_GL";
-    logSystemInst.CreateLogger<EngineGraphicsApiLoggerTag>(loggerCreateInfo);
+    logg::Logger* pGraphicsApiLogger = logSystemInst.CreateLogger<EngineGraphicsApiLoggerTag>("OPEN_GL");
+    pGraphicsApiLogger->SetPattern(ENG_LOGGER_PATTERN);
+    pGraphicsApiLogger->SetLevel(logg::Logger::Level::TRACE);
 #endif
 }
 
