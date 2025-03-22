@@ -15,24 +15,38 @@ set(ENGINE_SHADERS_DIR ${ENGINE_SOURCE_DIR}/shaders)
 set(ENGINE_SHADERS_SOURCE_DIR ${ENGINE_SHADERS_DIR}/source)
 set(ENGINE_SHADERS_INCLUDE_DIR ${ENGINE_SHADERS_DIR}/include)
 
-
 set(ENGINE_THIRDPARTY_DIR ${ENGINE_DIR}/thirdparty)
-set(ENGINE_THIRDPARTY_GLFW_DIR ${ENGINE_THIRDPARTY_DIR}/glfw)
 set(ENGINE_THIRDPARTY_GLAD_DIR ${ENGINE_THIRDPARTY_DIR}/glad)
-set(ENGINE_THIRDPARTY_LOG_SYS_DIR ${ENGINE_THIRDPARTY_DIR}/log_system)
-set(ENGINE_THIRDPARTY_GLM ${ENGINE_THIRDPARTY_DIR}/glm)
-
 
 set(ENGINE_TOOLS_DIR ${ENGINE_DIR}/tools)
 set(ENGINE_SHADERGEN_DIR ${ENGINE_TOOLS_DIR}/shadergen)
 
-
-add_subdirectory(${ENGINE_THIRDPARTY_GLFW_DIR})
 add_subdirectory(${ENGINE_THIRDPARTY_GLAD_DIR})
-add_subdirectory(${ENGINE_THIRDPARTY_GLM})
-
-# add_subdirectory(${ENGINE_THIRDPARTY_LOG_SYS_DIR})
 add_subdirectory(${ENGINE_SHADERGEN_DIR})
+
+
+include(FetchContent)
+
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG        3.4
+)
+FetchContent_MakeAvailable(glfw)
+
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG        1.0.1
+)
+FetchContent_MakeAvailable(glm)
+
+FetchContent_Declare(
+    log_system
+    GIT_REPOSITORY https://github.com/AntonMoyseychuk/log_system.git
+    GIT_TAG        "HEAD"
+)
+FetchContent_MakeAvailable(log_system)
 
 
 # Shader files for c++ files auto generation
@@ -68,8 +82,6 @@ add_custom_command(PRE_BUILD
     COMMAND ${SHADERGEN_EXEC_FILEPATH}
     ARGS ${SHADERGEN_INPUT_ARGS}
     DEPENDS ${ENGINE_SHADER_AUTOGEN_FILES} ${SHADERGEN_EXEC_FILEPATH}
-    COMMAND_EXPAND_LISTS
-    VERBATIM
 )
 
 
@@ -81,26 +93,26 @@ file(GLOB_RECURSE ENGINE_SRC_FILES CONFIGURE_DEPENDS
 
 add_library(engine STATIC ${ENGINE_SRC_FILES} ${ENGINE_CXX_AUTO_FILES})
 
+
+target_compile_options(engine PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-anonymous-struct -Wno-nested-anon-types>
+)
+
+
 # Setting target options
 set(ENGINE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/engine")
 
 set_target_properties(engine
     PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${ENGINE_OUTPUT_DIR}
-)
-
-set_target_properties(engine
-    PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_DEBUG ${ENGINE_OUTPUT_DIR}
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${ENGINE_OUTPUT_DIR}
 )
 
+
 target_precompile_headers(engine PRIVATE ${ENGINE_SOURCE_DIR}/pch.h)
 
-target_compile_options(engine PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-anonymous-struct -Wno-nested-anon-types>
-)
 
 target_include_directories(engine 
     PUBLIC ${ENGINE_INCLUDE_DIR}
@@ -112,7 +124,9 @@ target_include_directories(engine
     PRIVATE ${GLAD_INCLUDE_DIRS}
     PRIVATE ${ENGINE_THIRDPARTY_LOG_SYS_DIR}/include)
 
+
 target_link_libraries(engine PRIVATE glfw glad glm::glm log_system)
+
 
 target_compile_definitions(engine 
     PRIVATE ENG_ENGINE_DIR="${ENGINE_DIR}"
