@@ -43,7 +43,7 @@ FetchContent_MakeAvailable(glm)
 
 FetchContent_Declare(
     log_system
-    GIT_REPOSITORY https://github.com/AntonMoyseychuk/log_system.git
+    GIT_REPOSITORY https://github.com/AntonMoyseychuk/LogSystem.git
     GIT_TAG        "HEAD"
 )
 FetchContent_MakeAvailable(log_system)
